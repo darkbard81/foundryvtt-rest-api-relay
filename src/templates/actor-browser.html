@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Foundry Actor Browser</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #444;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 10px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #4b6cb7;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #actors-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .actor-card {
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .actor-card img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      border-radius: 50%;
+      margin-bottom: 10px;
+    }
+    .actor-card:hover {
+      border-color: #4b6cb7;
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Foundry Actor Browser</h1>
+    
+    <div class="form-group">
+      <label for="world-id">World ID</label>
+      <input type="text" id="world-id" placeholder="Enter world ID">
+    </div>
+    
+    <div class="form-group">
+      <label for="backup">Backup</label>
+      <select id="backup">
+        <option value="latest">Latest</option>
+      </select>
+    </div>
+    
+    <button id="load-button">Load Actors</button>
+    
+    <div id="actors-container"></div>
+  </div>
+
+  <script>
+    document.getElementById('load-button').addEventListener('click', loadActors);
+    
+    async function loadActors() {
+      const worldId = document.getElementById('world-id').value;
+      if (!worldId) {
+        alert('Please enter a world ID');
+        return;
+      }
+      
+      try {
+        // First try to load backups
+        const backupsResponse = await fetch(`/actors/backups?world=${worldId}`);
+        if (backupsResponse.ok) {
+          const backupsData = await backupsResponse.json();
+          const backupSelect = document.getElementById('backup');
+          
+          // Clear existing options except "latest"
+          while (backupSelect.options.length > 1) {
+            backupSelect.remove(1);
+          }
+          
+          // Add backup options
+          backupsData.backups.forEach(backup => {
+            const option = document.createElement('option');
+            option.value = backup;
+            option.textContent = backup;
+            backupSelect.appendChild(option);
+          });
+        }
+        
+        // Load actor index
+        const backup = document.getElementById('backup').value;
+        const indexUrl = backup === 'latest' 
+          ? `/actors/latest?world=${worldId}` 
+          : `/actors/index?world=${worldId}&backup=${backup}`;
+        
+        const response = await fetch(indexUrl);
+        if (!response.ok) {
+          throw new Error('Failed to load actors');
+        }
+        
+        const actors = await response.json();
+        displayActors(actors, worldId, backup);
+      } catch (error) {
+        console.error(error);
+        alert('Error loading actors: ' + error.message);
+      }
+    }
+    
+    function displayActors(actors, worldId, backup) {
+      const container = document.getElementById('actors-container');
+      container.innerHTML = '';
+      
+      actors.forEach(actor => {
+        const card = document.createElement('div');
+        card.className = 'actor-card';
+        card.innerHTML = `
+          <img src="${actor.img}" alt="${actor.name}" onerror="this.src='/default-token.png'">
+          <h3>${actor.name}</h3>
+          <p>${actor.type}</p>
+        `;
+        
+        card.addEventListener('click', () => {
+          window.open(`/actors/${actor.id}/sheet?world=${worldId}&backup=${backup}`, '_blank');
+        });
+        
+        container.appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>

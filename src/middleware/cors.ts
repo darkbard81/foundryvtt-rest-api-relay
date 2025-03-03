@@ -1,4 +1,4 @@
-import type { Request, Response } from "hyper-express";
+import type { Request, Response, NextFunction } from "express";
 
 interface CorsOptions {
   origin?: string | string[] | ((origin: string) => boolean);
@@ -23,9 +23,9 @@ export const corsMiddleware = (options: CorsOptions = {}) => {
 
   const corsOptions = { ...defaultOptions, ...options };
 
-  return async (req: Request, res: Response, next: () => void) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     // Get the request origin
-    const requestOrigin = req.header("origin") || "*";
+    const requestOrigin = req.headers.origin?.toString() || "*";
 
     // Determine the allowed origin
     let allowedOrigin: string;
