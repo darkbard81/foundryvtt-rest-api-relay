@@ -22,7 +22,11 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   router.get("/api/status", (req, res) => {
-    res.json({ status: "ok" });
+    res.json({ 
+      status: "ok",
+      version: "1.0.0",
+      websocket: "/relay"
+    });
   });
   
   // Mount the router on the app

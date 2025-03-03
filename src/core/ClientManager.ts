@@ -1,13 +1,49 @@
 // src/core/ClientManager.ts
-import { Websocket } from "hyper-express";
+import WebSocket from "ws";
 import { log } from "../middleware/logger";
-import { Client } from "./Client";
+import { ActorDataStore } from "./ActorDataStore";
+
+export class Client {
+  private ws: WebSocket;
+  private id: string;
+  private lastPing: number;
+
+  constructor(ws: WebSocket, id: string) {
+    this.ws = ws;
+    this.id = id;
+    this.lastPing = Date.now();
+  }
+
+  public getId(): string {
+    return this.id;
+  }
+
+  public isAlive(): boolean {
+    return this.ws.readyState === WebSocket.OPEN && 
+           Date.now() - this.lastPing < 70000;
+  }
+
+  public updatePing(): void {
+    this.lastPing = Date.now();
+  }
+
+  public send(data: unknown): void {
+    if (this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.send(JSON.stringify(data));
+      } catch (error) {
+        log.error("Error sending message", { error, clientId: this.id });
+      }
+    }
+  }
+}
 
 export class ClientManager {
   private static tokenGroups: Map<string, Set<Client>> = new Map();
   private static clients: Map<string, Client> = new Map();
+  private static messageHandlers: Map<string, (client: Client, message: any) => void> = new Map();
 
-  static addClient(ws: Websocket, id: string, token: string): void {
+  static addClient(ws: WebSocket, id: string, token: string): void {
     if (this.clients.has(id)) {
       const existingClient = this.clients.get(id)!;
       if (existingClient.isAlive()) {
@@ -68,6 +104,18 @@ export class ClientManager {
         });
         break;
       }
+    }
+  }
+
+  // Add this method to handle specific message types
+  static onMessageType(type: string, handler: (client: Client, message: any) => void): void {
+    this.messageHandlers.set(type, handler);
+  }
+
+  // Add this method to process incoming messages by type
+  static handleIncomingMessage(client: Client, message: any): void {
+    if (message && message.type && this.messageHandlers.has(message.type)) {
+      this.messageHandlers.get(message.type)!(client, message);
     }
   }
 

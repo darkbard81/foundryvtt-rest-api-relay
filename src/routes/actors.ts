@@ -1,14 +1,15 @@
 import * as fs from "fs";
 import * as path from "path";
 import * as Handlebars from "handlebars";
-import { Server, Request, Response } from "hyper-express";
+import express from "express";
+import { ActorDataStore } from "../core/ActorDataStore";
 
 // Path to Foundry data directory - configure this via env variable or hardcode for now
 const FOUNDRY_DATA_PATH = process.env.FOUNDRY_DATA_PATH || "C:/Users/Noah/AppData/Local/FoundryVTT/Data/data";
 
-// Change type from express.Application to HyperExpress Server
-export const actorRoutes = (server: Server): void => {
-  server.get("/actors", (req: Request, res: Response) => {
+// Change type from HyperExpress Server to Express Application
+export const actorRoutes = (app: express.Application): void => {
+  app.get("/actors", (req, res) => {
     return res.json({
       message: "Actor API endpoints",
       endpoints: [
@@ -33,21 +34,14 @@ export const actorRoutes = (server: Server): void => {
   });
 
   // Get the list of all actor backups
-  server.get("/actors/backups", (req: Request, res: Response) => {
-    const worldId = req.query.world;
+  app.get("/actors/backups", (req, res) => {
+    const worldId = req.query.world as string;
     if (!worldId) {
       return res.status(400).json({ error: "World ID is required" });
     }
     
-    const basePath = path.join(FOUNDRY_DATA_PATH, "external", worldId as string, "actors");
-    
     try {
-      const folders = fs.readdirSync(basePath);
-      const backups = folders.filter(folder => 
-        folder !== "latest" && 
-        fs.statSync(path.join(basePath, folder)).isDirectory()
-      );
-      
+      const backups = ActorDataStore.getBackups(worldId);
       return res.json({ backups });
     } catch (error) {
       console.error("Error reading backups:", error);
@@ -56,19 +50,15 @@ export const actorRoutes = (server: Server): void => {
   });
 
   // Get the latest backup index
-  server.get("/actors/latest", (req: Request, res: Response) => {
-    const worldId = req.query.world;
+  app.get("/actors/latest", (req, res) => {
+    const worldId = req.query.world as string;
     if (!worldId) {
       return res.status(400).json({ error: "World ID is required" });
     }
     
-    const basePath = path.join(FOUNDRY_DATA_PATH, "external", worldId as string, "actors");
-    const latestPath = path.join(basePath, "latest");
-    
     try {
-      const indexPath = path.join(latestPath, "index.json");
-      const indexData = fs.readFileSync(indexPath, "utf8");
-      return res.json(JSON.parse(indexData));
+      const actors = ActorDataStore.getWorldActors(worldId);
+      return res.json(actors);
     } catch (error) {
       console.error("Error reading latest actor data:", error);
       return res.status(500).json({ error: "Failed to retrieve latest actor data" });
@@ -76,19 +66,22 @@ export const actorRoutes = (server: Server): void => {
   });
 
   // Get a specific actor by ID
-  server.get("/actors/:id", (req: Request, res: Response) => {
-    const worldId = req.query.world;
+  app.get("/actors/:id", (req, res) => {
+    const worldId = req.query.world as string;
     const actorId = req.params.id;
-    const backup = req.query.backup || "latest";
+    const backup = req.query.backup as string || "latest";
     
     if (!worldId) {
       return res.status(400).json({ error: "World ID is required" });
     }
     
     try {
-      const actorPath = path.join(FOUNDRY_DATA_PATH, "external", worldId as string, "actors", backup as string, `${actorId}.json`);
-      const actorData = fs.readFileSync(actorPath, "utf8");
-      return res.json(JSON.parse(actorData));
+      const actorData = ActorDataStore.get(worldId, actorId, backup);
+      if (!actorData) {
+        return res.status(404).json({ error: "Actor not found" });
+      }
+      
+      return res.json(actorData);
     } catch (error) {
       console.error("Error reading actor data:", error);
       return res.status(404).json({ error: "Actor not found" });
@@ -96,21 +89,22 @@ export const actorRoutes = (server: Server): void => {
   });
 
   // Render actor sheet HTML
-  server.get("/actors/:id/sheet", (req: Request, res: Response) => {
-    const worldId = req.query.world;
+  app.get("/actors/:id/sheet", (req, res) => {
+    const worldId = req.query.world as string;
     const actorId = req.params.id;
-    const backup = req.query.backup || "latest";
+    const backup = req.query.backup as string || "latest";
     
     if (!worldId) {
       return res.status(400).json({ error: "World ID is required" });
     }
     
     try {
-      const actorPath = path.join(FOUNDRY_DATA_PATH, "external", worldId as string, "actors", backup as string, `${actorId}.json`);
-      const actorData = fs.readFileSync(actorPath, "utf8");
+      const actorData = ActorDataStore.get(worldId, actorId, backup);
+      if (!actorData) {
+        return res.status(404).json({ error: "Actor not found" });
+      }
       
-      // Load sheet template and render with actor data
-      const html = renderActorSheet(JSON.parse(actorData));
+      const html = renderActorSheet(actorData);
       
       res.header("Content-Type", "text/html");
       return res.send(html);

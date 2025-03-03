@@ -26,6 +26,7 @@ export class Client {
       this.handleClose();
     });
   }
+
   private handleMessage(data: Buffer): void {
     try {
       const message = JSON.parse(data.toString());
@@ -36,8 +37,9 @@ export class Client {
           this.send({ type: "pong" });
           break;
         default:
-          // Changed to use broadcastToGroup instead of broadcastToOtherClients
-          this.broadcast(message);
+          // Process message based on its type
+          ClientManager.handleIncomingMessage(this, message);
+          this.broadcast(message); // Still broadcast to others
       }
     } catch (error) {
       log.error("Error handling message", { error, clientId: this.id });

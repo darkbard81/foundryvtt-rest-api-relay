@@ -1,18 +1,19 @@
-import express, { Request, Response, NextFunction } from "express";
+import express from "express";
+import { createServer } from "http";
+import { WebSocketServer } from "ws";
 import { corsMiddleware } from "./middleware/cors";
 import { log } from "./middleware/logger";
 import { wsRoutes } from "./routes/websocket";
+import { actorRoutes } from "./routes/actors";
 import { apiRoutes } from "./routes/api";
 import { config } from "dotenv";
-import { actorRoutes } from "./routes/actors";
 import * as path from "path";
-import * as http from "http";
-import * as WebSocket from "ws";  // If you're using WebSockets
 
 config();
 
+// Create Express server
 const app = express();
-const server = http.createServer(app);
+const httpServer = createServer(app);
 
 // Setup CORS
 app.use(corsMiddleware());
@@ -21,66 +22,58 @@ app.use(corsMiddleware());
 app.use(express.json());
 
 // Serve static files from public directory
-app.use(express.static(path.join(__dirname, "../public")));
+app.use("/static", express.static(path.join(__dirname, "../public")));
 
-// Properly typed auth middleware
-const auth = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  // Authentication logic would go here
-  next();
-};
-
-// Define router function types for better type checking
-type RouterFunction = (app: express.Application) => void;
-
-// Initialize WebSocket server if needed
-const wss = new WebSocket.Server({ server });
+// Create WebSocket server
+const wss = new WebSocketServer({ server: httpServer });
 
 // Setup WebSocket routes
-wsRoutes(app, wss);
-
-// Setup API routes
-apiRoutes(app);
+wsRoutes(wss);
 
 // Setup Actor routes
 actorRoutes(app);
 
+// Setup API routes
+apiRoutes(app);
+
 // Add browser interface route for actor browser
-app.get("/browse", (req: Request, res: Response) => {
+app.get("/browse", (req, res) => {
   res.sendFile(path.join(__dirname, "../src/templates/actor-browser.html"));
 });
 
 // Add default static image for tokens
-app.get("/default-token.png", (req: Request, res: Response) => {
+app.get("/default-token.png", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/default-token.png"));
 });
 
-// Add this route to serve static files
-app.get('/static/*', (req, res) => {
-  const filePath = path.join(__dirname, '../public', req.path.replace('/static/', ''));
-  res.sendFile(filePath);
+// Endpoint for API root
+app.get("/", (req, res) => {
+  res.json({
+    name: "Foundry Actor Relay",
+    version: "1.0.0",
+    endpoints: [
+      "/actors",
+      "/api",
+      "/browse",
+      "/relay (WebSocket)"
+    ]
+  });
 });
 
-const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
 
-server.listen(port, () => {
+// Start HTTP server
+httpServer.listen(port, () => {
   log.info(`Server running on port ${port}`);
-}).on('error', (error) => {
-  log.error("Failed to start server", { error: error.message });
-  process.exit(1);
 });
 
 // Handle graceful shutdown
 const shutdown = (): void => {
   log.info("Shutting down server...");
-  Promise.resolve(server.close())
-    .then(() => {
-      log.info("Server closed successfully");
-      process.exit(0);
-    })
-    .catch((error) => {
-      log.error("Error during server shutdown", { error: error.message });
-      process.exit(1);
-    });
+  httpServer.close(() => {
+    log.info("Server closed successfully");
+    process.exit(0);
+  });
 };
 
 process.on("SIGINT", shutdown);
