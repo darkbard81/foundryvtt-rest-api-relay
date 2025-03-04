@@ -4,6 +4,8 @@ import { log } from "../middleware/logger";
 import { DataStore } from "../core/DataStore"; 
 import { ClientManager } from "../core/ClientManager";
 import { Client } from "../core/Client"; // Import Client type
+import axios from 'axios';
+import { PassThrough } from 'stream';
 
 export const apiRoutes = (app: express.Application): void => {
   // Setup handlers for storing search results and entity data from WebSocket
@@ -798,6 +800,50 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
   
+  // Add this route before mounting the router
+  router.get('/proxy-asset/:path(*)', async (req, res) => {
+    try {
+      // Get the Foundry URL from the client metadata or use default
+      const clientId = req.query.clientId as string;
+      let foundryBaseUrl = 'http://localhost:30000'; // Default Foundry URL
+      
+      // If we have client info, use its URL
+      if (clientId) {
+        const client = ClientManager.getClient(clientId);
+        if (client && 'metadata' in client && client.metadata && (client.metadata as any).origin) {
+          foundryBaseUrl = (client.metadata as any).origin;
+        }
+      }
+      
+      const assetPath = req.params.path;
+      const assetUrl = `${foundryBaseUrl}/${assetPath}`;
+      
+      log.debug(`Proxying asset request to: ${assetUrl}`);
+      
+      // Make the request to Foundry
+      const response = await axios({
+        method: 'get',
+        url: assetUrl,
+        responseType: 'stream',
+        timeout: 5000
+      });
+      
+      // Copy headers
+      Object.keys(response.headers).forEach(header => {
+        res.setHeader(header, response.headers[header]);
+      });
+      
+      // Set CORS headers
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      
+      // Stream the response
+      response.data.pipe(res);
+    } catch (error) {
+      log.error(`Error proxying asset: ${error}`);
+      res.status(404).send('Asset not found');
+    }
+  });
+
   // Mount the router
   app.use("/", router);
 };
@@ -1225,7 +1271,12 @@ function setupMessageHandlers() {
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Actor Sheet - ${responseUuid}</title>
+  
+  <!-- Include Font Awesome from CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
   <style>
     /* Reset some browser defaults */
     * {
@@ -1255,8 +1306,12 @@ function setupMessageHandlers() {
       box-shadow: 0 0 20px #000;
     }
     
-    /* Include captured CSS from Foundry */
-    ${css}
+    /* Include captured CSS from Foundry - with asset URLs fixed to use proxy */
+    ${css.replace(/url\(['"]?(.*?)['"]?\)/g, (match, url) => {
+      if (url.startsWith('http') || url.startsWith('data:')) return match;
+      if (url.startsWith('/')) return `url('/proxy-asset${url}?clientId=${pending.clientId}')`;
+      return `url('/proxy-asset/${url}?clientId=${pending.clientId}')`;
+    })}
     
     /* Fix any specific issues with the extracted sheet */
     img {
@@ -1270,10 +1325,44 @@ function setupMessageHandlers() {
       top: auto !important;
       left: auto !important;
     }
+    
+    /* Fix Font Awesome icons */
+    .fas, .far, .fal, .fad, .fab {
+      font-family: 'Font Awesome 5 Free' !important;
+      font-weight: 900;
+    }
+    
+    .far {
+      font-weight: 400 !important;
+    }
+    
+    .fab {
+      font-family: 'Font Awesome 5 Brands' !important;
+      font-weight: 400 !important;
+    }
+    
+    /* Add web font definitions for common Foundry fonts */
+    @font-face {
+      font-family: 'Signika';
+      src: url('/proxy-asset/fonts/signika/signika-regular.woff2?clientId=${pending.clientId}') format('woff2');
+      font-weight: 400;
+      font-style: normal;
+    }
+    
+    @font-face {
+      font-family: 'Modesto Condensed';
+      src: url('/proxy-asset/fonts/modesto-condensed/modesto-condensed-bold.woff2?clientId=${pending.clientId}') format('woff2');
+      font-weight: 700;
+      font-style: normal;
+    }
   </style>
 </head>
 <body class="vtt game system-${gameSystemId}">
-  ${html}
+  ${html.replace(/src="([^"]+)"/g, (match, src) => {
+    if (src.startsWith('http')) return match;
+    if (src.startsWith('/')) return `src="/proxy-asset${src}?clientId=${pending.clientId}"`;
+    return `src="/proxy-asset/${src}?clientId=${pending.clientId}"`;
+  })}
 </body>
 </html>`;
               
