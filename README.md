@@ -61,7 +61,7 @@ A Foundry VTT module that connects to the relay server and provides access to Fo
 - Configurable WebSocket relay URL and token
 
 ### Installation
-1. Install the module through the Foundry VTT module installer or through the latest manifest link
+1. Install the module through the Foundry VTT module installer or through the latest manifest link [https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json](https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json)
 2. Configure the WebSocket relay URL in module settings
 3. Set your relay token (defaults to your world ID)
 
