@@ -33,7 +33,7 @@ pnpm start
 - GET /clients?token=yourToken - List connected Foundry clients with a specific token
 - GET /search?query=term&filter=filter&clientId=id - Search for entities using Foundry's [QuickInsert](https://foundryvtt.com/packages/quick-insert)
     - query: any string to search for
-    - filter (optional): document type as string ("actor"), or filter properties object with any of:
+    - filter (optional): document type as string ("actor"), or filter properties object (comma-separated list of key-value pairs) with any of:
         - documentType: type of document (e.g., "Actor", "Item")
         - folder: folder location of the entity
         - id: unique identifier of the entity
@@ -52,7 +52,7 @@ pnpm start
 - WebSocket endpoint at /relay for Foundry clients
 
 ### Example
-localhost:3010/search?query=aboleth&filter=type:CompendiumSearchItem&clientId=foundry-LZw0ywlj1iYpkUSR
+localhost:3010/search?query=aboleth&filter=resultType:CompendiumSearchItem,package:dnd5e.items&clientId=foundry-LZw0ywlj1iYpkUSR
 
 ## Foundry REST API Module
 A Foundry VTT module that connects to the relay server and provides access to Foundry data.
