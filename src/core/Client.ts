@@ -8,10 +8,6 @@ export class Client {
   private lastPing: number;
   private connected: boolean;
 
-  public updatePing(): void {
-    this.lastPing = Date.now();
-  }
-
   constructor(ws: WebSocket, id: string) {
     this.ws = ws;
     this.id = id;

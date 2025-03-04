@@ -4,7 +4,6 @@ import { WebSocketServer } from "ws";
 import { corsMiddleware } from "./middleware/cors";
 import { log } from "./middleware/logger";
 import { wsRoutes } from "./routes/websocket";
-import { actorRoutes } from "./routes/actors";
 import { apiRoutes } from "./routes/api";
 import { config } from "dotenv";
 import * as path from "path";
