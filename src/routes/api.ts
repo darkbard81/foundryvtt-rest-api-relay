@@ -820,26 +820,69 @@ export const apiRoutes = (app: express.Application): void => {
       
       log.debug(`Proxying asset request to: ${assetUrl}`);
       
-      // Make the request to Foundry
-      const response = await axios({
-        method: 'get',
-        url: assetUrl,
-        responseType: 'stream',
-        timeout: 5000
-      });
+      // Check if it's a Font Awesome file - redirect to CDN if so
+      if (assetPath.includes('/webfonts/fa-') || assetPath.includes('/fonts/fontawesome/') || 
+          assetPath.includes('/fonts/fa-')) {
+        
+        // Extract the filename
+        const filename = assetPath.split('/').pop() || '';
+        
+        // Redirect to CDN
+        const cdnUrl = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/${filename}`;
+        log.debug(`Redirecting Font Awesome asset to CDN: ${cdnUrl}`);
+        return res.redirect(cdnUrl);
+      }
       
-      // Copy headers
-      Object.keys(response.headers).forEach(header => {
-        res.setHeader(header, response.headers[header]);
-      });
+      // Check for texture files - use GitHub raw content as fallback
+      if (assetPath.includes('texture1.webp') || assetPath.includes('texture2.webp') || 
+          assetPath.includes('parchment.jpg')) {
+        log.debug(`Serving texture file from GitHub fallback`);
+        return res.redirect('https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/parchment.jpg');
+      }
       
-      // Set CORS headers
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      if (assetPath.includes('ac-badge')) {
+        return res.redirect('https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/ac-badge.webp');
+      }
       
-      // Stream the response
-      response.data.pipe(res);
+      if (assetPath.includes('cr-badge')) {
+        return res.redirect('https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/cr-badge.webp');
+      }
+      
+      // Try to make the request to Foundry
+      try {
+        const response = await axios({
+          method: 'get',
+          url: assetUrl,
+          responseType: 'stream',
+          timeout: 5000
+        });
+        
+        // Copy headers
+        Object.keys(response.headers).forEach(header => {
+          res.setHeader(header, response.headers[header]);
+        });
+        
+        // Set CORS headers
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        
+        // Stream the response
+        response.data.pipe(res);
+      } catch (fetchError) {
+        log.warn(`Failed to proxy asset from ${assetUrl}: ${fetchError.message}`);
+        
+        // For image files, try to provide a fallback
+        const ext = assetPath.split('.').pop()?.toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext || '')) {
+          // For images, send a transparent 1x1 pixel as fallback
+          log.debug(`Sending fallback transparent image for: ${assetPath}`);
+          res.setHeader('Content-Type', 'image/png');
+          res.send(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64'));
+        } else {
+          res.status(404).send('Asset not found');
+        }
+      }
     } catch (error) {
-      log.error(`Error proxying asset: ${error}`);
+      log.error(`Error in proxy asset handler: ${error}`);
       res.status(404).send('Asset not found');
     }
   });
@@ -1272,10 +1315,11 @@ function setupMessageHandlers() {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🎲</text></svg>">
   <title>Actor Sheet - ${responseUuid}</title>
   
-  <!-- Include Font Awesome from CDN -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-1ycn6IcaQQ40/MKBW2W4Rhis/DbILU74C1vSrLJxCq57o941Ym01SwNsOMqvEBFlcgUa6xLiPY/NS5R+E6ztJQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- Include Font Awesome from CDN (both CSS and font files) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   
   <style>
     /* Reset some browser defaults */
@@ -1306,9 +1350,21 @@ function setupMessageHandlers() {
       box-shadow: 0 0 20px #000;
     }
     
-    /* Include captured CSS from Foundry - with asset URLs fixed to use proxy */
+    /* Include captured CSS from Foundry - with asset URLs fixed to use proxy 
+       AND override Font Awesome font file references */
     ${css.replace(/url\(['"]?(.*?)['"]?\)/g, (match, url) => {
-      if (url.startsWith('http') || url.startsWith('data:')) return match;
+      // Skip data URLs
+      if (url.startsWith('data:')) return match;
+      
+      // Skip CDN URLs
+      if (url.startsWith('http')) return match;
+      
+      // Skip fontawesome webfont references - we'll handle those separately
+      if (url.includes('fa-') && (url.endsWith('.woff') || url.endsWith('.woff2') || url.endsWith('.ttf') || url.endsWith('.eot') || url.endsWith('.svg'))) {
+        return match; // These will be overridden by our CDN
+      }
+      
+      // Proxy all other assets
       if (url.startsWith('/')) return `url('/proxy-asset${url}?clientId=${pending.clientId}')`;
       return `url('/proxy-asset/${url}?clientId=${pending.clientId}')`;
     })}
@@ -1326,17 +1382,42 @@ function setupMessageHandlers() {
       left: auto !important;
     }
     
-    /* Fix Font Awesome icons */
-    .fas, .far, .fal, .fad, .fab {
-      font-family: 'Font Awesome 5 Free' !important;
+    /* Fix Font Awesome icons - override any local @font-face declarations */
+    @font-face {
+      font-family: 'Font Awesome 5 Free';
+      font-style: normal;
       font-weight: 900;
+      src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.woff2") format("woff2"),
+           url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.ttf") format("truetype");
     }
     
-    .far {
+    @font-face {
+      font-family: 'Font Awesome 5 Free';
+      font-style: normal;
+      font-weight: 400;
+      src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-regular-400.woff2") format("woff2"),
+           url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-regular-400.ttf") format("truetype");
+    }
+    
+    @font-face {
+      font-family: 'Font Awesome 5 Brands';
+      font-style: normal;
+      font-weight: 400;
+      src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.woff2") format("woff2"),
+           url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.ttf") format("truetype");
+    }
+    
+    /* Additional support for Font Awesome 6 Pro (which Foundry might be using) */
+    .fa, .fas, .fa-solid, .far, .fa-regular, .fal, .fa-light, .fat, .fa-thin, .fad, .fa-duotone, .fab, .fa-brands {
+      font-family: 'Font Awesome 5 Free' !important;
+      font-weight: 900 !important;
+    }
+    
+    .far, .fa-regular {
       font-weight: 400 !important;
     }
     
-    .fab {
+    .fab, .fa-brands {
       font-family: 'Font Awesome 5 Brands' !important;
       font-weight: 400 !important;
     }
@@ -1355,14 +1436,63 @@ function setupMessageHandlers() {
       font-weight: 700;
       font-style: normal;
     }
+    
+    /* For textures that are being blocked, include fallbacks */
+    .sheet .window-content {
+      background-image: url("https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/parchment.jpg") !important;
+    }
+    
+    /* Fix for badges */
+    .ac-badge {
+      background-image: url("https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/ac-badge.webp") !important;
+    }
+    
+    .cr-badge {
+      background-image: url("https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/cr-badge.webp") !important;
+    }
   </style>
 </head>
 <body class="vtt game system-${gameSystemId}">
   ${html.replace(/src="([^"]+)"/g, (match, src) => {
+    if (src.startsWith('data:')) return match;
     if (src.startsWith('http')) return match;
     if (src.startsWith('/')) return `src="/proxy-asset${src}?clientId=${pending.clientId}"`;
     return `src="/proxy-asset/${src}?clientId=${pending.clientId}"`;
   })}
+  
+  <!-- Add a simple script to fix any remaining icons that might be added dynamically -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check if Font Awesome is loaded
+      const cssLoaded = Array.from(document.styleSheets).some(sheet => 
+        sheet.href && sheet.href.includes('font-awesome')
+      );
+      
+      if (!cssLoaded) {
+        console.warn('Font Awesome stylesheet not detected, adding fallback');
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
+        document.head.appendChild(link);
+      }
+      
+      // Fix common textures that might be loaded dynamically
+      const addImageFallback = (selector, fallbackUrl) => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+          if (window.getComputedStyle(el).backgroundImage === 'none' || 
+              window.getComputedStyle(el).backgroundImage.includes('texture')) {
+            el.style.backgroundImage = 'url(' + fallbackUrl + ')';
+          }
+        });
+      };
+      
+      // Apply fallbacks for commonly used textures
+      addImageFallback('.window-content', 'https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/parchment.jpg');
+      addImageFallback('.ac-badge', 'https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/ac-badge.svg');
+      addImageFallback('.cr-badge', 'https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/cr-badge.svg');
+    });
+  </script>
 </body>
 </html>`;
               
