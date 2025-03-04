@@ -48,7 +48,22 @@ pnpm start
         - formattedMatch: formatted search match result
         - resultType: constructor name of the result type (EntitySearchItem/CompendiumSearchItem/EmbeddedEntitySearchItem)
     - clientId: ID of the Foundry client to query
-- GET /get/:uuid?clientId=id - Get entity data by UUID
+- GET /structure?clientId=id - Get all folders and compendiums
+- GET /contents/:path?clientId=id - Get all entity UUIDs in a folder or compendium
+- POST /entity - Create a new entity. Returns UUID
+  - Body: `{ "type": "Actor", "folder": "folderId", "data": { "name": "New Entity", ... } }`
+- PUT /entity/:uuid - Update an entity by UUID
+  - Body: `{ "name": "Updated Name", ... }`
+- DELETE /entity/:uuid - Delete an entity by UUID
+- GET /rolls: Returns an array of recent dice rolls
+    - Query parameter: clientId (required)
+    - Query parameter: limit (optional, default: 20)
+- GET /lastroll: Returns the most recent dice roll
+    - Query parameter: clientId (required)
+POST /roll: Performs a dice roll in Foundry
+
+Query parameter: clientId (required)
+Request body:
 - WebSocket endpoint at /relay for Foundry clients
 
 ### Example
