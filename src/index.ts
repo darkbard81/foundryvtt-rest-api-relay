@@ -42,17 +42,21 @@ app.get("/", (req, res) => {
   res.json({
     name: "Foundry REST API Relay",
     version: "1.0.1",
-    description: "API server for accessing Foundry VTT data remotely",
+    description: "API server for accessing Foundry VTT data remotely. Find client with /clients. Use clientId for all other requests.",
     endpoints: {
       "/clients": "List all connected Foundry clients",
       "/clients?token=yourToken": "List connected Foundry clients with a specific token",
-      "/search?query=term&clientId=id": "Search for entities using Foundry's QuickInsert",
-      "/get/:uuid?clientId=id": "Get entity data by UUID",
-      "/structure?clientId=id": "Get all folders and compendiums",
-      "/contents/:path?clientId=id": "Get all entity UUIDs in a folder or compendium",
+      "/search?query=term": "Search for entities using Foundry's QuickInsert",
+      "/get/:uuid?": "Get entity data by UUID",
+      "/structure?": "Get all folders and compendiums",
+      "/contents/:path?": "Get all entity UUIDs in a folder or compendium",
       "/entity [POST]": "Create a new entity",
       "/entity/:uuid [PUT]": "Update an entity by UUID",
       "/entity/:uuid [DELETE]": "Delete an entity by UUID",
+      "/rolls?limit=20": "List up to the last 20 dice rolls",
+      "/lastRoll": "Get the last dice roll",
+      "/roll [POST]": "Roll dice using Foundry's Roll class",
+      "/actor-sheet": "Get the Actor sheet html",
       "/relay": "WebSocket endpoint for Foundry clients"
     }
   });

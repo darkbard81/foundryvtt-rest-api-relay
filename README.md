@@ -56,10 +56,9 @@ pnpm start
   - Body: `{ "name": "Updated Name", ... }`
 - DELETE /entity/:uuid - Delete an entity by UUID
 - GET /rolls: Returns an array of recent dice rolls
-    - Query parameter: clientId (required)
     - Query parameter: limit (optional, default: 20)
 - GET /lastroll: Returns the most recent dice roll
-    - Query parameter: clientId (required)
+- GET /actor-sheet: Returns the html for a given UUID
 POST /roll: Performs a dice roll in Foundry
 
 Query parameter: clientId (required)
