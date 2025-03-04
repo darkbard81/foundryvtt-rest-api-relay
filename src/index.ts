@@ -40,8 +40,8 @@ app.get("/default-token.png", (req, res) => {
 // Endpoint for API root
 app.get("/", (req, res) => {
   res.json({
-    name: "Foundry Actor Relay",
-    version: "1.0.0",
+    name: "Foundry REST API Relay",
+    version: "1.0.1",
     description: "API server for accessing Foundry VTT data remotely",
     endpoints: {
       "/clients": "List all connected Foundry clients",

@@ -1,7 +1,7 @@
 {
-  "name": "foundryvtt-get-actors-external-foundry-relay",
+  "name": "foundryvtt-rest-api-relay",
   "version": "0.0.1",
-  "description": "Message relay server for the foundryvtt-get-actors-external Foundry Module",
+  "description": "Message relay server for the foundryvtt-rest-api Foundry Module",
   "main": "index.js",
   "scripts": {
     "build": "tsc",

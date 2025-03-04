@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import { log } from "../middleware/logger";
-import { ActorDataStore } from "../core/ActorDataStore"; 
+import { DataStore } from "../core/DataStore"; 
 import { ClientManager } from "../core/ClientManager";
 import { Client } from "../core/Client"; // Import Client type
 
@@ -91,7 +91,7 @@ export const apiRoutes = (app: express.Application): void => {
       });
       
       // Clear any previous cached results for this client
-      ActorDataStore.clearSearchResults(clientId);
+      DataStore.clearSearchResults(clientId);
       
       // Send request to Foundry for search
       const sent = client.send({
@@ -160,7 +160,7 @@ export const apiRoutes = (app: express.Application): void => {
     try {
       // Check if we already have cached entity and should use it
       if (!noCache) {
-        const cachedEntity = ActorDataStore.getEntity(uuid);
+        const cachedEntity = DataStore.getEntity(uuid);
         if (cachedEntity) {
           return res.json(cachedEntity);
         }
@@ -179,7 +179,7 @@ export const apiRoutes = (app: express.Application): void => {
       
       // If noCache is true, clear any existing cached entity
       if (noCache) {
-        ActorDataStore.clearEntityCache(uuid);
+        DataStore.clearEntityCache(uuid);
       }
       
       // Send request to Foundry for entity data
@@ -238,8 +238,8 @@ function setupMessageHandlers() {
       const pending = pendingRequests.get(data.requestId)!;
       
       if (pending.type === 'search' && pending.clientId) {
-        // Store results in ActorDataStore for reference
-        ActorDataStore.storeSearchResults(pending.clientId, data.results);
+        // Store results in DataStore for reference
+        DataStore.storeSearchResults(pending.clientId, data.results);
         
         // Send response
         pending.res.json({
@@ -257,7 +257,7 @@ function setupMessageHandlers() {
     
     // Store results in case they're for a request we haven't processed yet
     if (data.results && client) {
-      ActorDataStore.storeSearchResults(client.getId(), data.results);
+      DataStore.storeSearchResults(client.getId(), data.results);
     }
   });
   
@@ -269,8 +269,8 @@ function setupMessageHandlers() {
       const pending = pendingRequests.get(data.requestId)!;
       
       if (pending.type === 'entity' && data.data) {
-        // Store entity in ActorDataStore
-        ActorDataStore.storeEntity(data.uuid, data.data);
+        // Store entity in DataStore
+        DataStore.storeEntity(data.uuid, data.data);
         
         // Send response
         pending.res.json(data.data);
@@ -283,7 +283,7 @@ function setupMessageHandlers() {
     
     // Store entity in case it's for a request we haven't processed yet
     if (data.uuid && data.data) {
-      ActorDataStore.storeEntity(data.uuid, data.data);
+      DataStore.storeEntity(data.uuid, data.data);
     }
   });
 

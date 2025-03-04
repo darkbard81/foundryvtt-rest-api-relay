@@ -2,7 +2,7 @@
 import { WebSocket } from "ws";
 import { log } from "../middleware/logger";
 import { Client } from "./Client";
-import { ActorDataStore } from "./ActorDataStore";
+import { DataStore } from "./DataStore";
 import { WSCloseCodes } from "../lib/constants";
 
 type MessageHandler = (client: Client, message: any) => void;
@@ -128,12 +128,6 @@ export class ClientManager {
       client.send({ type: "pong" });
       return;
     }
-
-    // Handle actor-data message specially
-    if (message.type === "actor-data") {
-      this.handleActorData(client, message);
-      return;
-    }
     
     // Handle other message types with registered handlers
     if (message.type && this.messageHandlers.has(message.type)) {
@@ -143,30 +137,6 @@ export class ClientManager {
 
     // Broadcast other messages
     this.broadcastToGroup(clientId, message);
-  }
-
-  /**
-   * Handle actor data messages
-   */
-  private static handleActorData(client: Client, message: any): void {
-    if (!message.worldId || !message.actorId || !message.data) {
-      log.warn(`Invalid actor data message from ${client.getId()}`);
-      return;
-    }
-
-    const backup = message.backup || "latest";
-    
-    log.info(`Received actor data from ${client.getId()} for ${message.worldId}/${message.actorId}`);
-    
-    // Store actor data
-    ActorDataStore.set(message.worldId, message.actorId, message.data, backup);
-    
-    // Acknowledge receipt
-    client.send({
-      type: "actor-data-ack",
-      actorId: message.actorId,
-      success: true
-    });
   }
 
   /**
