@@ -48,6 +48,11 @@ app.get("/", (req, res) => {
       "/clients?token=yourToken": "List connected Foundry clients with a specific token",
       "/search?query=term&clientId=id": "Search for entities using Foundry's QuickInsert",
       "/get/:uuid?clientId=id": "Get entity data by UUID",
+      "/structure?clientId=id": "Get all folders and compendiums",
+      "/contents/:path?clientId=id": "Get all entity UUIDs in a folder or compendium",
+      "/entity [POST]": "Create a new entity",
+      "/entity/:uuid [PUT]": "Update an entity by UUID",
+      "/entity/:uuid [DELETE]": "Delete an entity by UUID",
       "/relay": "WebSocket endpoint for Foundry clients"
     }
   });
