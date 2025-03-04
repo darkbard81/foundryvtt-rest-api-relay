@@ -2,41 +2,7 @@
 import WebSocket from "ws";
 import { log } from "../middleware/logger";
 import { ActorDataStore } from "./ActorDataStore";
-
-export class Client {
-  private ws: WebSocket;
-  private id: string;
-  private lastPing: number;
-
-  constructor(ws: WebSocket, id: string) {
-    this.ws = ws;
-    this.id = id;
-    this.lastPing = Date.now();
-  }
-
-  public getId(): string {
-    return this.id;
-  }
-
-  public isAlive(): boolean {
-    return this.ws.readyState === WebSocket.OPEN && 
-           Date.now() - this.lastPing < 70000;
-  }
-
-  public updatePing(): void {
-    this.lastPing = Date.now();
-  }
-
-  public send(data: unknown): void {
-    if (this.ws.readyState === WebSocket.OPEN) {
-      try {
-        this.ws.send(JSON.stringify(data));
-      } catch (error) {
-        log.error("Error sending message", { error, clientId: this.id });
-      }
-    }
-  }
-}
+import { Client } from "./Client";
 
 export class ClientManager {
   private static tokenGroups: Map<string, Set<Client>> = new Map();
@@ -147,7 +113,7 @@ export class WebSocketManager {
         this.messageHandlers.get(data.type)!(data);
       }
     } catch (error) {
-      console.error(`${moduleId} | Error processing message:`, error);
+      console.error(`Error processing message:`, error);
     }
   }
 }

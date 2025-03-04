@@ -1,14 +1,18 @@
 import { log } from "../middleware/logger";
-import { Websocket } from "hyper-express";
+import { WebSocket } from "ws";
 import { ClientManager } from "./ClientManager";
 
 export class Client {
-  private ws: Websocket;
+  private ws: WebSocket;
   private id: string;
   private lastPing: number;
   private connected: boolean;
 
-  constructor(ws: Websocket, id: string) {
+  public updatePing(): void {
+    this.lastPing = Date.now();
+  }
+
+  constructor(ws: WebSocket, id: string) {
     this.ws = ws;
     this.id = id;
     this.lastPing = Date.now();
@@ -36,8 +40,8 @@ export class Client {
   private handleMessage(data: Buffer): void {
     try {
       const message = JSON.parse(data.toString());
-      this.lastPing = Date.now();
-
+      this.updatePing(); // Use the updatePing method instead of direct assignment
+  
       switch (message.type) {
         case "ping":
           this.send({ type: "pong" });
