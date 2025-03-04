@@ -1387,24 +1387,24 @@ function setupMessageHandlers() {
       font-family: 'Font Awesome 5 Free';
       font-style: normal;
       font-weight: 900;
-      src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.woff2") format("woff2"),
-           url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-solid-900.ttf") format("truetype");
+      src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/fa-solid-900.woff2") format("woff2"),
+           url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/fa-solid-900.ttf") format("truetype");
     }
     
     @font-face {
       font-family: 'Font Awesome 5 Free';
       font-style: normal;
       font-weight: 400;
-      src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-regular-400.woff2") format("woff2"),
-           url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-regular-400.ttf") format("truetype");
+      src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/fa-regular-400.woff2") format("woff2"),
+           url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/fa-regular-400.ttf") format("truetype");
     }
     
     @font-face {
       font-family: 'Font Awesome 5 Brands';
       font-style: normal;
       font-weight: 400;
-      src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.woff2") format("woff2"),
-           url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/webfonts/fa-brands-400.ttf") format("truetype");
+      src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/fa-brands-400.woff2") format("woff2"),
+           url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/fa-brands-400.ttf") format("truetype");
     }
     
     /* Additional support for Font Awesome 6 Pro (which Foundry might be using) */
@@ -1450,6 +1450,26 @@ function setupMessageHandlers() {
     .cr-badge {
       background-image: url("https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/cr-badge.webp") !important;
     }
+
+    .dnd5e2.sheet.actor.npc .sheet-header .legendary .legact .pip.filled {
+      background-image: url("https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/legact-active.webp") !important;
+    }
+
+    .dnd5e2.sheet.actor.npc .sheet-header .legendary .legact .pip.empty {
+      background-image: url("https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/legact-inactive.webp") !important;
+    }
+
+    .dnd5e2.sheet.actor.npc .window-content::before, .dnd5e2.sheet.actor.npc.dnd5e-theme-dark .window-content::before {
+        content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 300px;
+      border-radius: 5px 5px 0 0;
+      opacity: 0.2;
+      background: url("https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/official/banner-npc-dark.webp") no-repeat top center / cover !important;
+      -webkit-mask-image: linear-gradient(to bottom, black, transparent);
+      mask-image: linear-gradient(to bottom, black, transparent);
+    }
   </style>
 </head>
 <body class="vtt game system-${gameSystemId}">
@@ -1472,7 +1492,7 @@ function setupMessageHandlers() {
         console.warn('Font Awesome stylesheet not detected, adding fallback');
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css';
         document.head.appendChild(link);
       }
       
@@ -1491,6 +1511,56 @@ function setupMessageHandlers() {
       addImageFallback('.window-content', 'https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/parchment.jpg');
       addImageFallback('.ac-badge', 'https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/ac-badge.svg');
       addImageFallback('.cr-badge', 'https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/cr-badge.svg');
+    });
+    // Tab functionality
+    function activateActorSheetTab(tabsElement, tabName) {
+      // Get all tab items and tab content elements
+      const tabs = tabsElement.querySelectorAll('.item');
+      const contents = tabsElement.closest('.sheet').querySelectorAll('.tab');
+      
+      // Hide all tab content and deactivate tab items
+      tabs.forEach(t => t.classList.remove('active'));
+      contents.forEach(c => c.classList.remove('active'));
+      
+      // Find the tab item with matching data-tab and activate it
+      const activeTab = tabsElement.querySelector(\`.item[data-tab="\${tabName}"]\`);
+      if (activeTab) activeTab.classList.add('active');
+      
+      // Find the tab content with matching data-tab and activate it
+      const activeContent = tabsElement.closest('.sheet').querySelector(\`.tab[data-tab="\${tabName}"]\`);
+      if (activeContent) activeContent.classList.add('active');
+    }
+
+    // Set up tab click handlers
+    document.addEventListener('DOMContentLoaded', function() {
+      // Find all tabs in the sheet
+      const tabsElements = document.querySelectorAll('nav.tabs, .tabs');
+      
+      tabsElements.forEach(tabsElement => {
+        // Add click event listeners to each tab
+        const tabItems = tabsElement.querySelectorAll('.item');
+        
+        tabItems.forEach(tab => {
+          tab.addEventListener('click', function(event) {
+            event.preventDefault();
+            const tabName = this.dataset.tab;
+            if (tabName) {
+              activateActorSheetTab(tabsElement, tabName);
+            }
+          });
+        });
+        
+        // Activate the first tab by default if none is active
+        if (!tabsElement.querySelector('.item.active')) {
+          const firstTab = tabsElement.querySelector('.item');
+          if (firstTab) {
+            const tabName = firstTab.dataset.tab;
+            if (tabName) {
+              activateActorSheetTab(tabsElement, tabName);
+            }
+          }
+        }
+      });
     });
   </script>
 </body>
