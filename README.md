@@ -51,6 +51,9 @@ pnpm start
 - GET /get/:uuid?clientId=id - Get entity data by UUID
 - WebSocket endpoint at /relay for Foundry clients
 
+### Example
+localhost:3010/search?query=aboleth&filter=type:CompendiumSearchItem&clientId=foundry-LZw0ywlj1iYpkUSR
+
 ## Foundry REST API Module
 A Foundry VTT module that connects to the relay server and provides access to Foundry data.
 
