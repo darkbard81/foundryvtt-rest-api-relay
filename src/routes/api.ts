@@ -730,6 +730,73 @@ export const apiRoutes = (app: express.Application): void => {
       return res.status(500).json({ error: "Failed to process roll request" });
     }
   });
+
+  // Get actor sheet HTML
+  router.get("/actor-sheet/:uuid", async (req, res) => {
+    const uuid = req.params.uuid;
+    const clientId = req.query.clientId as string;
+    const format = req.query.format as string || 'html'; // Default to HTML format
+    
+    if (!clientId) {
+      return res.status(400).json({ 
+        error: "Client ID is required to identify the Foundry instance"
+      });
+    }
+    
+    // Find a connected client with this ID
+    const client = ClientManager.getClient(clientId);
+    if (!client) {
+      return res.status(404).json({ 
+        error: "No connected Foundry instance found with this client ID",
+        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+      });
+    }
+    
+    try {
+      // Generate a unique requestId for this request
+      const requestId = `actor_sheet_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      // Store the response object in a request map
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'actor-sheet',
+        uuid,
+        clientId,
+        format,
+        timestamp: Date.now() 
+      });
+      
+      // Send request to Foundry for actor sheet HTML
+      const sent = client.send({
+        type: "get-actor-sheet-html",
+        uuid,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        return res.status(500).json({ 
+          error: "Failed to send actor sheet request to Foundry client",
+          suggestion: "The client may be disconnecting or experiencing issues"  
+        });
+      }
+      
+      // Set timeout for request
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          res.status(408).json({ 
+            error: "Actor sheet request timed out", 
+            tip: "The Foundry client might be busy or the actor UUID might not exist."
+          });
+        }
+      }, 10000); // 10 seconds timeout
+      
+    } catch (error) {
+      log.error(`Error processing actor sheet request: ${error}`);
+      return res.status(500).json({ error: "Failed to process actor sheet request" });
+    }
+  });
   
   // Mount the router
   app.use("/", router);
@@ -738,13 +805,14 @@ export const apiRoutes = (app: express.Application): void => {
 // Track pending requests
 interface PendingRequest {
   res: express.Response;
-  type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 'rolls' | 'lastroll' | 'roll';
+  type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 'rolls' | 'lastroll' | 'roll' | 'actor-sheet';
   clientId?: string;
   uuid?: string;
   path?: string;
   query?: string;
   filter?: string;
   timestamp: number;
+  format?: string;
 }
 
 const pendingRequests = new Map<string, PendingRequest>();
@@ -1097,6 +1165,99 @@ function setupMessageHandlers() {
         // Remove pending request
         pendingRequests.delete(data.requestId);
       }
+    }
+  });
+
+  // Handler for actor sheet HTML response
+  ClientManager.onMessageType("actor-sheet-html-response", (client: Client, data: any) => {
+    log.info(`Received actor sheet HTML response for requestId: ${data.requestId}`);
+    
+    // Extract the UUID from either data.uuid or data.data.uuid
+    const responseUuid = data.uuid || (data.data && data.data.uuid);
+    
+    // Debug what we're receiving
+    log.debug(`Actor sheet response data structure: requestId=${data.requestId}, uuid=${responseUuid}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      // Compare with either location
+      if (pending.type === 'actor-sheet' && pending.uuid === responseUuid) {
+        if (data.error || (data.data && data.data.error)) {
+          const errorMsg = data.error || (data.data && data.data.error) || "Unknown error";
+          pending.res.status(404).json({
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            uuid: pending.uuid,
+            error: errorMsg
+          });
+        } else {
+          // Get HTML content from either data or data.data
+          const html = data.html || (data.data && data.data.html);
+          const css = data.css || (data.data && data.data.css);
+          
+          // Check if the client wants raw HTML or JSON
+          const responseFormat = pending.res.req.query.format as string;
+          
+          if (responseFormat === 'json') {
+            // Send response as JSON
+            pending.res.json({
+              requestId: data.requestId,
+              clientId: pending.clientId,
+              uuid: pending.uuid,
+              html: html,
+              css: css
+            });
+          } else {
+            // Send response as HTML with embedded CSS
+            pending.res.header('Content-Type', 'text/html');
+            
+            // Create a complete HTML document with the CSS embedded
+            const fullHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Actor Sheet - ${responseUuid}</title>
+  <style>
+    ${css}
+  </style>
+  <style>
+    /* Additional styles to make the sheet look more like it does in Foundry */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      color: #191813;
+      font-family: "Signika", sans-serif;
+    }
+    
+    /* Center the sheet on the page */
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+  </style>
+</head>
+<body>
+  ${html}
+</body>
+</html>`;
+            
+            pending.res.send(fullHtml);
+          }
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+      } else {
+        // Log an issue if UUID doesn't match what we expect
+        log.warn(`Received actor sheet response with mismatched values: expected type=${pending.type}, uuid=${pending.uuid}, got uuid=${responseUuid}`);
+      }
+    } else {
+      log.warn(`Received actor sheet response for unknown requestId: ${data.requestId}`);
     }
   });
 
