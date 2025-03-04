@@ -20,16 +20,6 @@ export const wsRoutes = (wss: WebSocketServer): void => {
     const client = ClientManager.addClient(ws, id, token);
     if (!client) return; // Connection already rejected
 
-    // Handle messages
-    ws.on("message", (data) => {
-      try {
-        const message = JSON.parse(data.toString());
-        ClientManager.handleIncomingMessage(id, message);
-      } catch (error) {
-        log.error(`Error processing WebSocket message: ${error}`);
-      }
-    });
-
     // Handle disconnection
     ws.on("close", () => {
       ClientManager.removeClient(id);
