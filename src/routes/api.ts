@@ -735,7 +735,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get actor sheet HTML
-  router.get("/actor-sheet/:uuid", async (req, res) => {
+  router.get("/sheet/:uuid", async (req, res) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const format = req.query.format as string || 'html';
@@ -777,7 +777,7 @@ export const apiRoutes = (app: express.Application): void => {
       
       // Send request to Foundry for actor sheet HTML
       const sent = client.send({
-        type: "get-actor-sheet-html",
+        type: "get-sheet-html",
         uuid,
         requestId,
         initialScale,
