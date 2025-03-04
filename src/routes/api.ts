@@ -522,6 +522,214 @@ export const apiRoutes = (app: express.Application): void => {
       return res.status(500).json({ error: "Failed to process delete entity request" });
     }
   });
+
+  // Get recent rolls
+  router.get("/rolls", async (req, res) => {
+    const clientId = req.query.clientId as string;
+    const limit = parseInt(req.query.limit as string) || 20;
+    
+    if (!clientId) {
+      return res.status(400).json({ 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+    }
+    
+    const client = ClientManager.getClient(clientId);
+    if (!client) {
+      return res.status(404).json({ 
+        error: "No connected Foundry instance found with this client ID",
+        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+      });
+    }
+    
+    try {
+      // Check if we have cached roll data
+      const storedRolls = DataStore.get(clientId, 'recent-rolls') as any[];
+      
+      if (storedRolls && storedRolls.length > 0) {
+        return res.json({
+          clientId,
+          rolls: storedRolls.slice(0, limit)
+        });
+      }
+      
+      // No cached data, request from Foundry client
+      const requestId = `rolls_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'rolls',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "get-rolls",
+        limit,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        return res.status(500).json({ 
+          error: "Failed to send rolls request to Foundry client" 
+        });
+      }
+      
+      // Set timeout for request
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          res.status(404).json({ 
+            error: "No roll data available",
+            message: "Request timed out"
+          });
+        }
+      }, 5000);
+      
+    } catch (error) {
+      log.error(`Error processing rolls request: ${error}`);
+      return res.status(500).json({ error: "Failed to process rolls request" });
+    }
+  });
+
+  // Get last roll
+  router.get("/lastroll", async (req, res) => {
+    const clientId = req.query.clientId as string;
+    
+    if (!clientId) {
+      return res.status(400).json({ 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+    }
+    
+    const client = ClientManager.getClient(clientId);
+    if (!client) {
+      return res.status(404).json({ 
+        error: "No connected Foundry instance found with this client ID",
+        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+      });
+    }
+    
+    try {
+      // Check if we have cached roll data
+      const storedRolls = DataStore.get(clientId, 'recent-rolls') as any[];
+      
+      if (storedRolls && storedRolls.length > 0) {
+        return res.json({
+          clientId,
+          roll: storedRolls[0]
+        });
+      }
+      
+      // No cached data, request from Foundry client
+      const requestId = `lastroll_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'lastroll',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "get-last-roll",
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        return res.status(500).json({ 
+          error: "Failed to send last roll request to Foundry client" 
+        });
+      }
+      
+      // Set timeout for request
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          res.status(404).json({ 
+            error: "No roll data available",
+            message: "No dice have been rolled yet or request timed out"
+          });
+        }
+      }, 5000);
+      
+    } catch (error) {
+      log.error(`Error processing last roll request: ${error}`);
+      return res.status(500).json({ error: "Failed to process last roll request" });
+    }
+  });
+
+  // Create a new roll
+  router.post("/roll", express.json(), async (req, res) => {
+    const clientId = req.query.clientId as string;
+    const { formula, flavor, createChatMessage, whisper } = req.body;
+    
+    if (!clientId) {
+      return res.status(400).json({ 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+    }
+    
+    if (!formula) {
+      return res.status(400).json({ 
+        error: "Roll formula is required",
+        example: { formula: "2d6+3", flavor: "Attack roll", createChatMessage: true }
+      });
+    }
+    
+    const client = ClientManager.getClient(clientId);
+    if (!client) {
+      return res.status(404).json({ 
+        error: "No connected Foundry instance found with this client ID",
+        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+      });
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `roll_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'roll',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "perform-roll",
+        formula,
+        flavor,
+        createChatMessage,
+        whisper,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        return res.status(500).json({ 
+          error: "Failed to send roll request to Foundry client"
+        });
+      }
+      
+      // Set timeout for request
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          res.status(408).json({ error: "Request timed out" });
+        }
+      }, 5000);
+      
+    } catch (error) {
+      log.error(`Error processing roll request: ${error}`);
+      return res.status(500).json({ error: "Failed to process roll request" });
+    }
+  });
   
   // Mount the router
   app.use("/", router);
@@ -530,7 +738,7 @@ export const apiRoutes = (app: express.Application): void => {
 // Track pending requests
 interface PendingRequest {
   res: express.Response;
-  type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete';
+  type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 'rolls' | 'lastroll' | 'roll';
   clientId?: string;
   uuid?: string;
   path?: string;
@@ -747,6 +955,147 @@ function setupMessageHandlers() {
         // Remove pending request
         pendingRequests.delete(data.requestId);
         return;
+      }
+    }
+  });
+
+  // Handler for roll data
+  ClientManager.onMessageType("roll-data", (client: Client, data: any) => {
+    log.info(`Received roll data from client: ${client.getId()}`);
+    
+    // Store the roll data
+    const clientId = client.getId();
+    let storedRolls = DataStore.get(clientId, 'recent-rolls') || [];
+    
+    // Check if this roll ID already exists
+    const existingIndex = storedRolls.findIndex((roll: any) => roll.id === data.data.id);
+    if (existingIndex !== -1) {
+      // If it exists, update it instead of adding a new entry
+      storedRolls[existingIndex] = data.data;
+    } else {
+      // Add to beginning of array
+      storedRolls.unshift(data.data);
+      
+      // Limit array size
+      if (storedRolls.length > 20) {
+        storedRolls.length = 20;
+      }
+    }
+    
+    // Save back to data store
+    DataStore.set(clientId, 'recent-rolls', storedRolls);
+  });
+
+  // Handler for rolls data response
+  ClientManager.onMessageType("rolls-data", (client: Client, data: any) => {
+    log.info(`Received rolls data response for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'rolls') {
+        // Store the rolls
+        DataStore.set(client.getId(), 'recent-rolls', data.data || []);
+        
+        // Send response
+        pending.res.json({
+          clientId: client.getId(),
+          rolls: data.data || []
+        });
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  // Handler for last roll data response
+  ClientManager.onMessageType("last-roll-data", (client: Client, data: any) => {
+    log.info(`Received last roll data response for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'lastroll') {
+        // Update the stored rolls if we have data
+        if (data.data) {
+          let storedRolls = DataStore.get(client.getId(), 'recent-rolls') || [];
+          
+          // Add to beginning of array if not already there
+          const exists = storedRolls.some((roll: any) => roll.id === data.data.id);
+          if (!exists) {
+            storedRolls.unshift(data.data);
+            
+            // Limit array size
+            if (storedRolls.length > 20) {
+              storedRolls.length = 20;
+            }
+            
+            DataStore.set(client.getId(), 'recent-rolls', storedRolls);
+          }
+        }
+        
+        // Send response
+        pending.res.json({
+          clientId: client.getId(),
+          roll: data.data || null
+        });
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  // Handler for roll result
+  ClientManager.onMessageType("roll-result", (client: Client, data: any) => {
+    log.info(`Received roll result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'roll') {
+        if (!data.success) {
+          pending.res.status(400).json({
+            clientId: client.getId(),
+            error: data.error || "Failed to perform roll"
+          });
+        } else {
+          // If data indicates chat message was created, we don't need to update stored rolls
+          // as the roll-data event will be sent separately
+          if (!data.data.chatMessageCreated) {
+            // Only update stored rolls if the roll wasn't created as a chat message
+            // (which would trigger the createChatMessage hook)
+            let storedRolls = DataStore.get(client.getId(), 'recent-rolls') || [];
+            
+            // Check if this roll ID already exists
+            const existingIndex = storedRolls.findIndex((roll: any) => roll.id === data.data.id);
+            if (existingIndex !== -1) {
+              // If it exists, update it instead of adding a new entry
+              storedRolls[existingIndex] = data.data;
+            } else {
+              // Add to beginning of array
+              storedRolls.unshift(data.data);
+              
+              // Limit array size
+              if (storedRolls.length > 20) {
+                storedRolls.length = 20;
+              }
+            }
+            
+            DataStore.set(client.getId(), 'recent-rolls', storedRolls);
+          }
+          
+          // Send response
+          pending.res.json({
+            clientId: client.getId(),
+            success: true,
+            roll: data.data
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
       }
     }
   });
