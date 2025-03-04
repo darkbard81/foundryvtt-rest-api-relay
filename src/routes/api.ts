@@ -1172,61 +1172,70 @@ function setupMessageHandlers() {
   ClientManager.onMessageType("actor-sheet-html-response", (client: Client, data: any) => {
     log.info(`Received actor sheet HTML response for requestId: ${data.requestId}`);
     
-    // Extract the UUID from either data.uuid or data.data.uuid
-    const responseUuid = data.uuid || (data.data && data.data.uuid);
-    
-    // Debug what we're receiving
-    log.debug(`Actor sheet response data structure: requestId=${data.requestId}, uuid=${responseUuid}`);
-    
-    if (data.requestId && pendingRequests.has(data.requestId)) {
-      const pending = pendingRequests.get(data.requestId)!;
+    try {
+      // Extract the UUID from either data.uuid or data.data.uuid
+      const responseUuid = data.uuid || (data.data && data.data.uuid);
       
-      // Compare with either location
-      if (pending.type === 'actor-sheet' && pending.uuid === responseUuid) {
-        if (data.error || (data.data && data.data.error)) {
-          const errorMsg = data.error || (data.data && data.data.error) || "Unknown error";
-          pending.res.status(404).json({
-            requestId: data.requestId,
-            clientId: pending.clientId,
-            uuid: pending.uuid,
-            error: errorMsg
-          });
-        } else {
-          // Get HTML content from either data or data.data
-          const html = data.html || (data.data && data.data.html);
-          const css = data.css || (data.data && data.data.css);
-          
-          // Check if the client wants raw HTML or JSON
-          const responseFormat = pending.res.req.query.format as string;
-          
-          if (responseFormat === 'json') {
-            // Send response as JSON
-            pending.res.json({
+      // Debug what we're receiving
+      log.debug(`Actor sheet response data structure:`, {
+        requestId: data.requestId,
+        uuid: responseUuid,
+        dataKeys: data.data ? Object.keys(data.data) : [],
+        html: data.data && data.data.html ? `${data.data.html.substring(0, 100)}...` : undefined,
+        cssLength: data.data && data.data.css ? data.data.css.length : 0
+      });
+      
+      if (data.requestId && pendingRequests.has(data.requestId)) {
+        const pending = pendingRequests.get(data.requestId)!;
+        
+        // Compare with either location
+        if (pending.type === 'actor-sheet' && pending.uuid === responseUuid) {
+          if (data.error || (data.data && data.data.error)) {
+            const errorMsg = data.error || (data.data && data.data.error) || "Unknown error";
+            pending.res.status(404).json({
               requestId: data.requestId,
               clientId: pending.clientId,
               uuid: pending.uuid,
-              html: html,
-              css: css
+              error: errorMsg
             });
           } else {
-            // Send response as HTML with embedded CSS
-            pending.res.header('Content-Type', 'text/html');
+            // Get HTML content from either data or data.data
+            const html = data.html || (data.data && data.data.html) || '';
+            const css = data.css || (data.data && data.data.css) || '';
             
-            // Create a complete HTML document with the CSS embedded
-            const fullHtml = `
+            // Get the system ID for use in the HTML output
+            const gameSystemId = client.metadata?.systemId || 'unknown';
+            
+            if (pending.format === 'json') {
+              // Send response as JSON
+              pending.res.json({
+                requestId: data.requestId,
+                clientId: pending.clientId,
+                uuid: pending.uuid,
+                html: html,
+                css: css
+              });
+            } else {
+              // Send response as HTML with embedded CSS
+              pending.res.header('Content-Type', 'text/html');
+              
+              // Create a complete HTML document with the CSS embedded
+              const fullHtml = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <title>Actor Sheet - ${responseUuid}</title>
   <style>
-    ${css}
-  </style>
-  <style>
-    /* Additional styles to make the sheet look more like it does in Foundry */
+    /* Reset some browser defaults */
+    * {
+      box-sizing: border-box;
+    }
+    
+    /* Base styles for the document */
     body {
       margin: 0;
-      padding: 0;
+      padding: 10px;
       background-color: rgba(0, 0, 0, 0.5);
       color: #191813;
       font-family: "Signika", sans-serif;
@@ -1239,25 +1248,55 @@ function setupMessageHandlers() {
       align-items: center;
       min-height: 100vh;
     }
+    
+    /* Foundry window styles to make sheet look natural */
+    .app {
+      border-radius: 5px;
+      box-shadow: 0 0 20px #000;
+    }
+    
+    /* Include captured CSS from Foundry */
+    ${css}
+    
+    /* Fix any specific issues with the extracted sheet */
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+    
+    /* Override any problematic styles */
+    .window-app {
+      position: relative !important;
+      top: auto !important;
+      left: auto !important;
+    }
   </style>
 </head>
-<body>
+<body class="vtt game system-${gameSystemId}">
   ${html}
 </body>
 </html>`;
-            
-            pending.res.send(fullHtml);
+              
+              pending.res.send(fullHtml);
+            }
           }
+          
+          // Remove pending request
+          pendingRequests.delete(data.requestId);
+        } else {
+          // Log an issue if UUID doesn't match what we expect
+          log.warn(`Received actor sheet response with mismatched values: expected type=${pending.type}, uuid=${pending.uuid}, got uuid=${responseUuid}`);
         }
-        
-        // Remove pending request
-        pendingRequests.delete(data.requestId);
       } else {
-        // Log an issue if UUID doesn't match what we expect
-        log.warn(`Received actor sheet response with mismatched values: expected type=${pending.type}, uuid=${pending.uuid}, got uuid=${responseUuid}`);
+        log.warn(`Received actor sheet response for unknown requestId: ${data.requestId}`);
       }
-    } else {
-      log.warn(`Received actor sheet response for unknown requestId: ${data.requestId}`);
+    } catch (error) {
+      log.error(`Error handling actor sheet HTML response:`, error);
+      log.debug(`Response data that caused the error:`, {
+        requestId: data.requestId,
+        hasData: !!data.data,
+        dataType: typeof data.data
+      });
     }
   });
 
