@@ -5,13 +5,15 @@ import { ClientManager } from "./ClientManager";
 export class Client {
   private ws: WebSocket;
   private id: string;
-  private lastPing: number;
+  private token: string;
+  private lastSeen: number;
   private connected: boolean;
 
-  constructor(ws: WebSocket, id: string) {
+  constructor(ws: WebSocket, id: string, token: string) {
     this.ws = ws;
     this.id = id;
-    this.lastPing = Date.now();
+    this.token = token;
+    this.lastSeen = Date.now();
     this.connected = true;
     this.setupHandlers();
   }
@@ -36,16 +38,15 @@ export class Client {
   private handleMessage(data: Buffer): void {
     try {
       const message = JSON.parse(data.toString());
-      this.updatePing(); // Use the updatePing method instead of direct assignment
+      this.updateLastSeen();
   
       switch (message.type) {
         case "ping":
           this.send({ type: "pong" });
           break;
         default:
-          // Process message based on its type
-          ClientManager.handleIncomingMessage(this, message);
-          this.broadcast(message); // Still broadcast to others
+          ClientManager.handleIncomingMessage(this.id, message);
+          this.broadcast(message);
       }
     } catch (error) {
       log.error("Error handling message", { error, clientId: this.id });
@@ -57,14 +58,16 @@ export class Client {
     ClientManager.removeClient(this.id);
   }
 
-  public send(data: unknown): void {
-    if (this.connected) {
-      try {
-        this.ws.send(JSON.stringify(data));
-      } catch (error) {
-        log.error("Error sending message", { error, clientId: this.id });
-        this.connected = false;
-      }
+  public send(data: unknown): boolean {
+    if (!this.isAlive()) return false;
+    
+    try {
+      this.ws.send(typeof data === 'string' ? data : JSON.stringify(data));
+      return true;
+    } catch (error) {
+      log.error("Error sending message", { error, clientId: this.id });
+      this.connected = false;
+      return false;
     }
   }
 
@@ -76,7 +79,36 @@ export class Client {
     return this.id;
   }
 
+  public getToken(): string {
+    return this.token;
+  }
+
+  public updateLastSeen(): void {
+    this.lastSeen = Date.now();
+  }
+
+  public getLastSeen(): number {
+    return this.lastSeen;
+  }
+
   public isAlive(): boolean {
-    return this.connected && Date.now() - this.lastPing < 70000;
+    return this.connected && 
+           this.ws.readyState === WebSocket.OPEN && 
+           Date.now() - this.lastSeen < 60000;
+  }
+
+  public disconnect(): void {
+    if (this.connected && this.ws.readyState === WebSocket.OPEN) {
+      try {
+        this.ws.close();
+      } catch (error) {
+        log.error("Error closing WebSocket", { error, clientId: this.id });
+      }
+    }
+    this.connected = false;
+  }
+
+  public markDisconnected(): void {
+    this.connected = false;
   }
 }

@@ -1,97 +1,211 @@
 // src/core/ClientManager.ts
-import WebSocket from "ws";
+import { WebSocket } from "ws";
 import { log } from "../middleware/logger";
-import { ActorDataStore } from "./ActorDataStore";
 import { Client } from "./Client";
+import { ActorDataStore } from "./ActorDataStore";
+import { WSCloseCodes } from "../lib/constants";
+
+type MessageHandler = (client: Client, message: any) => void;
 
 export class ClientManager {
-  private static tokenGroups: Map<string, Set<Client>> = new Map();
   private static clients: Map<string, Client> = new Map();
-  private static messageHandlers: Map<string, (client: Client, message: any) => void> = new Map();
+  private static tokenGroups: Map<string, Set<string>> = new Map();
+  private static messageHandlers: Map<string, MessageHandler> = new Map();
 
-  static addClient(ws: WebSocket, id: string, token: string): void {
+  /**
+   * Add a new client to the manager
+   */
+  static addClient(ws: WebSocket, id: string, token: string): Client | null {
+    // Check if client already exists and is connected
     if (this.clients.has(id)) {
       const existingClient = this.clients.get(id)!;
       if (existingClient.isAlive()) {
-        log.warn("Client connection rejected - ID already in use", {
-          clientId: id,
-        });
-        ws.close();
-        return;
-      } else {
-        // If existing client is dead, remove it first
-        this.removeClient(id);
+        log.warn(`Client connection rejected - ID already in use: ${id}`);
+        ws.close(WSCloseCodes.DuplicateConnection, "ID already in use");
+        return null;
       }
+      // Remove stale client
+      this.removeClient(id);
     }
 
-    const client = new Client(ws, id);
+    // Create new client
+    const client = new Client(ws, id, token);
     this.clients.set(id, client);
 
+    // Add to token group
     if (!this.tokenGroups.has(token)) {
       this.tokenGroups.set(token, new Set());
     }
-    this.tokenGroups.get(token)!.add(client);
+    this.tokenGroups.get(token)!.add(id);
 
-    log.info("Client connected", { clientId: id, token });
+    log.info(`Client connected: ${id} (token: ${token})`);
+    return client;
   }
 
+  /**
+   * Remove a client from the manager
+   */
   static removeClient(id: string): void {
     const client = this.clients.get(id);
     if (client) {
-      for (const [token, group] of this.tokenGroups) {
-        if (group.has(client)) {
-          group.delete(client);
-          if (group.size === 0) {
-            this.tokenGroups.delete(token);
-            log.debug("Token group removed", { token });
-          }
-          break;
+      // Remove from token group
+      const token = client.getToken();
+      if (this.tokenGroups.has(token)) {
+        this.tokenGroups.get(token)!.delete(id);
+        // Clean up empty groups
+        if (this.tokenGroups.get(token)!.size === 0) {
+          this.tokenGroups.delete(token);
         }
       }
+      
+      // Disconnect client
+      client.disconnect();
+      
+      // Remove client
       this.clients.delete(id);
-      log.info("Client removed", { clientId: id });
+      log.info(`Client removed: ${id}`);
     }
   }
 
+  /**
+   * Get a client by ID
+   */
   static getClient(id: string): Client | undefined {
     return this.clients.get(id);
   }
 
-  static broadcastToGroup(senderId: string, message: unknown): void {
-    const senderClient = this.clients.get(senderId);
-    if (!senderClient) return;
+  /**
+   * Update client's last seen timestamp
+   */
+  static updateClientLastSeen(id: string): void {
+    const client = this.clients.get(id);
+    if (client) {
+      client.updateLastSeen();
+    }
+  }
 
-    for (const [token, group] of this.tokenGroups) {
-      if (group.has(senderClient)) {
-        group.forEach((client) => {
-          if (client.getId() !== senderId && client.isAlive()) {
+  /**
+   * Broadcast a message to all clients in the same token group
+   */
+  static broadcastToGroup(senderId: string, message: any): void {
+    const sender = this.clients.get(senderId);
+    if (!sender) return;
+
+    const token = sender.getToken();
+    const groupClients = this.tokenGroups.get(token);
+    
+    if (groupClients) {
+      for (const clientId of groupClients) {
+        if (clientId !== senderId) {
+          const client = this.clients.get(clientId);
+          if (client && client.isAlive()) {
             client.send(message);
           }
-        });
-        break;
+        }
       }
     }
   }
 
-  // Add this method to handle specific message types
-  static onMessageType(type: string, handler: (client: Client, message: any) => void): void {
+  /**
+   * Register a handler for a specific message type
+   */
+  static onMessageType(type: string, handler: MessageHandler): void {
     this.messageHandlers.set(type, handler);
   }
 
-  // Add this method to process incoming messages by type
-  static handleIncomingMessage(client: Client, message: any): void {
-    if (message && message.type && this.messageHandlers.has(message.type)) {
+  /**
+   * Process an incoming message
+   */
+  static handleIncomingMessage(clientId: string, message: any): void {
+    const client = this.clients.get(clientId);
+    if (!client) return;
+
+    // Update last seen timestamp
+    client.updateLastSeen();
+
+    // Handle ping messages specially
+    if (message.type === "ping") {
+      client.send({ type: "pong" });
+      return;
+    }
+
+    // Handle actor-data message specially
+    if (message.type === "actor-data") {
+      this.handleActorData(client, message);
+      return;
+    }
+    
+    // Handle other message types with registered handlers
+    if (message.type && this.messageHandlers.has(message.type)) {
       this.messageHandlers.get(message.type)!(client, message);
+      return;
+    }
+
+    // Broadcast other messages
+    this.broadcastToGroup(clientId, message);
+  }
+
+  /**
+   * Handle actor data messages
+   */
+  private static handleActorData(client: Client, message: any): void {
+    if (!message.worldId || !message.actorId || !message.data) {
+      log.warn(`Invalid actor data message from ${client.getId()}`);
+      return;
+    }
+
+    const backup = message.backup || "latest";
+    
+    log.info(`Received actor data from ${client.getId()} for ${message.worldId}/${message.actorId}`);
+    
+    // Store actor data
+    ActorDataStore.set(message.worldId, message.actorId, message.data, backup);
+    
+    // Acknowledge receipt
+    client.send({
+      type: "actor-data-ack",
+      actorId: message.actorId,
+      success: true
+    });
+  }
+
+  /**
+   * Clean up inactive clients
+   */
+  static cleanupInactiveClients(): void {
+    for (const [id, client] of this.clients.entries()) {
+      if (!client.isAlive()) {
+        log.info(`Removing inactive client: ${id}`);
+        this.removeClient(id);
+      }
     }
   }
 
-  static cleanupInactiveClients(): void {
-    this.clients.forEach((client, id) => {
-      if (!client.isAlive()) {
-        log.info("Removing inactive client", { clientId: id });
-        this.removeClient(id);
+  /**
+   * Get information about connected clients
+   */
+  static getConnectedClients(token?: string): { id: string, token: string, lastSeen: number, connectedSince: number }[] {
+    const clients = [];
+    
+    for (const [id, client] of this.clients.entries()) {
+      // Filter by token if specified
+      if (token && client.getToken() !== token) {
+        continue;
       }
-    });
+      
+      // Only include active clients
+      if (client.isAlive()) {
+        const lastSeen = client.getLastSeen();
+        clients.push({
+          id: id,
+          token: client.getToken(),
+          lastSeen: lastSeen,
+          connectedSince: lastSeen
+        });
+      }
+    }
+    
+    return clients;
   }
 }
 

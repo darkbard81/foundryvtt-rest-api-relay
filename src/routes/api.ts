@@ -2,10 +2,13 @@ import express from "express";
 import path from "path";
 import { log } from "../middleware/logger";
 import { ActorDataStore } from "../core/ActorDataStore"; 
-// Import the ClientManager from websocket.ts
-import { ClientManager } from "../routes/websocket";
+import { ClientManager } from "../core/ClientManager";
+import { Client } from "../core/Client"; // Import Client type
 
 export const apiRoutes = (app: express.Application): void => {
+  // Setup handlers for storing search results and entity data from WebSocket
+  setupMessageHandlers();
+  
   // Create a router instead of using app directly
   const router = express.Router();
 
@@ -22,7 +25,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   router.get("/browse", (req, res) => {
-    res.sendFile(path.join(__dirname, "../templates/actor-browser.html"));
+    res.sendFile(path.join(__dirname, "../../_test/test-client.html"));
   });
 
   router.get("/api/status", (req, res) => {
@@ -79,44 +82,44 @@ export const apiRoutes = (app: express.Application): void => {
       // Generate a unique requestId for this search
       const requestId = `search_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
+      // Store the response object in a request map
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'search',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
       // Clear any previous cached results for this client
       ActorDataStore.clearSearchResults(clientId);
       
       // Send request to Foundry for search
-      client.ws.send(JSON.stringify({
+      const sent = client.send({
         type: "perform-search",
         query,
         filter: filter || null,
         requestId
-      }));
-      
-      // Wait for results with timeout
-      let attempts = 0;
-      const maxAttempts = 20; // Increase attempts to give more time for indexing
-      const waitTime = 500; // 500ms per attempt
-      
-      const waitForResults = async () => {
-        while (attempts < maxAttempts) {
-          attempts++;
-          const results = ActorDataStore.getSearchResults(clientId);
-          if (results) {
-            // Add additional info to the response to help with debugging
-            return res.json({
-              query: query,
-              filter: filter || null, 
-              totalResults: results.length,
-              results: results
-            });
-          }
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-        return res.status(408).json({ 
-          error: "Search request timed out", 
-          tip: "The Foundry client might be busy or still building its index."
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        return res.status(500).json({ 
+          error: "Failed to send search request to Foundry client",
+          suggestion: "The client may be disconnecting or experiencing issues"  
         });
-      };
+      }
       
-      await waitForResults();
+      // Set timeout for request
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          res.status(408).json({ 
+            error: "Search request timed out", 
+            tip: "The Foundry client might be busy or still building its index."
+          });
+        }
+      }, 10000); // 10 seconds timeout
+      
     } catch (error) {
       log.error(`Error processing search request: ${error}`);
       return res.status(500).json({ error: "Failed to process search request" });
@@ -166,45 +169,133 @@ export const apiRoutes = (app: express.Application): void => {
       // Generate a unique requestId for this entity request
       const requestId = `entity_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
+      // Store the response object in a request map
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'entity',
+        uuid,
+        timestamp: Date.now() 
+      });
+      
       // If noCache is true, clear any existing cached entity
       if (noCache) {
         ActorDataStore.clearEntityCache(uuid);
       }
       
       // Send request to Foundry for entity data
-      client.ws.send(JSON.stringify({
+      const sent = client.send({
         type: "get-entity",
         uuid,
         requestId
-      }));
-      
-      // Wait for results with timeout
-      let attempts = 0;
-      const maxAttempts = 20; // More attempts for complex entities
-      const waitTime = 500; // 500ms per attempt
-      
-      const waitForEntity = async () => {
-        while (attempts < maxAttempts) {
-          attempts++;
-          const entity = ActorDataStore.getEntity(uuid);
-          if (entity) {
-            return res.json(entity);
-          }
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-        }
-        return res.status(408).json({ 
-          error: "Entity request timed out", 
-          tip: "The Foundry client might be busy or the UUID might not exist."
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        return res.status(500).json({ 
+          error: "Failed to send entity request to Foundry client",
+          suggestion: "The client may be disconnecting or experiencing issues"  
         });
-      };
+      }
       
-      await waitForEntity();
+      // Set timeout for request
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          res.status(408).json({ 
+            error: "Entity request timed out", 
+            tip: "The Foundry client might be busy or the UUID might not exist."
+          });
+        }
+      }, 10000); // 10 seconds timeout
     } catch (error) {
       log.error(`Error processing entity request: ${error}`);
       return res.status(500).json({ error: "Failed to process entity request" });
     }
   });
   
-  // Mount the router without prefix
+  // Mount the router
   app.use("/", router);
 };
+
+// Track pending requests
+interface PendingRequest {
+  res: express.Response;
+  type: 'search' | 'entity';
+  clientId?: string;
+  uuid?: string;
+  timestamp: number;
+}
+
+const pendingRequests = new Map<string, PendingRequest>();
+
+// Setup WebSocket message handlers to route responses back to API requests
+function setupMessageHandlers() {
+  // Handler for search results
+  ClientManager.onMessageType("search-results", (client: Client, data: any) => {
+    log.info(`Received search results for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'search' && pending.clientId) {
+        // Store results in ActorDataStore for reference
+        ActorDataStore.storeSearchResults(pending.clientId, data.results);
+        
+        // Send response
+        pending.res.json({
+          query: data.query || "",
+          filter: data.filter,
+          totalResults: data.results.length,
+          results: data.results
+        });
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+        return;
+      }
+    }
+    
+    // Store results in case they're for a request we haven't processed yet
+    if (data.results && client) {
+      ActorDataStore.storeSearchResults(client.getId(), data.results);
+    }
+  });
+  
+  // Handler for entity data
+  ClientManager.onMessageType("entity-data", (client: Client, data: any) => {
+    log.info(`Received entity data for requestId: ${data.requestId}, uuid: ${data.uuid}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'entity' && data.data) {
+        // Store entity in ActorDataStore
+        ActorDataStore.storeEntity(data.uuid, data.data);
+        
+        // Send response
+        pending.res.json(data.data);
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+        return;
+      }
+    }
+    
+    // Store entity in case it's for a request we haven't processed yet
+    if (data.uuid && data.data) {
+      ActorDataStore.storeEntity(data.uuid, data.data);
+    }
+  });
+
+  // Clean up old pending requests periodically
+  setInterval(() => {
+    const now = Date.now();
+    for (const [requestId, request] of pendingRequests.entries()) {
+      // Remove requests older than 30 seconds
+      if (now - request.timestamp > 30000) {
+        log.warn(`Request ${requestId} timed out and was never completed`);
+        pendingRequests.delete(requestId);
+      }
+    }
+  }, 10000);
+}
