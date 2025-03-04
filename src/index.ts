@@ -30,16 +30,8 @@ const wss = new WebSocketServer({ server: httpServer });
 // Setup WebSocket routes
 wsRoutes(wss);
 
-// Setup Actor routes
-actorRoutes(app);
-
 // Setup API routes
 apiRoutes(app);
-
-// Add browser interface route for actor browser
-app.get("/browse", (req, res) => {
-  res.sendFile(path.join(__dirname, "../src/templates/actor-browser.html"));
-});
 
 // Add default static image for tokens
 app.get("/default-token.png", (req, res) => {
@@ -51,12 +43,14 @@ app.get("/", (req, res) => {
   res.json({
     name: "Foundry Actor Relay",
     version: "1.0.0",
-    endpoints: [
-      "/actors",
-      "/api",
-      "/browse",
-      "/relay (WebSocket)"
-    ]
+    description: "API server for accessing Foundry VTT data remotely",
+    endpoints: {
+      "/clients": "List all connected Foundry clients",
+      "/clients?token=yourToken": "List connected Foundry clients with a specific token",
+      "/search?query=term&clientId=id": "Search for entities using Foundry's QuickInsert",
+      "/get/:uuid?clientId=id": "Get entity data by UUID",
+      "/relay": "WebSocket endpoint for Foundry clients"
+    }
   });
 });
 

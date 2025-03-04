@@ -18,7 +18,13 @@ export class Client {
 
   private setupHandlers(): void {
     this.ws.on("message", (data: Buffer) => {
-      this.handleMessage(data);
+      try {
+        const message = JSON.parse(data.toString());
+        log.info(`Received message from client ${this.id}: ${message.type}`);
+        this.handleMessage(data);
+      } catch (error) {
+        log.error(`Error processing WebSocket message: ${error}`);
+      }
     });
 
     this.ws.on("close", () => {

@@ -128,3 +128,26 @@ export class ClientManager {
     });
   }
 }
+
+export class WebSocketManager {
+  // other properties...
+  private messageHandlers: Map<string, (data: any) => void> = new Map();
+
+  // other methods...
+  
+  onMessageType(type: string, handler: (data: any) => void): void {
+    this.messageHandlers.set(type, handler);
+  }
+
+  private onMessage(event: MessageEvent): void {
+    try {
+      const data = JSON.parse(event.data);
+      
+      if (data.type && this.messageHandlers.has(data.type)) {
+        this.messageHandlers.get(data.type)!(data);
+      }
+    } catch (error) {
+      console.error(`${moduleId} | Error processing message:`, error);
+    }
+  }
+}

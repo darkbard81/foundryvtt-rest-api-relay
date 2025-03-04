@@ -1,3 +1,4 @@
+// src/routes/websocket.ts
 import { WebSocketServer, WebSocket } from "ws";
 import { log } from "../middleware/logger";
 import { ActorDataStore } from "../core/ActorDataStore";
@@ -9,7 +10,8 @@ type Client = {
   lastSeen: number;
 };
 
-class ClientManager {
+// Export the ClientManager class
+export class ClientManager {
   private static clients: Map<string, Client> = new Map();
   private static tokenGroups: Map<string, Set<string>> = new Map();
 
@@ -107,6 +109,33 @@ class ClientManager {
       }
     }
   }
+
+  /**
+   * Returns information about all clients with a specific token or all clients if no token is provided
+   */
+  static getConnectedClients(token?: string): { id: string, token: string, lastSeen: number }[] {
+    const clients = [];
+    
+    for (const [id, client] of this.clients.entries()) {
+      // Filter by token if specified
+      if (token && client.token !== token) {
+        continue;
+      }
+      
+      // Only include active clients
+      if (this.isClientActive(client)) {
+        clients.push({
+          id: client.id,
+          token: client.token,
+          lastSeen: client.lastSeen,
+          // Convert to readable date
+          connectedSince: client.lastSeen
+        });
+      }
+    }
+    
+    return clients;
+  }
 }
 
 export const wsRoutes = (wss: WebSocketServer): void => {
@@ -139,6 +168,41 @@ export const wsRoutes = (wss: WebSocketServer): void => {
         
         if (message.type === "actor-data") {
           handleActorData(id, message);
+          return;
+        }
+        
+        if (message.type === "actor-export-start") {
+          log.info(`Starting actor export for world ${message.worldId}, backup ${message.backup}, count: ${message.actorCount}`);
+          return;
+        }
+        
+        if (message.type === "actor-export-complete") {
+          log.info(`Completed actor export for world ${message.worldId}, backup ${message.backup}, success: ${message.successCount}`);
+          return;
+        }
+
+        if (message.type === "search-results") {
+          log.info(`Received search results from ${id}, count: ${message.results.length}`);
+          ActorDataStore.storeSearchResults(id, message.results);
+          return;
+        }
+
+        if (message.type === "entity-data") {
+          log.info(`Received entity data from ${id} for UUID: ${message.uuid}`);
+          
+          if (message.data) {
+            ActorDataStore.storeEntity(message.uuid, message.data);
+            
+            // Acknowledge receipt
+            ws.send(JSON.stringify({
+              type: "entity-data-ack",
+              uuid: message.uuid,
+              success: true
+            }));
+          } else {
+            log.error(`Entity data from ${id} for UUID ${message.uuid} is empty or has error: ${message.error}`);
+          }
+          return;
         }
 
         // Broadcast message to other clients in the group
