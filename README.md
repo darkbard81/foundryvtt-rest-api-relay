@@ -13,6 +13,7 @@ The server provides WebSocket connectivity and a REST API to access Foundry VTT 
 - REST API endpoints for searching Foundry content and retrieving entity data
 - Client management for tracking Foundry connections
 - Data storage and search results
+- [Roadmap](https://github.com/users/JustAnotherIdea/projects/7)
 
 ### Installation
 ```
