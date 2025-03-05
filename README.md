@@ -8,6 +8,7 @@ This project consists of two main components:
 The server provides WebSocket connectivity and a REST API to access Foundry VTT data remotely.
 
 ### Features
+- [Documentation](https://github.com/JustAnotherIdea/foundryvtt-rest-api/wiki)
 - WebSocket relay to connect Foundry clients with external applications
 - REST API endpoints for searching Foundry content and retrieving entity data
 - Client management for tracking Foundry connections
@@ -28,46 +29,6 @@ pnpm build
 pnpm start
 ```
 
-## API Endpoints
-- GET /clients - List all connected Foundry clients
-- GET /clients?token=yourToken - List connected Foundry clients with a specific token
-- GET /search?query=term&filter=filter&clientId=id - Search for entities using Foundry's [QuickInsert](https://foundryvtt.com/packages/quick-insert)
-    - query: any string to search for
-    - filter (optional): document type as string ("actor"), or filter properties object (comma-separated list of key-value pairs) with any of:
-        - documentType: type of document (e.g., "Actor", "Item")
-        - folder: folder location of the entity
-        - id: unique identifier of the entity
-        - name: name of the entity
-        - package: package identifier the entity belongs to
-        - packageName: human-readable package name
-        - subType: sub-type of the entity
-        - uuid: universal unique identifier
-        - icon: icon path for the entity
-        - journalLink: linked journal reference
-        - tagline: short description or tagline
-        - formattedMatch: formatted search match result
-        - resultType: constructor name of the result type (EntitySearchItem/CompendiumSearchItem/EmbeddedEntitySearchItem)
-    - clientId: ID of the Foundry client to query
-- GET /structure?clientId=id - Get all folders and compendiums
-- GET /contents/:path?clientId=id - Get all entity UUIDs in a folder or compendium
-- POST /entity - Create a new entity. Returns UUID
-  - Body: `{ "type": "Actor", "folder": "folderId", "data": { "name": "New Entity", ... } }`
-- PUT /entity/:uuid - Update an entity by UUID
-  - Body: `{ "name": "Updated Name", ... }`
-- DELETE /entity/:uuid - Delete an entity by UUID
-- GET /rolls: Returns an array of recent dice rolls
-    - Query parameter: limit (optional, default: 20)
-- GET /lastroll: Returns the most recent dice roll
-- GET /actor-sheet: Returns the html for a given UUID
-POST /roll: Performs a dice roll in Foundry
-
-Query parameter: clientId (required)
-Request body:
-- WebSocket endpoint at /relay for Foundry clients
-
-### Example
-localhost:3010/search?query=aboleth&filter=resultType:CompendiumSearchItem,package:dnd5e.items&clientId=foundry-LZw0ywlj1iYpkUSR
-
 ## Foundry REST API Module
 A Foundry VTT module that connects to the relay server and provides access to Foundry data.
 
@@ -78,7 +39,7 @@ A Foundry VTT module that connects to the relay server and provides access to Fo
 - Configurable WebSocket relay URL and token
 
 ### Installation
-1. Install the module through the Foundry VTT module installer or through the latest manifest link [https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json](https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json)
+1. Install the module with the latest manifest link [https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json]([https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json](https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json))
 2. Configure the WebSocket relay URL in module settings
 3. Set your relay token (defaults to your world ID)
 
