@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import { corsMiddleware } from "./middleware/cors";
@@ -33,12 +33,12 @@ wsRoutes(wss);
 apiRoutes(app);
 
 // Add default static image for tokens
-app.get("/default-token.png", (req, res) => {
+app.get("/default-token.png", (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, "../public/default-token.png"));
 });
 
 // Endpoint for API root
-app.get("/", (req, res) => {
+app.get("/", (req: Request, res: Response) => {
   res.json({
     name: "Foundry REST API Relay",
     version: "1.0.1",
