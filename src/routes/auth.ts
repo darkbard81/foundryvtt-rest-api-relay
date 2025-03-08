@@ -11,13 +11,15 @@ router.post('/register', async (req: Request, res: Response) => {
     const { email, password } = req.body;
     
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
     }
     
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(409).json({ error: 'User already exists' });
+      res.status(409).json({ error: 'User already exists' });
+      return;
     }
     
     // Create a new user
@@ -47,19 +49,22 @@ router.post('/login', async (req: Request, res: Response) => {
     const { email, password } = req.body;
     
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
     }
     
     // Find the user
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
     
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
     
     // Return the user (exclude password)
@@ -82,19 +87,22 @@ router.post('/regenerate-key', async (req: Request, res: Response) => {
     const { email, password } = req.body;
     
     if (!email || !password) {
-      return res.status(400).json({ error: 'Email and password are required' });
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
     }
     
     // Find the user
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
     
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
     
     // Generate new API key

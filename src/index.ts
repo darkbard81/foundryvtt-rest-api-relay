@@ -9,7 +9,6 @@ import authRoutes from "./routes/auth";
 import { config } from "dotenv";
 import * as path from "path";
 import { sequelize } from "./sequelize";
-import { User } from "./models/User";
 
 config();
 

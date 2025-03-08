@@ -7,7 +7,7 @@ import { Client } from "../core/Client"; // Import Client type
 import axios from 'axios';
 import { PassThrough } from 'stream';
 import { JSDOM } from 'jsdom';
-import { User } from '../models/User';
+import { User } from '../models/user';
 import { authMiddleware } from '../middleware/auth';
 import * as bcrypt from 'bcryptjs';
 import crypto from 'crypto';
