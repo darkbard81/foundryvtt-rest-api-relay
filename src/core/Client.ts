@@ -39,14 +39,19 @@ export class Client {
     try {
       const message = JSON.parse(data.toString());
       this.updateLastSeen();
-  
-      switch (message.type) {
-        case "ping":
-          this.send({ type: "pong" });
-          break;
-        default:
-          ClientManager.handleIncomingMessage(this.id, message);
-          this.broadcast(message);
+
+      // Handle ping messages directly without broadcasting
+      if (message.type === "ping") {
+        this.send({ type: "pong" });
+        return;
+      }
+      
+      // For all other messages
+      ClientManager.handleIncomingMessage(this.id, message);
+      
+      // Only broadcast non-ping/pong messages
+      if (message.type !== "pong") {
+        this.broadcast(message);
       }
     } catch (error) {
       log.error("Error handling message", { error, clientId: this.id });

@@ -3,33 +3,43 @@ import { WebSocketServer, WebSocket } from "ws";
 import { log } from "../middleware/logger";
 import { ClientManager } from "../core/ClientManager";
 
+// Add better error handling to the WebSocket routes
 export const wsRoutes = (wss: WebSocketServer): void => {
   wss.on("connection", (ws, req) => {
-    // Parse URL parameters
-    const url = new URL(req.url || "", `http://${req.headers.host}`);
-    const id = url.searchParams.get("id");
-    const token = url.searchParams.get("token");
+    try {
+      // Parse URL parameters
+      const url = new URL(req.url || "", `http://${req.headers.host}`);
+      const id = url.searchParams.get("id");
+      const token = url.searchParams.get("token");
 
-    if (!id || !token) {
-      log.warn("Rejecting WebSocket connection: missing id or token");
-      ws.close(1008, "Missing client ID or token");
-      return;
+      if (!id || !token) {
+        log.warn("Rejecting WebSocket connection: missing id or token");
+        ws.close(1008, "Missing client ID or token");
+        return;
+      }
+
+      // Register client
+      const client = ClientManager.addClient(ws, id, token);
+      if (!client) return; // Connection already rejected
+
+      // Handle disconnection
+      ws.on("close", () => {
+        ClientManager.removeClient(id);
+      });
+
+      // Handle errors
+      ws.on("error", (error) => {
+        log.error(`WebSocket error for client ${id}: ${error}`);
+        ClientManager.removeClient(id);
+      });
+    } catch (error) {
+      log.error(`Error handling WebSocket connection: ${error}`);
+      try {
+        ws.close(1011, "Internal Server Error");
+      } catch (closeError) {
+        // Ignore close errors
+      }
     }
-
-    // Register client
-    const client = ClientManager.addClient(ws, id, token);
-    if (!client) return; // Connection already rejected
-
-    // Handle disconnection
-    ws.on("close", () => {
-      ClientManager.removeClient(id);
-    });
-
-    // Handle errors
-    ws.on("error", (error) => {
-      log.error(`WebSocket error for client ${id}: ${error}`);
-      ClientManager.removeClient(id);
-    });
   });
 
   // Set up periodic cleanup

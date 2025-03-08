@@ -69,3 +69,12 @@ const shutdown = (): void => {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
+// Add after all other middleware and routes
+app.use((err: any, req: Request, res: Response, next: Function) => {
+  log.error('Unhandled error:', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+  next(err);
+});

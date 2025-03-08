@@ -13,6 +13,15 @@ import { trackApiUsage } from '../routes/auth';
 import * as bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
+// Add this helper function at the top of your file
+function safeResponse(res: Response, statusCode: number, data: any): void {
+  if (!res.headersSent) {
+    res.status(statusCode).json(data);
+  } else {
+    log.warn("Attempted to send response after headers sent", { data });
+  }
+}
+
 export const apiRoutes = (app: express.Application): void => {
   // Setup handlers for storing search results and entity data from WebSocket
   setupMessageHandlers();
@@ -50,7 +59,7 @@ export const apiRoutes = (app: express.Application): void => {
       
       if (!email || !password) {
         console.log('Missing email or password');
-        res.status(400).json({ error: 'Email and password are required' });
+        safeResponse(res, 400, { error: 'Email and password are required' });
         return;
       }
       
@@ -58,7 +67,7 @@ export const apiRoutes = (app: express.Application): void => {
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
         console.log(`User already exists: ${email}`);
-        res.status(409).json({ error: 'User already exists' });
+        safeResponse(res, 409, { error: 'User already exists' });
         return;
       }
       
@@ -73,7 +82,7 @@ export const apiRoutes = (app: express.Application): void => {
       console.log(`User created: ${user.email} with API key: ${user.apiKey}`);
       
       // Return the user (exclude password)
-      res.status(201).json({
+      safeResponse(res, 201, {
         id: user.id,
         email: user.email,
         apiKey: user.apiKey,
@@ -82,7 +91,7 @@ export const apiRoutes = (app: express.Application): void => {
       return;
     } catch (error) {
       console.error('Registration error:', error);
-      res.status(500).json({ error: 'Registration failed' });
+      safeResponse(res, 500, { error: 'Registration failed' });
       return;
     }
   });
@@ -95,7 +104,7 @@ export const apiRoutes = (app: express.Application): void => {
         const token = req.query.token as string;
         const clients = ClientManager.getConnectedClients(token);
         
-        res.json({
+        safeResponse(res, 200, {
           total: clients.length,
           clients
         });
@@ -110,7 +119,7 @@ export const apiRoutes = (app: express.Application): void => {
     const clientId = req.query.clientId as string;
     
     if (!query) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Query parameter is required",
         howToUse: "Add ?query=yourSearchTerm to your request"
       });
@@ -118,7 +127,7 @@ export const apiRoutes = (app: express.Application): void => {
     }
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required to identify the Foundry instance",
         howToUse: "Add &clientId=yourClientId to your request",
         tip: "Get a list of available client IDs at /clients"
@@ -129,7 +138,7 @@ export const apiRoutes = (app: express.Application): void => {
     // Find a connected client with this ID
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id),
         tip: "Get a list of available client IDs at /clients"
@@ -164,7 +173,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send search request to Foundry client",
           suggestion: "The client may be disconnecting or experiencing issues"  
         });
@@ -175,7 +184,7 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(408).json({ 
+          safeResponse(res, 408, { 
             error: "Search request timed out", 
             tip: "The Foundry client might be busy or still building its index."
           });
@@ -184,7 +193,7 @@ export const apiRoutes = (app: express.Application): void => {
       
     } catch (error) {
       log.error(`Error processing search request: ${error}`);
-      res.status(500).json({ error: "Failed to process search request" });
+      safeResponse(res, 500, { error: "Failed to process search request" });
       return;
     }
   });
@@ -196,12 +205,12 @@ export const apiRoutes = (app: express.Application): void => {
     const noCache = req.query.noCache === 'true';
     
     if (!uuid) {
-      res.status(400).json({ error: "UUID parameter is required" });
+      safeResponse(res, 400, { error: "UUID parameter is required" });
       return;
     }
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required to identify the Foundry instance",
         howToUse: "Add &clientId=yourClientId to your request",
         tip: "Get a list of available client IDs at /clients"
@@ -215,7 +224,7 @@ export const apiRoutes = (app: express.Application): void => {
       // Get a list of available clients to help the user
       const availableClients = ClientManager.getConnectedClients();
       
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClientIds: availableClients.map(c => c.id),
         tip: "Get a list of available client IDs at /clients"
@@ -228,7 +237,7 @@ export const apiRoutes = (app: express.Application): void => {
       if (!noCache) {
         const cachedEntity = DataStore.getEntity(uuid);
         if (cachedEntity) {
-          res.json(cachedEntity)
+          safeResponse(res, 200, cachedEntity);
           return;
         }
       }
@@ -258,7 +267,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send entity request to Foundry client",
           suggestion: "The client may be disconnecting or experiencing issues"  
         });
@@ -269,7 +278,7 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(408).json({ 
+          safeResponse(res, 408, { 
             error: "Entity request timed out", 
             tip: "The Foundry client might be busy or the UUID might not exist."
           });
@@ -277,7 +286,7 @@ export const apiRoutes = (app: express.Application): void => {
       }, 10000); // 10 seconds timeout
     } catch (error) {
       log.error(`Error processing entity request: ${error}`);
-      res.status(500).json({ error: "Failed to process entity request" })
+      safeResponse(res, 500, { error: "Failed to process entity request" });
       return;
     }
   });
@@ -287,7 +296,7 @@ export const apiRoutes = (app: express.Application): void => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required",
         howToUse: "Add ?clientId=yourClientId to your request"
       });
@@ -296,7 +305,7 @@ export const apiRoutes = (app: express.Application): void => {
     
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id)
       });
@@ -321,7 +330,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send structure request to Foundry client"
         });
 			  return;
@@ -330,12 +339,12 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(408).json({ error: "Request timed out" });
+          safeResponse(res, 408, { error: "Request timed out" });
         }
       }, 10000);
     } catch (error) {
       log.error(`Error processing structure request: ${error}`);
-      res.status(500).json({ error: "Failed to process structure request" })
+      safeResponse(res, 500, { error: "Failed to process structure request" });
       return;
     }
   });
@@ -346,7 +355,7 @@ export const apiRoutes = (app: express.Application): void => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required",
         howToUse: "Add ?clientId=yourClientId to your request"
       });
@@ -354,13 +363,13 @@ export const apiRoutes = (app: express.Application): void => {
     }
     
     if (!path) {
-      res.status(400).json({ error: "Path parameter is required" })
+      safeResponse(res, 400, { error: "Path parameter is required" });
       return;
     }
     
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id)
       });
@@ -387,7 +396,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send contents request to Foundry client"
         });
 			return;
@@ -396,12 +405,12 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(408).json({ error: "Request timed out" });
+          safeResponse(res, 408, { error: "Request timed out" });
         }
       }, 10000);
     } catch (error) {
       log.error(`Error processing contents request: ${error}`);
-      res.status(500).json({ error: "Failed to process contents request" })
+      safeResponse(res, 500, { error: "Failed to process contents request" });
       return;
     }
   });
@@ -412,7 +421,7 @@ export const apiRoutes = (app: express.Application): void => {
     const { type, folder, data } = req.body;
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required",
         howToUse: "Add ?clientId=yourClientId to your request" 
       });
@@ -420,7 +429,7 @@ export const apiRoutes = (app: express.Application): void => {
     }
     
     if (!type || !data) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Request body must include 'type' and 'data' fields",
         example: { type: "Actor", folder: "Folder ID or null", data: { name: "Entity Name", /* other data */ } }
       });
@@ -429,7 +438,7 @@ export const apiRoutes = (app: express.Application): void => {
     
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id)
       });
@@ -457,7 +466,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send create request to Foundry client"
         });
 			  return;
@@ -466,12 +475,12 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(408).json({ error: "Request timed out" });
+          safeResponse(res, 408, { error: "Request timed out" });
         }
       }, 10000);
     } catch (error) {
       log.error(`Error processing create entity request: ${error}`);
-      res.status(500).json({ error: "Failed to process create entity request" })
+      safeResponse(res, 500, { error: "Failed to process create entity request" });
       return;
     }
   });
@@ -483,7 +492,7 @@ export const apiRoutes = (app: express.Application): void => {
     const updateData = req.body;
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required",
         howToUse: "Add ?clientId=yourClientId to your request"
       });
@@ -491,18 +500,18 @@ export const apiRoutes = (app: express.Application): void => {
     }
     
     if (!uuid) {
-      res.status(400).json({ error: "UUID parameter is required" })
+      safeResponse(res, 400, { error: "UUID parameter is required" });
       return;
     }
     
     if (!updateData || Object.keys(updateData).length === 0) {
-      res.status(400).json({ error: "Update data is required in request body" })
+      safeResponse(res, 400, { error: "Update data is required in request body" });
       return;
     }
     
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id)
       });
@@ -530,7 +539,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send update request to Foundry client"
         });
 			return;
@@ -539,12 +548,12 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(408).json({ error: "Request timed out" });
+          safeResponse(res, 408, { error: "Request timed out" });
         }
       }, 10000);
     } catch (error) {
       log.error(`Error processing update entity request: ${error}`);
-      res.status(500).json({ error: "Failed to process update entity request" })
+      safeResponse(res, 500, { error: "Failed to process update entity request" });
       return;
     }
   });
@@ -555,7 +564,7 @@ export const apiRoutes = (app: express.Application): void => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required",
         howToUse: "Add ?clientId=yourClientId to your request"
       });
@@ -563,13 +572,13 @@ export const apiRoutes = (app: express.Application): void => {
     }
     
     if (!uuid) {
-      res.status(400).json({ error: "UUID parameter is required" })
+      safeResponse(res, 400, { error: "UUID parameter is required" });
       return;
     }
     
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id)
       });
@@ -596,7 +605,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send delete request to Foundry client"
         });
 			  return;
@@ -605,12 +614,12 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(408).json({ error: "Request timed out" });
+          safeResponse(res, 408, { error: "Request timed out" });
         }
       }, 10000);
     } catch (error) {
       log.error(`Error processing delete entity request: ${error}`);
-      res.status(500).json({ error: "Failed to process delete entity request" })
+      safeResponse(res, 500, { error: "Failed to process delete entity request" });
       return;
     }
   });
@@ -621,7 +630,7 @@ export const apiRoutes = (app: express.Application): void => {
     const limit = parseInt(req.query.limit as string) || 20;
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required",
         howToUse: "Add ?clientId=yourClientId to your request"
       });
@@ -630,7 +639,7 @@ export const apiRoutes = (app: express.Application): void => {
     
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id)
       });
@@ -642,7 +651,7 @@ export const apiRoutes = (app: express.Application): void => {
       const storedRolls = DataStore.get(clientId, 'recent-rolls') as any[];
       
       if (storedRolls && storedRolls.length > 0) {
-        res.json({
+        safeResponse(res, 200, {
           clientId,
           rolls: storedRolls.slice(0, limit)
         });
@@ -667,7 +676,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send rolls request to Foundry client" 
         });
 			  return;
@@ -677,7 +686,7 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(404).json({ 
+          safeResponse(res, 404, { 
             error: "No roll data available",
             message: "Request timed out"
           });
@@ -686,7 +695,7 @@ export const apiRoutes = (app: express.Application): void => {
       
     } catch (error) {
       log.error(`Error processing rolls request: ${error}`);
-      res.status(500).json({ error: "Failed to process rolls request" })
+      safeResponse(res, 500, { error: "Failed to process rolls request" });
       return;
     }
   });
@@ -696,7 +705,7 @@ export const apiRoutes = (app: express.Application): void => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required",
         howToUse: "Add ?clientId=yourClientId to your request"
       });
@@ -705,7 +714,7 @@ export const apiRoutes = (app: express.Application): void => {
     
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id)
       });
@@ -717,7 +726,7 @@ export const apiRoutes = (app: express.Application): void => {
       const storedRolls = DataStore.get(clientId, 'recent-rolls') as any[];
       
       if (storedRolls && storedRolls.length > 0) {
-        res.json({
+        safeResponse(res, 200, {
           clientId,
           roll: storedRolls[0]
         });
@@ -741,7 +750,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send last roll request to Foundry client" 
         });
 			  return;
@@ -751,7 +760,7 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(404).json({ 
+          safeResponse(res, 404, { 
             error: "No roll data available",
             message: "No dice have been rolled yet or request timed out"
           });
@@ -760,7 +769,7 @@ export const apiRoutes = (app: express.Application): void => {
       
     } catch (error) {
       log.error(`Error processing last roll request: ${error}`);
-      res.status(500).json({ error: "Failed to process last roll request" })
+      safeResponse(res, 500, { error: "Failed to process last roll request" });
       return;
     }
   });
@@ -771,7 +780,7 @@ export const apiRoutes = (app: express.Application): void => {
     const { formula, flavor, createChatMessage, whisper } = req.body;
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required",
         howToUse: "Add ?clientId=yourClientId to your request"
       });
@@ -779,7 +788,7 @@ export const apiRoutes = (app: express.Application): void => {
     }
     
     if (!formula) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Roll formula is required",
         example: { formula: "2d6+3", flavor: "Attack roll", createChatMessage: true }
       });
@@ -788,7 +797,7 @@ export const apiRoutes = (app: express.Application): void => {
     
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id)
       });
@@ -817,7 +826,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send roll request to Foundry client"
         });
 			  return;
@@ -827,13 +836,13 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(408).json({ error: "Request timed out" });
+          safeResponse(res, 408, { error: "Request timed out" });
         }
       }, 5000);
       
     } catch (error) {
       log.error(`Error processing roll request: ${error}`);
-      res.status(500).json({ error: "Failed to process roll request" })
+      safeResponse(res, 500, { error: "Failed to process roll request" });
       return;
     }
   });
@@ -848,7 +857,7 @@ export const apiRoutes = (app: express.Application): void => {
     const darkMode = req.query.darkMode === 'true';
     
     if (!clientId) {
-      res.status(400).json({ 
+      safeResponse(res, 400, { 
         error: "Client ID is required to identify the Foundry instance"
       });
 			return;
@@ -857,7 +866,7 @@ export const apiRoutes = (app: express.Application): void => {
     // Find a connected client with this ID
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      res.status(404).json({ 
+      safeResponse(res, 404, { 
         error: "No connected Foundry instance found with this client ID",
         availableClients: ClientManager.getConnectedClients().map(c => c.id)
       });
@@ -893,7 +902,7 @@ export const apiRoutes = (app: express.Application): void => {
 
       if (!sent) {
         pendingRequests.delete(requestId);
-        res.status(500).json({ 
+        safeResponse(res, 500, { 
           error: "Failed to send actor sheet request to Foundry client",
           suggestion: "The client may be disconnecting or experiencing issues"  
         });
@@ -904,7 +913,7 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          res.status(408).json({ 
+          safeResponse(res, 408, { 
             error: "Actor sheet request timed out", 
             tip: "The Foundry client might be busy or the actor UUID might not exist."
           });
@@ -913,7 +922,7 @@ export const apiRoutes = (app: express.Application): void => {
       
     } catch (error) {
       log.error(`Error processing actor sheet request: ${error}`);
-      res.status(500).json({ error: "Failed to process actor sheet request" })
+      safeResponse(res, 500, { error: "Failed to process actor sheet request" });
       return;
     }
   });
@@ -1046,7 +1055,7 @@ function setupMessageHandlers() {
         DataStore.storeSearchResults(pending.clientId, data.results);
         
         // Send response with metadata
-        pending.res.json({
+        safeResponse(pending.res, 200, {
           requestId: data.requestId,
           clientId: pending.clientId,
           query: data.query || pending.query || "",
@@ -1079,7 +1088,7 @@ function setupMessageHandlers() {
         DataStore.storeEntity(data.uuid, data.data);
         
         // Include metadata in response wrapper
-        pending.res.json({
+        safeResponse(pending.res, 200, {
           requestId: data.requestId,
           clientId: pending.clientId,
           uuid: data.uuid,
@@ -1107,7 +1116,7 @@ function setupMessageHandlers() {
       
       if (pending.type === 'structure') {
         // Send response with metadata
-        pending.res.json({
+        safeResponse(pending.res, 200, {
           requestId: data.requestId,
           clientId: pending.clientId,
           folders: data.folders || [],
@@ -1130,7 +1139,7 @@ function setupMessageHandlers() {
       
       if (pending.type === 'contents' && pending.path === data.path) {
         // Send response with metadata
-        pending.res.json({
+        safeResponse(pending.res, 200, {
           requestId: data.requestId,
           clientId: pending.clientId,
           path: data.path,
@@ -1153,7 +1162,7 @@ function setupMessageHandlers() {
       
       if (pending.type === 'create') {
         if (data.error) {
-          pending.res.status(400).json({
+          safeResponse(pending.res, 400, {
             requestId: data.requestId,
             clientId: pending.clientId,
             error: data.error,
@@ -1161,7 +1170,7 @@ function setupMessageHandlers() {
           });
         } else {
           // Send response with the new entity data and metadata
-          pending.res.status(201).json({
+          safeResponse(pending.res, 201, {
             requestId: data.requestId,
             clientId: pending.clientId,
             uuid: data.uuid,
@@ -1185,7 +1194,7 @@ function setupMessageHandlers() {
       
       if (pending.type === 'update' && pending.uuid === data.uuid) {
         if (data.error) {
-          pending.res.status(400).json({
+          safeResponse(pending.res, 400, {
             requestId: data.requestId,
             clientId: pending.clientId,
             uuid: data.uuid,
@@ -1194,7 +1203,7 @@ function setupMessageHandlers() {
           });
         } else {
           // Send response with the updated entity data and metadata
-          pending.res.json({
+          safeResponse(pending.res, 200, {
             requestId: data.requestId,
             clientId: pending.clientId,
             uuid: data.uuid,
@@ -1218,7 +1227,7 @@ function setupMessageHandlers() {
       
       if (pending.type === 'delete' && pending.uuid === data.uuid) {
         if (data.error) {
-          pending.res.status(400).json({
+          safeResponse(pending.res, 400, {
             requestId: data.requestId,
             clientId: pending.clientId,
             uuid: data.uuid,
@@ -1227,7 +1236,7 @@ function setupMessageHandlers() {
           });
         } else {
           // Send success response with metadata
-          pending.res.status(200).json({
+          safeResponse(pending.res, 200, {
             requestId: data.requestId,
             clientId: pending.clientId,
             uuid: data.uuid,
@@ -1281,7 +1290,7 @@ function setupMessageHandlers() {
         DataStore.set(client.getId(), 'recent-rolls', data.data || []);
         
         // Send response
-        pending.res.json({
+        safeResponse(pending.res, 200, {
           clientId: client.getId(),
           rolls: data.data || []
         });
@@ -1319,7 +1328,7 @@ function setupMessageHandlers() {
         }
         
         // Send response
-        pending.res.json({
+        safeResponse(pending.res, 200, {
           clientId: client.getId(),
           roll: data.data || null
         });
@@ -1339,7 +1348,7 @@ function setupMessageHandlers() {
       
       if (pending.type === 'roll') {
         if (!data.success) {
-          pending.res.status(400).json({
+          safeResponse(pending.res, 400, {
             clientId: client.getId(),
             error: data.error || "Failed to perform roll"
           });
@@ -1370,7 +1379,7 @@ function setupMessageHandlers() {
           }
           
           // Send response
-          pending.res.json({
+          safeResponse(pending.res, 200, {
             clientId: client.getId(),
             success: true,
             roll: data.data
@@ -1407,7 +1416,7 @@ function setupMessageHandlers() {
         if (pending.type === 'actor-sheet' && pending.uuid === responseUuid) {
           if (data.error || (data.data && data.data.error)) {
             const errorMsg = data.error || (data.data && data.data.error) || "Unknown error";
-            pending.res.status(404).json({
+            safeResponse(pending.res, 404, {
               requestId: data.requestId,
               clientId: pending.clientId,
               uuid: pending.uuid,
@@ -1423,7 +1432,7 @@ function setupMessageHandlers() {
             
             if (pending.format === 'json') {
               // Send response as JSON
-              pending.res.json({
+              safeResponse(pending.res, 200, {
                 requestId: data.requestId,
                 clientId: pending.clientId,
                 uuid: pending.uuid,
