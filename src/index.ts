@@ -5,6 +5,7 @@ import { corsMiddleware } from "./middleware/cors";
 import { log } from "./middleware/logger";
 import { wsRoutes } from "./routes/websocket";
 import { apiRoutes } from "./routes/api";
+import authRoutes from "./routes/auth";
 import { config } from "dotenv";
 import * as path from "path";
 import { sequelize } from "./sequelize";
@@ -25,6 +26,11 @@ app.use(express.json());
 // Serve static files from public directory
 app.use("/static", express.static(path.join(__dirname, "../public")));
 
+// Serve the signup page at the base URL
+app.get("/", (req: Request, res: Response) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
 // Create WebSocket server
 const wss = new WebSocketServer({ server: httpServer });
 
@@ -34,34 +40,12 @@ wsRoutes(wss);
 // Setup API routes
 apiRoutes(app);
 
+// Setup Auth routes
+app.use("/", authRoutes);
+
 // Add default static image for tokens
 app.get("/default-token.png", (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, "../public/default-token.png"));
-});
-
-// Endpoint for API root
-app.get("/", (req: Request, res: Response) => {
-  res.json({
-    name: "Foundry REST API Relay",
-    version: "1.0.1",
-    description: "API server for accessing Foundry VTT data remotely. Find client with /clients. Use clientId for all other requests.",
-    endpoints: {
-      "/clients": "List all connected Foundry clients",
-      "/clients?token=yourToken": "List connected Foundry clients with a specific token",
-      "/search?query=term": "Search for entities using Foundry's QuickInsert",
-      "/get/:uuid?": "Get entity data by UUID",
-      "/structure?": "Get all folders and compendiums",
-      "/contents/:path?": "Get all entity UUIDs in a folder or compendium",
-      "/entity [POST]": "Create a new entity",
-      "/entity/:uuid [PUT]": "Update an entity by UUID",
-      "/entity/:uuid [DELETE]": "Delete an entity by UUID",
-      "/rolls?limit=20": "List up to the last 20 dice rolls",
-      "/lastRoll": "Get the last dice roll",
-      "/roll [POST]": "Roll dice using Foundry's Roll class",
-      "/actor-sheet": "Get the Actor sheet html",
-      "/relay": "WebSocket endpoint for Foundry clients"
-    }
-  });
 });
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
