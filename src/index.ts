@@ -64,8 +64,8 @@ app.get("/", (req: Request, res: Response) => {
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
 
-// Start HTTP server
-httpServer.listen(port, () => {
+// Start HTTP server - listen on all interfaces (0.0.0.0)
+httpServer.listen(port, "0.0.0.0", () => {
   log.info(`Server running on port ${port}`);
 });
 

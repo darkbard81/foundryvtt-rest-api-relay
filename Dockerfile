@@ -25,7 +25,7 @@ COPY . .
 RUN pnpm build
 
 # Expose the ports
-EXPOSE 3000
+EXPOSE 3010
 
 # Start the application
 CMD ["pnpm", "start"]

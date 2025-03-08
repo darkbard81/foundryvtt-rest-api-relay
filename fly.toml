@@ -1,0 +1,23 @@
+# fly.toml app configuration file
+app = 'foundryvtt-rest-api-relay'
+primary_region = 'ord'
+
+[build]
+
+[http]
+  # This is the port Fly.io will expose to the internet
+  port = 3010
+
+[http_service]
+  # This is the port your app listens on inside the container
+  internal_port = 3010
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
