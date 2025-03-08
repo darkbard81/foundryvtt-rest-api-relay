@@ -3,9 +3,14 @@ import { sequelize } from '../sequelize';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
-// Remove the class field declarations that are causing the warning
 export class User extends Model {
-  // Don't declare these properties here as they shadow Sequelize getters/setters
+  public id!: number;
+  public email!: string;
+  public password!: string;
+  public apiKey!: string;
+  public requestsThisMonth!: number;
+  public createdAt!: Date;
+  public updatedAt!: Date;
 }
 
 User.init({
