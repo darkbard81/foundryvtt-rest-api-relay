@@ -4,21 +4,13 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 export class User extends Model {
-  declare id: number;
-  declare email: string;
-  declare password: string;
-  declare apiKey: string;
-  declare requestsThisMonth: number;
-  declare createdAt: Date;
-  declare updatedAt: Date;
-
-  static async authenticate(email: string, password: string) {
-    const user = await User.findOne({ where: { email } });
-    if (!user) return null;
-    
-    const isValid = await bcrypt.compare(password, user.password);
-    return isValid ? user : null;
-  }
+  public id!: number;
+  public email!: string;
+  public password!: string;
+  public apiKey!: string;
+  public requestsThisMonth!: number;
+  public createdAt!: Date;
+  public updatedAt!: Date;
 }
 
 User.init({
@@ -52,15 +44,18 @@ User.init({
 }, {
   sequelize,
   modelName: 'User',
+  tableName: 'Users', // Be explicit about the table name
   hooks: {
-    beforeCreate: async (user: User) => {
-      if (user.password) {
-        const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
-      }
+    beforeCreate: async (user: any) => {
+      // Add logging to debug
+      console.log('Hashing password for user:', user.email);
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(user.password, salt);
+      console.log('Password hashed successfully');
     },
-    beforeUpdate: async (user: User) => {
+    beforeUpdate: async (user: any) => {
       if (user.changed('password')) {
+        console.log('Updating password for user:', user.email);
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(user.password, salt);
       }

@@ -42,22 +42,44 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // User registration
-  router.post("/register", express.json(), async (req: Request, res: Response) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required' });
-      return;
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const apiKey = crypto.randomBytes(16).toString('hex');
-
+  router.post('/register', async (req: Request, res: Response) => {
     try {
-      const user = await User.create({ email, password: hashedPassword, apiKey });
-      res.status(201).json({ apiKey: user.apiKey });
+      const { email, password } = req.body;
+      
+      console.log(`Registration attempt for: ${email}`);
+      
+      if (!email || !password) {
+        console.log('Missing email or password');
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+      
+      // Check if user already exists
+      const existingUser = await User.findOne({ where: { email } });
+      if (existingUser) {
+        console.log(`User already exists: ${email}`);
+        return res.status(409).json({ error: 'User already exists' });
+      }
+      
+      console.log('Creating new user...');
+      // Create a new user
+      const user = await User.create({
+        email,
+        password, // Will be hashed by the beforeCreate hook
+        requestsThisMonth: 0
+      });
+      
+      console.log(`User created: ${user.email} with API key: ${user.apiKey}`);
+      
+      // Return the user (exclude password)
+      res.status(201).json({
+        id: user.id,
+        email: user.email,
+        apiKey: user.apiKey,
+        createdAt: user.createdAt
+      });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to create user' });
+      console.error('Registration error:', error);
+      res.status(500).json({ error: 'Registration failed' });
     }
   });
 

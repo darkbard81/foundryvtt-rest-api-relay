@@ -62,40 +62,49 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
-// Login
+// Login route with more debugging
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     
+    console.log(`Login attempt for: ${email}`);
+    
     if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required' });
-      return;
+      console.log('Missing email or password');
+      return res.status(400).json({ error: 'Email and password are required' });
     }
     
     // Find the user
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      console.error('User not found');
-      res.status(401).json({ error: 'Invalid credentials' });
-      return;
+      console.log(`User not found: ${email}`);
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      console.error('Invalid password');
-      res.status(401).json({ error: 'Invalid credentials' });
-      return;
-    }
+    console.log(`User found: ${user.email}, comparing passwords...`);
     
-    // Return the user (exclude password)
-    res.status(200).json({
-      id: user.id,
-      email: user.email,
-      apiKey: user.apiKey,
-      requestsThisMonth: user.requestsThisMonth,
-      createdAt: user.createdAt
-    });
+    // Check password - add more debugging
+    try {
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      console.log(`Password valid: ${isPasswordValid}`);
+      
+      if (!isPasswordValid) {
+        console.log('Invalid password');
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      
+      // Return the user (exclude password)
+      res.status(200).json({
+        id: user.id,
+        email: user.email,
+        apiKey: user.apiKey,
+        requestsThisMonth: user.requestsThisMonth,
+        createdAt: user.createdAt
+      });
+    } catch (bcryptError) {
+      console.error('bcrypt comparison error:', bcryptError);
+      return res.status(500).json({ error: 'Authentication error' });
+    }
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
