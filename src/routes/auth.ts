@@ -71,14 +71,16 @@ router.post('/login', async (req: Request, res: Response) => {
     
     if (!email || !password) {
       console.log('Missing email or password');
-      return res.status(400).json({ error: 'Email and password are required' });
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
     }
     
     // Find the user
     const user = await User.findOne({ where: { email } });
     if (!user) {
       console.log(`User not found: ${email}`);
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
     
     console.log(`User found: ${user.email}, comparing passwords...`);
@@ -90,7 +92,8 @@ router.post('/login', async (req: Request, res: Response) => {
       
       if (!isPasswordValid) {
         console.log('Invalid password');
-        return res.status(401).json({ error: 'Invalid credentials' });
+        res.status(401).json({ error: 'Invalid credentials' });
+        return;
       }
       
       // Return the user (exclude password)
@@ -101,13 +104,16 @@ router.post('/login', async (req: Request, res: Response) => {
         requestsThisMonth: user.requestsThisMonth,
         createdAt: user.createdAt
       });
+      return;
     } catch (bcryptError) {
       console.error('bcrypt comparison error:', bcryptError);
-      return res.status(500).json({ error: 'Authentication error' });
+      res.status(500).json({ error: 'Authentication error' });
+      return;
     }
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Login failed' });
+    return;
   }
 });
 

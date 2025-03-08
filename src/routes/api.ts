@@ -50,14 +50,16 @@ export const apiRoutes = (app: express.Application): void => {
       
       if (!email || !password) {
         console.log('Missing email or password');
-        return res.status(400).json({ error: 'Email and password are required' });
+        res.status(400).json({ error: 'Email and password are required' });
+        return;
       }
       
       // Check if user already exists
       const existingUser = await User.findOne({ where: { email } });
       if (existingUser) {
         console.log(`User already exists: ${email}`);
-        return res.status(409).json({ error: 'User already exists' });
+        res.status(409).json({ error: 'User already exists' });
+        return;
       }
       
       console.log('Creating new user...');
@@ -77,9 +79,11 @@ export const apiRoutes = (app: express.Application): void => {
         apiKey: user.apiKey,
         createdAt: user.createdAt
       });
+      return;
     } catch (error) {
       console.error('Registration error:', error);
       res.status(500).json({ error: 'Registration failed' });
+      return;
     }
   });
 
