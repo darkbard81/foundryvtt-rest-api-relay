@@ -1,6 +1,7 @@
 import { sequelize } from '../sequelize';
-import { User } from './user';
+import { User } from './user'; 
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 async function initializeDatabase() {
   try {
@@ -11,45 +12,33 @@ async function initializeDatabase() {
     await sequelize.authenticate();
     console.log('Database connection has been established successfully.');
     
-    // Sync all models
+    // Sync all models - this creates the tables
     console.log('Syncing database models...');
     await sequelize.sync({ force: true });
     console.log('Database models synchronized.');
     
-    // Create a default admin user
+    // Create a default admin user with a plain password - it will be hashed by the hook
     console.log('Creating admin user...');
     
-    // Manual password hashing
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('admin123', salt);
-    
-    const adminUser = await User.create({
+    const user = await User.create({
       email: 'admin@example.com',
-      password: hashedPassword, // Pre-hashed password
-      apiKey: require('crypto').randomBytes(16).toString('hex'),
+      password: 'admin123',
+      apiKey: crypto.randomBytes(16).toString('hex'),
       requestsThisMonth: 0
     });
     
-    console.log('Admin user created with API key:', adminUser.apiKey);
-    
-    // Verify the admin user was created with correct password hashing
-    const user = await User.findOne({ where: { email: 'admin@example.com' } });
+    // Check if user was created successfully
     if (!user) {
-      console.error('Failed to retrieve the created admin user!');
+      console.error('Failed to create admin user!');
       return false;
     }
     
-    console.log('Admin user retrieved from database, verifying password...');
-    const isPasswordValid = await bcrypt.compare('admin123', user.password);
-    console.log('Password verification result:', isPasswordValid);
-    
-    console.log('\nDatabase initialization complete!');
+    console.log('Admin user created with API key:', user.getDataValue('apiKey'));
+    console.log('Database initialization complete!');
     return true;
   } catch (error) {
     console.error('Database initialization failed:', error);
     return false;
-  } finally {
-    // Don't close the connection as it might be needed by the app
   }
 }
 

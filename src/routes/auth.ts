@@ -62,7 +62,7 @@ router.post('/register', async (req: Request, res: Response) => {
   }
 });
 
-// Login route with more debugging
+// Login route - update the password comparison logic
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -83,11 +83,14 @@ router.post('/login', async (req: Request, res: Response) => {
       return;
     }
     
-    console.log(`User found: ${user.email}, comparing passwords...`);
+    console.log(`User found: ${email}, comparing passwords...`);
     
-    // Check password - add more debugging
     try {
-      const isPasswordValid = await bcrypt.compare(password, user.password);
+      // Get the stored hash directly from the data value
+      const storedHash = user.getDataValue('password');
+      console.log('Stored hash:', storedHash ? 'exists' : 'missing');
+      
+      const isPasswordValid = await bcrypt.compare(password, storedHash);
       console.log(`Password valid: ${isPasswordValid}`);
       
       if (!isPasswordValid) {
@@ -98,11 +101,11 @@ router.post('/login', async (req: Request, res: Response) => {
       
       // Return the user (exclude password)
       res.status(200).json({
-        id: user.id,
-        email: user.email,
-        apiKey: user.apiKey,
-        requestsThisMonth: user.requestsThisMonth,
-        createdAt: user.createdAt
+        id: user.getDataValue('id'),
+        email: user.getDataValue('email'),
+        apiKey: user.getDataValue('apiKey'),
+        requestsThisMonth: user.getDataValue('requestsThisMonth'),
+        createdAt: user.getDataValue('createdAt')
       });
       return;
     } catch (bcryptError) {

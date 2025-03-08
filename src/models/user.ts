@@ -3,14 +3,9 @@ import { sequelize } from '../sequelize';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
+// Remove the class field declarations that are causing the warning
 export class User extends Model {
-  public id!: number;
-  public email!: string;
-  public password!: string;
-  public apiKey!: string;
-  public requestsThisMonth!: number;
-  public createdAt!: Date;
-  public updatedAt!: Date;
+  // Don't declare these properties here as they shadow Sequelize getters/setters
 }
 
 User.init({
@@ -46,18 +41,21 @@ User.init({
   modelName: 'User',
   tableName: 'Users', // Be explicit about the table name
   hooks: {
-    beforeCreate: async (user: any) => {
-      // Add logging to debug
-      console.log('Hashing password for user:', user.email);
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(user.password, salt);
-      console.log('Password hashed successfully');
-    },
-    beforeUpdate: async (user: any) => {
-      if (user.changed('password')) {
-        console.log('Updating password for user:', user.email);
+    beforeCreate: async (user) => {
+      if (user.getDataValue('password')) { // Use getDataValue instead of direct property access
+        console.log('Hashing password for user:', user.getDataValue('email'));
         const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(user.password, salt);
+        const hashedPassword = await bcrypt.hash(user.getDataValue('password'), salt);
+        user.setDataValue('password', hashedPassword);
+        console.log('Password hashed successfully');
+      }
+    },
+    beforeUpdate: async (user) => {
+      if (user.changed('password')) {
+        console.log('Updating password for user:', user.getDataValue('email'));
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(user.getDataValue('password'), salt);
+        user.setDataValue('password', hashedPassword);
       }
     }
   }
