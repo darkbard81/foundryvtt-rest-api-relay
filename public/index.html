@@ -1,117 +1,77 @@
+public\index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Foundry REST API - Sign Up / Sign In</title>
-  <link rel="stylesheet" href="/static/styles.css">
+  <title>Foundry REST API</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
   <div class="container">
-    <h1>Foundry REST API</h1>
-    <div id="forms">
-      <form id="signup-form">
-        <h2>Sign Up</h2>
-        <div class="form-group">
-          <label for="signup-email">Email:</label>
-          <input type="email" id="signup-email" name="email" required>
-        </div>
-        <div class="form-group">
-          <label for="signup-password">Password:</label>
-          <input type="password" id="signup-password" name="password" required>
-        </div>
-        <button type="submit">Sign Up</button>
-      </form>
+    <header>
+      <h1>Foundry REST API</h1>
+      <p>Connect your Foundry VTT worlds to external applications</p>
+    </header>
 
-      <form id="signin-form">
+    <main>
+      <div class="tabs">
+        <button class="tab-button active" data-tab="signup">Sign Up</button>
+        <button class="tab-button" data-tab="login">Sign In</button>
+      </div>
+
+      <div class="tab-content active" id="signup">
+        <h2>Create Account</h2>
+        <form id="signup-form">
+          <div class="form-group">
+            <label for="signup-email">Email</label>
+            <input type="email" id="signup-email" required>
+          </div>
+          <div class="form-group">
+            <label for="signup-password">Password</label>
+            <input type="password" id="signup-password" required>
+          </div>
+          <button type="submit" class="btn">Sign Up</button>
+        </form>
+        <div id="signup-message" class="message"></div>
+      </div>
+
+      <div class="tab-content" id="login">
         <h2>Sign In</h2>
-        <div class="form-group">
-          <label for="signin-email">Email:</label>
-          <input type="email" id="signin-email" name="email" required>
-        </div>
-        <div class="form-group">
-          <label for="signin-password">Password:</label>
-          <input type="password" id="signin-password" name="password" required>
-        </div>
-        <button type="submit">Sign In</button>
-      </form>
-    </div>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input type="email" id="login-email" required>
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" required>
+          </div>
+          <button type="submit" class="btn">Sign In</button>
+        </form>
+        <div id="login-message" class="message"></div>
+      </div>
 
-    <div id="user-info" style="display: none;">
-      <h2>User Info</h2>
-      <p><strong>Email:</strong> <span id="user-email"></span></p>
-      <p><strong>API Key:</strong> <span id="user-api-key"></span></p>
-      <p><strong>Requests This Month:</strong> <span id="user-requests"></span></p>
-      <button id="signout-button">Sign Out</button>
-    </div>
+      <div class="tab-content" id="dashboard">
+        <h2>Your Account</h2>
+        <div class="user-info">
+          <p><strong>Email:</strong> <span id="user-email"></span></p>
+          <p><strong>API Key:</strong> <span id="user-api-key"></span> <button id="copy-api-key" class="btn-small">Copy</button></p>
+          <p><strong>Requests This Month:</strong> <span id="user-requests"></span></p>
+        </div>
+        <div class="api-docs">
+          <h3>Using Your API Key</h3>
+          <pre><code>curl -X GET https://foundryvtt-rest-api-relay.fly.dev/clients \
+  -H "x-api-key: YOUR_API_KEY"</code></pre>
+        </div>
+        <button id="logout-btn" class="btn">Sign Out</button>
+      </div>
+    </main>
 
-    <div id="message"></div>
+    <footer>
+      <p>© 2025 Foundry REST API</p>
+    </footer>
   </div>
-
-  <script>
-    document.getElementById('signup-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const email = document.getElementById('signup-email').value;
-      const password = document.getElementById('signup-password').value;
-
-      try {
-        const response = await fetch('/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email, password })
-        });
-
-        const result = await response.json();
-        const messageDiv = document.getElementById('message');
-
-        if (response.ok) {
-          messageDiv.innerHTML = `<p>Registration successful! Your API key: <strong>${result.apiKey}</strong></p>`;
-        } else {
-          messageDiv.innerHTML = `<p>Error: ${result.error}</p>`;
-        }
-      } catch (error) {
-        document.getElementById('message').innerHTML = `<p>Error: ${error.message}</p>`;
-      }
-    });
-
-    document.getElementById('signin-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const email = document.getElementById('signin-email').value;
-      const password = document.getElementById('signin-password').value;
-
-      try {
-        const response = await fetch('/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email, password })
-        });
-
-        const result = await response.json();
-        const messageDiv = document.getElementById('message');
-
-        if (response.ok) {
-          document.getElementById('forms').style.display = 'none';
-          document.getElementById('user-info').style.display = 'block';
-          document.getElementById('user-email').textContent = result.email;
-          document.getElementById('user-api-key').textContent = result.apiKey;
-          document.getElementById('user-requests').textContent = result.requestsThisMonth;
-        } else {
-          messageDiv.innerHTML = `<p>Error: ${result.error}</p>`;
-        }
-      } catch (error) {
-        document.getElementById('message').innerHTML = `<p>Error: ${error.message}</p>`;
-      }
-    });
-
-    document.getElementById('signout-button').addEventListener('click', () => {
-      document.getElementById('forms').style.display = 'block';
-      document.getElementById('user-info').style.display = 'none';
-      document.getElementById('message').innerHTML = '';
-    });
-  </script>
+  <script src="/static/js/main.js"></script>
 </body>
 </html>

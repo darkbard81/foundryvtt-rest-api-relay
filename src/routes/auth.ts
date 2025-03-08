@@ -5,6 +5,25 @@ import crypto from 'crypto';
 
 const router = Router();
 
+// Middleware to increment request count
+export const trackApiUsage = async (req: Request, res: Response, next: Function) => {
+  const apiKey = req.header('x-api-key');
+  
+  if (apiKey) {
+    try {
+      const user = await User.findOne({ where: { apiKey } });
+      if (user) {
+        // Increment the requestsThisMonth count
+        await user.increment('requestsThisMonth');
+      }
+    } catch (error) {
+      console.error('Error tracking API usage:', error);
+    }
+  }
+  
+  next();
+};
+
 // Register a new user
 router.post('/register', async (req: Request, res: Response) => {
   try {
@@ -56,6 +75,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // Find the user
     const user = await User.findOne({ where: { email } });
     if (!user) {
+      console.error('User not found');
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
@@ -63,6 +83,7 @@ router.post('/login', async (req: Request, res: Response) => {
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      console.error('Invalid password');
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }

@@ -9,6 +9,7 @@ import { PassThrough } from 'stream';
 import { JSDOM } from 'jsdom';
 import { User } from '../models/user';
 import { authMiddleware } from '../middleware/auth';
+import { trackApiUsage } from '../routes/auth';
 import * as bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
@@ -30,10 +31,6 @@ export const apiRoutes = (app: express.Application): void => {
       instance: process.env.FLY_MACHINE_ID,
     });
     return;
-  });
-
-  router.get("/browse", (req: Request, res: Response) => {
-    res.sendFile(path.join(__dirname, "../../_test/test-client.html"));
   });
 
   router.get("/api/status", (req: Request, res: Response) => {
@@ -81,7 +78,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
   
   // Search endpoint that relays to Foundry's Quick Insert
-  router.get("/search", async (req: Request, res: Response) => {
+  router.get("/search", trackApiUsage, async (req: Request, res: Response) => {
     const query = req.query.query as string;
     const filter = req.query.filter as string;
     const clientId = req.query.clientId as string;
@@ -167,7 +164,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get entity by UUID
-  router.get("/get/:uuid", async (req: Request, res: Response) => {
+  router.get("/get/:uuid", trackApiUsage, async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const noCache = req.query.noCache === 'true';
@@ -260,7 +257,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all folders and compendiums
-  router.get("/structure", async (req: Request, res: Response) => {
+  router.get("/structure", trackApiUsage, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
@@ -318,7 +315,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all entity UUIDs in a folder or compendium
-  router.get("/contents/:path", async (req: Request, res: Response) => {
+  router.get("/contents/:path", trackApiUsage, async (req: Request, res: Response) => {
     const path = req.params.path;
     const clientId = req.query.clientId as string;
     
@@ -384,7 +381,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Create a new entity
-  router.post("/entity", express.json(), async (req: Request, res: Response) => {
+  router.post("/entity", trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const { type, folder, data } = req.body;
     
@@ -454,7 +451,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Update an entity by UUID
-  router.put("/entity/:uuid", express.json(), async (req: Request, res: Response) => {
+  router.put("/entity/:uuid", trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const updateData = req.body;
@@ -527,7 +524,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Delete an entity by UUID
-  router.delete("/entity/:uuid", async (req: Request, res: Response) => {
+  router.delete("/entity/:uuid", trackApiUsage, async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     
@@ -593,7 +590,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get recent rolls
-  router.get("/rolls", async (req: Request, res: Response) => {
+  router.get("/rolls", trackApiUsage, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const limit = parseInt(req.query.limit as string) || 20;
     
@@ -669,7 +666,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get last roll
-  router.get("/lastroll", async (req: Request, res: Response) => {
+  router.get("/lastroll", trackApiUsage, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
@@ -743,7 +740,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Create a new roll
-  router.post("/roll", express.json(), async (req: Request, res: Response) => {
+  router.post("/roll", trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const { formula, flavor, createChatMessage, whisper } = req.body;
     
@@ -816,7 +813,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get actor sheet HTML
-  router.get("/sheet/:uuid", async (req: Request, res: Response) => {
+  router.get("/sheet/:uuid", trackApiUsage, async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const format = req.query.format as string || 'html';

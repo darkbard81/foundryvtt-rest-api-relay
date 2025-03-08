@@ -24,8 +24,10 @@ app.use(express.json());
 
 // Serve static files from public directory
 app.use("/static", express.static(path.join(__dirname, "../public")));
+app.use("/static/css", express.static(path.join(__dirname, "../public/css")));
+app.use("/static/js", express.static(path.join(__dirname, "../public/js")));
 
-// Serve the signup page at the base URL
+// Serve the main HTML page at the root URL
 app.get("/", (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
 });
