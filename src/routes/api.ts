@@ -9,7 +9,7 @@ import { PassThrough } from 'stream';
 import { JSDOM } from 'jsdom';
 import { User } from '../models/User';
 import { authMiddleware } from '../middleware/auth';
-import bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
 export const apiRoutes = (app: express.Application): void => {
