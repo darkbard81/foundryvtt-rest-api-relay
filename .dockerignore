@@ -29,3 +29,12 @@
 # misc
 **\.DS_Store
 fly.toml
+
+node_modules
+dist
+.env
+Dockerfile
+docker-compose.yml
+.git
+.gitignore
+README.md
