@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import { log } from "../middleware/logger";
 import { DataStore } from "../core/DataStore"; 
@@ -7,6 +7,10 @@ import { Client } from "../core/Client"; // Import Client type
 import axios from 'axios';
 import { PassThrough } from 'stream';
 import { JSDOM } from 'jsdom';
+import { User } from '../models/User';
+import { authMiddleware } from '../middleware/auth';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
 export const apiRoutes = (app: express.Application): void => {
   // Setup handlers for storing search results and entity data from WebSocket
@@ -40,16 +44,40 @@ export const apiRoutes = (app: express.Application): void => {
     });
   });
 
+  // User registration
+  router.post("/register", express.json(), async (req: Request, res: Response) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const apiKey = crypto.randomBytes(16).toString('hex');
+
+    try {
+      const user = await User.create({ email, password: hashedPassword, apiKey });
+      res.status(201).json({ apiKey: user.apiKey });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to create user' });
+    }
+  });
+
   // Get all connected clients
-  router.get("/clients", (req: Request, res: Response) => {
-    const token = req.query.token as string;
-    const clients = ClientManager.getConnectedClients(token);
-    
-    res.json({
-      total: clients.length,
-      clients
-    });
-    return;
+  router.get("/clients", (req: Request, res: Response, next: NextFunction) => {
+    authMiddleware(req, res, next)
+      .then(() => {
+        // This only runs if auth was successful
+        const token = req.query.token as string;
+        const clients = ClientManager.getConnectedClients(token);
+        
+        res.json({
+          total: clients.length,
+          clients
+        });
+      })
+      .catch(err => next(err));
   });
   
   // Search endpoint that relays to Foundry's Quick Insert

@@ -7,6 +7,8 @@ import { wsRoutes } from "./routes/websocket";
 import { apiRoutes } from "./routes/api";
 import { config } from "dotenv";
 import * as path from "path";
+import { sequelize } from "./sequelize";
+import { User } from "./models/User";
 
 config();
 
@@ -64,9 +66,11 @@ app.get("/", (req: Request, res: Response) => {
 
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
 
-// Start HTTP server - listen on all interfaces (0.0.0.0)
-httpServer.listen(port, "0.0.0.0", () => {
-  log.info(`Server running on port ${port}`);
+// Sync database and start HTTP server
+sequelize.sync().then(() => {
+  httpServer.listen(port, "0.0.0.0", () => {
+    log.info(`Server running on port ${port}`);
+  });
 });
 
 // Handle graceful shutdown

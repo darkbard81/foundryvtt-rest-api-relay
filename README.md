@@ -30,6 +30,28 @@ pnpm build
 pnpm start
 ```
 
+### User Registration and API Key
+To use the API, you need to register and obtain an API key.
+
+#### Register a new user
+```
+POST /register
+{
+  "email": "user@example.com",
+  "password": "yourpassword"
+}
+```
+
+#### Example response
+```
+{
+  "apiKey": "your-generated-api-key"
+}
+```
+
+#### Using the API key
+Include the API key in the `x-api-key` header for all requests.
+
 ## Foundry REST API Module
 A Foundry VTT module that connects to the relay server and provides access to Foundry data.
 
