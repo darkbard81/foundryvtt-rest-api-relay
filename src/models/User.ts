@@ -1,51 +1,71 @@
-import { DataTypes, Model, Optional } from 'sequelize';
+import { Model, DataTypes } from 'sequelize';
 import { sequelize } from '../sequelize';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
-interface UserAttributes {
-  id: number;
-  email: string;
-  password: string;
-  apiKey: string;
-  requestsThisMonth: number;
-}
+export class User extends Model {
+  declare id: number;
+  declare email: string;
+  declare password: string;
+  declare apiKey: string;
+  declare requestsThisMonth: number;
+  declare createdAt: Date;
+  declare updatedAt: Date;
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'requestsThisMonth'> {}
-
-export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: number;
-  public email!: string;
-  public password!: string;
-  public apiKey!: string;
-  public requestsThisMonth!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  static async authenticate(email: string, password: string) {
+    const user = await User.findOne({ where: { email } });
+    if (!user) return null;
+    
+    const isValid = await bcrypt.compare(password, user.password);
+    return isValid ? user : null;
+  }
 }
 
 User.init({
   id: {
-    type: DataTypes.INTEGER.UNSIGNED,
+    type: DataTypes.INTEGER,
     autoIncrement: true,
-    primaryKey: true,
+    primaryKey: true
   },
   email: {
-    type: new DataTypes.STRING(128),
+    type: DataTypes.STRING,
     allowNull: false,
     unique: true,
+    validate: {
+      isEmail: true
+    }
   },
   password: {
-    type: new DataTypes.STRING(128),
-    allowNull: false,
+    type: DataTypes.STRING,
+    allowNull: false
   },
   apiKey: {
-    type: new DataTypes.STRING(128),
+    type: DataTypes.STRING,
     allowNull: false,
     unique: true,
+    defaultValue: () => crypto.randomBytes(16).toString('hex')
   },
   requestsThisMonth: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    defaultValue: 0,
-  },
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  }
 }, {
   sequelize,
-  tableName: 'users',
+  modelName: 'User',
+  hooks: {
+    beforeCreate: async (user: User) => {
+      if (user.password) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    },
+    beforeUpdate: async (user: User) => {
+      if (user.changed('password')) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    }
+  }
 });
+
+export default User;
