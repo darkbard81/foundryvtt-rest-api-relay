@@ -158,4 +158,38 @@ router.post('/regenerate-key', async (req: Request, res: Response) => {
   }
 });
 
+// Get user data (for authenticated users)
+router.get('/user-data', async (req: Request, res: Response) => {
+  try {
+    // Get API key from header
+    const apiKey = req.header('x-api-key');
+    
+    if (!apiKey) {
+      res.status(401).json({ error: 'API key is required' });
+      return;
+    }
+    
+    // Find user by API key
+    const user = await User.findOne({ where: { apiKey } });
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    
+    // Return user data (exclude sensitive information)
+    res.status(200).json({
+      id: user.getDataValue('id'),
+      email: user.getDataValue('email'),
+      apiKey: user.getDataValue('apiKey'),
+      requestsThisMonth: user.getDataValue('requestsThisMonth'),
+      createdAt: user.getDataValue('createdAt')
+    });
+    return;
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    res.status(500).json({ error: 'Failed to fetch user data' });
+    return;
+  }
+});
+
 export default router;

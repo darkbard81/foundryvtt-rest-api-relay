@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
 import { corsMiddleware } from "./middleware/cors";
@@ -21,6 +21,15 @@ app.use(corsMiddleware());
 
 // Parse JSON bodies
 app.use(express.json());
+
+// Add global error handler
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  log.error('Unhandled error:', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+  // Don't call next with error to prevent Express from handling it again
+});
 
 // Serve static files from public directory
 app.use("/static", express.static(path.join(__dirname, "../public")));
@@ -69,12 +78,3 @@ const shutdown = (): void => {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-
-// Add after all other middleware and routes
-app.use((err: any, req: Request, res: Response, next: Function) => {
-  log.error('Unhandled error:', err);
-  if (!res.headersSent) {
-    res.status(500).json({ error: 'Internal server error' });
-  }
-  next(err);
-});

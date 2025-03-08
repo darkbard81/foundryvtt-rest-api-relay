@@ -23,7 +23,38 @@ document.addEventListener("DOMContentLoaded", function () {
   // Check if user is already logged in (from localStorage)
   const userData = JSON.parse(localStorage.getItem("foundryApiUser"));
   if (userData) {
+    // First show dashboard with cached data
     showDashboard(userData);
+
+    // Then fetch fresh data
+    fetchUserData(userData.apiKey);
+  }
+
+  // Function to fetch fresh user data
+  async function fetchUserData(apiKey) {
+    try {
+      const response = await fetch("/user-data", {
+        method: "GET",
+        headers: {
+          "x-api-key": apiKey,
+        },
+      });
+
+      if (response.ok) {
+        const freshData = await response.json();
+
+        // Update localStorage with fresh data
+        localStorage.setItem("foundryApiUser", JSON.stringify(freshData));
+
+        // Update dashboard with fresh data
+        document.getElementById("user-email").textContent = freshData.email;
+        document.getElementById("user-api-key").textContent = freshData.apiKey;
+        document.getElementById("user-requests").textContent =
+          freshData.requestsThisMonth || 0;
+      }
+    } catch (error) {
+      console.error("Failed to fetch fresh user data:", error);
+    }
   }
 
   // Handle signup form submission
