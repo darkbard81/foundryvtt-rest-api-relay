@@ -36,7 +36,7 @@ RUN pnpm build
 ENV NODE_ENV=production
 
 # Expose port (use 3000 to match fly.toml)
-EXPOSE 3000
+EXPOSE 3010
 
 # Start the application
 CMD ["node", "dist/index.js"]
