@@ -4,8 +4,6 @@ name: Deploy and Release
 
 on:
   push:
-    branches:
-      - main
     tags:
       - '*.*.*'
 
