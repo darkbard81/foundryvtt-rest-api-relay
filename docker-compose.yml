@@ -1,14 +1,13 @@
-version: '3'
 services:
   relay:
-    image: jusranotheridea/foundryvtt-rest-api-relay:latest
+    image: threehats/foundryvtt-rest-api-relay:latest
     container_name: foundryvtt-rest-api-relay
     ports:
       - "3010:3010"
     environment:
       - NODE_ENV=production
       - PORT=3010
-      # Add other environment variables here
     volumes:
       - ./data:/app/data
+    command: pnpm local
     restart: unless-stopped
