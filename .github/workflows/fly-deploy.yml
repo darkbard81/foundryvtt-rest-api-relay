@@ -70,7 +70,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: jusranotheridea/foundryvtt-rest-api-relay
+          images: ${{ secrets.DOCKER_USERNAME }}/foundryvtt-rest-api-relay
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}},enable=${{ startsWith(github.ref, 'refs/tags/') }}
