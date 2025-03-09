@@ -97,19 +97,14 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all connected clients
-  router.get("/clients", (req: Request, res: Response, next: NextFunction) => {
-    authMiddleware(req, res, next)
-      .then(() => {
-        // This only runs if auth was successful
-        const token = req.query.token as string;
-        const clients = ClientManager.getConnectedClients(token);
-        
-        safeResponse(res, 200, {
-          total: clients.length,
-          clients
-        });
-      })
-      .catch(err => next(err));
+  router.get("/clients", authMiddleware, (req: Request, res: Response) => {
+    const token = req.query.token as string;
+    const clients = ClientManager.getConnectedClients(token);
+    
+    safeResponse(res, 200, {
+      total: clients.length,
+      clients
+    });
   });
   
   // Search endpoint that relays to Foundry's Quick Insert

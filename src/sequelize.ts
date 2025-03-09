@@ -1,26 +1,8 @@
-import { Sequelize } from 'sequelize';
+// src/sequelize.ts
+import { DatabaseAdapter } from './database/adapter';
 import { log } from './middleware/logger';
 
-const dbUrl = process.env.DATABASE_URL;
-
-if (!dbUrl) {
-  log.error('DATABASE_URL environment variable is not set');
-  process.exit(1);
-}
-
-const isProduction = process.env.NODE_ENV === 'production';
-
-export const sequelize = new Sequelize(dbUrl, {
-  dialect: 'postgres',
-  protocol: 'postgres',
-  dialectOptions: {
-    ssl: isProduction ? {
-      require: true,
-      rejectUnauthorized: false
-    } : false
-  },
-  logging: false
-});
+export const sequelize = DatabaseAdapter.getSequelize();
 
 // Test the connection
 sequelize.authenticate()
