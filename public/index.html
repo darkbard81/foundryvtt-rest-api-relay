@@ -14,11 +14,6 @@
     </header>
 
     <main>
-      <div class="tabs">
-        <button class="tab-button active" data-tab="signup">Sign Up</button>
-        <button class="tab-button" data-tab="login">Sign In</button>
-      </div>
-
       <div class="tab-content active" id="signup">
         <h2>Create Account</h2>
         <form id="signup-form">
@@ -65,11 +60,39 @@
         </div>
         <button id="logout-btn" class="btn">Sign Out</button>
       </div>
+
+      <div class="tab-content" id="readme">
+        <h2>Read Me</h2>
+        <p>Information about the project...</p>
+      </div>
+
+      <div class="tab-content" id="documentation">
+        <h2>Documentation</h2>
+        <p>API documentation...</p>
+      </div>
+
+      <div class="tab-content" id="reportbug">
+        <h2>Report a Bug</h2>
+        <form id="reportbug-form">
+          <div class="form-group">
+            <label for="bug-description">Bug Description</label>
+            <textarea id="bug-description" required></textarea>
+          </div>
+          <button type="submit" class="btn">Submit</button>
+        </form>
+        <div id="reportbug-message" class="message"></div>
+      </div>
     </main>
 
-    <footer>
-      <p>© 2025 Foundry REST API</p>
-    </footer>
+    <nav class="sidebar">
+      <ul>
+        <li><button class="tab-button active" data-tab="signup">Sign Up</button></li>
+        <li><button class="tab-button" data-tab="login">Sign In</button></li>
+        <li><button class="tab-button" data-tab="readme">Read Me</button></li>
+        <li><button class="tab-button" data-tab="documentation">Documentation</button></li>
+        <li><button class="tab-button" data-tab="reportbug">Report a Bug</button></li>
+      </ul>
+    </nav>
   </div>
   <script src="/static/js/main.js"></script>
 </body>

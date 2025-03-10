@@ -163,6 +163,39 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  // Handle report bug form submission
+  const reportBugForm = document.getElementById("reportbug-form");
+  reportBugForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const description = document.getElementById("bug-description").value;
+    const messageEl = document.getElementById("reportbug-message");
+
+    try {
+      const response = await fetch("/report-bug", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ description }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        messageEl.textContent = "Bug reported successfully!";
+        messageEl.className = "message success";
+        reportBugForm.reset();
+      } else {
+        messageEl.textContent = data.error || "Failed to report bug.";
+        messageEl.className = "message error";
+      }
+    } catch (error) {
+      messageEl.textContent = "An error occurred. Please try again.";
+      messageEl.className = "message error";
+      console.error(error);
+    }
+  });
+
   // Function to show dashboard
   function showDashboard(userData) {
     // Hide all tabs and show dashboard

@@ -76,17 +76,18 @@ export const apiRoutes = (app: express.Application): void => {
       const user = await User.create({
         email,
         password, // Will be hashed by the beforeCreate hook
+        apiKey: crypto.randomBytes(16).toString('hex'), // Explicitly generate an API key
         requestsThisMonth: 0
       });
       
-      console.log(`User created: ${user.email} with API key: ${user.apiKey}`);
+      console.log(`User created: ${user.getDataValue('email')} with API key: ${user.getDataValue('apiKey')}`);
       
       // Return the user (exclude password)
       safeResponse(res, 201, {
-        id: user.id,
-        email: user.email,
-        apiKey: user.apiKey,
-        createdAt: user.createdAt
+        id: user.getDataValue('id'),
+        email: user.getDataValue('email'),
+        apiKey: user.getDataValue('apiKey'),
+        createdAt: user.getDataValue('createdAt')
       });
       return;
     } catch (error) {
