@@ -13,6 +13,26 @@
       <p>Connect your Foundry VTT worlds to external applications</p>
     </header>
 
+    <nav class="sidebar">
+      <!-- Logged-out menu -->
+      <ul id="logged-out-menu">
+        <li><button class="tab-button active" data-tab="signup">Sign Up</button></li>
+        <li><button class="tab-button" data-tab="login">Sign In</button></li>
+        <li><button class="tab-button" data-tab="readme">Read Me</button></li>
+        <li><button class="tab-button" data-tab="documentation">Documentation</button></li>
+        <li><button class="tab-button" data-tab="reportbug">Report a Bug</button></li>
+      </ul>
+      
+      <!-- Logged-in menu (hidden by default) -->
+      <ul id="logged-in-menu" style="display: none;">
+        <li><button class="tab-button active" data-tab="dashboard">Dashboard</button></li>
+        <li><button class="tab-button" data-tab="documentation">Documentation</button></li>
+        <li><button class="tab-button" data-tab="reportbug">Report a Bug</button></li>
+        <li><button class="tab-button" data-tab="readme">About</button></li>
+        <li><button id="logout-btn" class="tab-button">Sign Out</button></li>
+      </ul>
+    </nav>
+
     <main>
       <div class="tab-content active" id="signup">
         <h2>Create Account</h2>
@@ -50,7 +70,7 @@
         <h2>Your Account</h2>
         <div class="user-info">
           <p><strong>Email:</strong> <span id="user-email"></span></p>
-          <p><strong>API Key:</strong> <span id="user-api-key"></span> <button id="copy-api-key" class="btn-small">Copy</button></p>
+          <p class="api-key-container"><strong>API Key:</strong> <span id="user-api-key"></span> <button id="copy-api-key" class="btn-small">Copy</button></p>
           <p><strong>Requests This Month:</strong> <span id="user-requests"></span></p>
         </div>
         <div class="api-docs">
@@ -58,7 +78,6 @@
           <pre><code>curl -X GET https://foundryvtt-rest-api-relay.fly.dev/clients \
   -H "x-api-key: YOUR_API_KEY"</code></pre>
         </div>
-        <button id="logout-btn" class="btn">Sign Out</button>
       </div>
 
       <div class="tab-content" id="readme">
@@ -83,16 +102,6 @@
         <div id="reportbug-message" class="message"></div>
       </div>
     </main>
-
-    <nav class="sidebar">
-      <ul>
-        <li><button class="tab-button active" data-tab="signup">Sign Up</button></li>
-        <li><button class="tab-button" data-tab="login">Sign In</button></li>
-        <li><button class="tab-button" data-tab="readme">Read Me</button></li>
-        <li><button class="tab-button" data-tab="documentation">Documentation</button></li>
-        <li><button class="tab-button" data-tab="reportbug">Report a Bug</button></li>
-      </ul>
-    </nav>
   </div>
   <script src="/static/js/main.js"></script>
 </body>

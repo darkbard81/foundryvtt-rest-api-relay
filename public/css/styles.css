@@ -33,6 +33,8 @@ body {
     overflow: hidden;
     width: 100%;
     height: 100dvh;
+    position: relative; /* Added to properly position children */
+    flex-direction: row-reverse; /* Reverse to move sidebar to right */
 }
 
 header {
@@ -41,8 +43,11 @@ header {
     background-color: var(--primary-color);
     color: white;
     position: absolute;
-    width: 86dvw;
-    height: 100dvh;
+    width: calc(100% - 14dvw);
+    left: 0; /* Changed from right to left */
+    height: auto; /* Changed from fixed height */
+    min-height: 8rem;
+    z-index: 5;
 }
 
 header h1 {
@@ -54,6 +59,12 @@ header h1 {
     color: white;
     padding: 2rem;
     width: 14dvw;
+    min-width: 180px;
+    position: relative;
+    z-index: 10;
+    height: 100dvh;
+    overflow-y: auto;
+    /* No need to change position since we're using flex-direction: row-reverse */
 }
 
 .sidebar ul {
@@ -86,7 +97,12 @@ main {
     flex: 1;
     padding: 2rem;
     padding-top: 10rem;
-    z-index: 100;
+    z-index: 1;
+    overflow-y: auto;
+    height: 100dvh;
+    width: calc(100% - 14dvw);
+    position: absolute;
+    left: 0; /* Changed from right to left */
 }
 
 .tab-content {
@@ -188,4 +204,136 @@ footer {
     text-align: center;
     color: #666;
     font-size: 0.875rem;
+}
+
+/* Mobile menu toggle */
+.mobile-menu-toggle {
+    display: none;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px;
+    font-size: 1.5rem;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 20;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* Copy button styling */
+.btn-small {
+    background-color: var(--secondary-color);
+    color: white;
+    padding: 0.3rem 0.7rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-left: 0.5rem;
+}
+
+/* Add media queries for responsiveness */
+@media screen and (max-width: 992px) {
+    .container {
+        flex-direction: column;
+    }
+    
+    .sidebar {
+        width: 100%;
+        height: auto;
+        padding: 1rem;
+        display: flex;
+        justify-content: center;
+        z-index: 15;
+    }
+    
+    .sidebar ul {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .sidebar li {
+        margin: 0.5rem;
+    }
+    
+    header {
+        width: 100%;
+        position: relative;
+        padding: 1.5rem;
+    }
+    
+    main {
+        width: 100%;
+        position: relative;
+        padding-top: 2rem;
+        height: auto;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    body {
+        padding: 0;
+    }
+    
+    .container {
+        box-shadow: none;
+    }
+    
+    .sidebar {
+        padding: 1rem 0.5rem;
+    }
+    
+    .sidebar .tab-button {
+        padding: 0.5rem 0.1rem;
+        font-size: 0.8rem;
+    }
+    
+    main {
+        padding: 1.5rem;
+    }
+    
+    input, textarea, .btn {
+        font-size: 16px; /* Prevents zoom on input focus on iOS */
+    }
+    
+    .user-info {
+        overflow-wrap: break-word;
+        word-break: break-all;
+    }
+    
+    pre {
+        max-width: 100%;
+        overflow-x: auto;
+    }
+}
+
+@media screen and (max-width: 576px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+    
+    header p {
+        font-size: 0.9rem;
+    }
+    
+    .sidebar {
+        overflow-x: auto;
+    }
+    
+    .sidebar ul {
+        flex-wrap: nowrap;
+        width: max-content;
+    }
+    
+    .form-group {
+        margin-bottom: 0.75rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
 }

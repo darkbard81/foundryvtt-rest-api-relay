@@ -1,35 +1,61 @@
 document.addEventListener("DOMContentLoaded", function () {
+  // Get menu elements
+  const loggedOutMenu = document.getElementById("logged-out-menu");
+  const loggedInMenu = document.getElementById("logged-in-menu");
+  
   // Tab switching functionality
-  const tabButtons = document.querySelectorAll(".tab-button");
-  const tabContents = document.querySelectorAll(".tab-content");
-
-  tabButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      const tabName = button.getAttribute("data-tab");
-
-      // Don't switch to dashboard from buttons - only programmatically
-      if (tabName === "dashboard") return;
-
-      // Deactivate all tabs
-      tabButtons.forEach((btn) => btn.classList.remove("active"));
-      tabContents.forEach((content) => content.classList.remove("active"));
-
-      // Activate the selected tab
-      button.classList.add("active");
-      document.getElementById(tabName).classList.add("active");
+  function setupTabButtons(parent) {
+    const tabButtons = parent.querySelectorAll(".tab-button");
+    const tabContents = document.querySelectorAll(".tab-content");
+    
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const tabName = button.getAttribute("data-tab");
+        
+        // Skip if this is the logout button or dashboard (handled separately)
+        if (!tabName) return;
+        
+        // Don't switch to dashboard from buttons - only programmatically
+        if (tabName === "dashboard" && !button.classList.contains("active")) return;
+        
+        // Deactivate all tabs
+        parent.querySelectorAll(".tab-button").forEach((btn) => btn.classList.remove("active"));
+        tabContents.forEach((content) => content.classList.remove("active"));
+        
+        // Activate the selected tab
+        button.classList.add("active");
+        document.getElementById(tabName).classList.add("active");
+      });
     });
-  });
-
+  }
+  
+  // Set up tab switching for both menus
+  setupTabButtons(loggedOutMenu);
+  setupTabButtons(loggedInMenu);
+  
   // Check if user is already logged in (from localStorage)
   const userData = JSON.parse(localStorage.getItem("foundryApiUser"));
   if (userData) {
-    // First show dashboard with cached data
+    // First show dashboard with cached data and switch to logged-in menu
     showDashboard(userData);
-
+    switchToLoggedInMenu();
+    
     // Then fetch fresh data
     fetchUserData(userData.apiKey);
   }
-
+  
+  // Function to switch to logged-in menu
+  function switchToLoggedInMenu() {
+    loggedOutMenu.style.display = "none";
+    loggedInMenu.style.display = "block";
+  }
+  
+  // Function to switch to logged-out menu
+  function switchToLoggedOutMenu() {
+    loggedInMenu.style.display = "none";
+    loggedOutMenu.style.display = "block";
+  }
+  
   // Function to fetch fresh user data
   async function fetchUserData(apiKey) {
     try {
@@ -80,9 +106,10 @@ document.addEventListener("DOMContentLoaded", function () {
         messageEl.textContent = "Account created successfully!";
         messageEl.className = "message success";
 
-        // Save user data and show dashboard
+        // Save user data, show dashboard, and switch to logged-in menu
         localStorage.setItem("foundryApiUser", JSON.stringify(data));
         showDashboard(data);
+        switchToLoggedInMenu();
       } else {
         messageEl.textContent = data.error || "Failed to create account.";
         messageEl.className = "message error";
@@ -117,9 +144,10 @@ document.addEventListener("DOMContentLoaded", function () {
         messageEl.textContent = "Login successful!";
         messageEl.className = "message success";
 
-        // Save user data and show dashboard
+        // Save user data, show dashboard, and switch to logged-in menu
         localStorage.setItem("foundryApiUser", JSON.stringify(data));
         showDashboard(data);
+        switchToLoggedInMenu();
       } else {
         messageEl.textContent = data.error || "Invalid credentials.";
         messageEl.className = "message error";
@@ -135,13 +163,17 @@ document.addEventListener("DOMContentLoaded", function () {
   const logoutBtn = document.getElementById("logout-btn");
   logoutBtn.addEventListener("click", () => {
     localStorage.removeItem("foundryApiUser");
+    
+    // Switch to logged-out menu
+    switchToLoggedOutMenu();
 
     // Show signup tab
-    tabButtons.forEach((btn) => btn.classList.remove("active"));
-    tabContents.forEach((content) => content.classList.remove("active"));
-
-    document.querySelector('[data-tab="signup"]').classList.add("active");
+    const signupButton = document.querySelector('[data-tab="signup"]');
+    signupButton.classList.add("active");
     document.getElementById("signup").classList.add("active");
+    
+    // Hide dashboard tab
+    document.getElementById("dashboard").classList.remove("active");
 
     // Clear forms
     signupForm.reset();
@@ -199,9 +231,16 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to show dashboard
   function showDashboard(userData) {
     // Hide all tabs and show dashboard
-    tabButtons.forEach((btn) => btn.classList.remove("active"));
+    const tabContents = document.querySelectorAll(".tab-content");
     tabContents.forEach((content) => content.classList.remove("active"));
     document.getElementById("dashboard").classList.add("active");
+    
+    // If we're showing the dashboard, also make sure dashboard tab is active in the logged-in menu
+    const dashboardTab = loggedInMenu.querySelector('[data-tab="dashboard"]');
+    if (dashboardTab) {
+      loggedInMenu.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
+      dashboardTab.classList.add("active");
+    }
 
     // Populate user data
     document.getElementById("user-email").textContent = userData.email;
