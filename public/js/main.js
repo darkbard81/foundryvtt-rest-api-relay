@@ -176,8 +176,8 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("dashboard").classList.remove("active");
 
     // Clear forms
-    signupForm.reset();
-    loginForm.reset();
+    document.getElementById("signup-form").reset();
+    document.getElementById("login-form").reset();
     document.getElementById("signup-message").textContent = "";
     document.getElementById("login-message").textContent = "";
   });

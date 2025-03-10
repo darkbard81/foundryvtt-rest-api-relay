@@ -75,7 +75,8 @@ header h1 {
     margin-bottom: 1rem;
 }
 
-.sidebar .tab-button {
+.sidebar .tab-button,
+.sidebar .external-link {
     width: 100%;
     padding: 0.75rem 1.5rem;
     background: none;
@@ -85,12 +86,19 @@ header h1 {
     color: white;
     text-align: left;
     opacity: 0.7;
+    display: block;
+    text-decoration: none;
 }
 
 .sidebar .tab-button.active {
     background-color: var(--accent-color);
     opacity: 1;
     font-weight: 500;
+}
+
+.sidebar .external-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    opacity: 1;
 }
 
 main {
@@ -286,7 +294,8 @@ footer {
         padding: 1rem 0.5rem;
     }
     
-    .sidebar .tab-button {
+    .sidebar .tab-button,
+    .sidebar .external-link {
         padding: 0.5rem 0.1rem;
         font-size: 0.8rem;
     }
