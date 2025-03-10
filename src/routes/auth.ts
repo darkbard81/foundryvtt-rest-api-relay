@@ -2,54 +2,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/user';
 import crypto from 'crypto';
-import { log } from '../middleware/logger';
 
 const router = Router();
-
-// Flag to check if we're using memory store
-const isMemoryStore = process.env.DB_TYPE === 'memory';
-
-// Middleware to increment request count
-export const trackApiUsage = async (req: Request, res: Response, next: NextFunction) => {
-  // Skip usage tracking in memory store mode
-  if (isMemoryStore) {
-    return next();
-  }
-  
-  // Normal API usage tracking
-  try {
-    const apiKey = req.headers['x-api-key'] as string;
-    
-    if (apiKey) {
-      // Use the User.findOne method that works with both sequelize and memory store
-      const user = await User.findOne({ where: { apiKey } });
-      
-      if (user) {
-        // Increment requests this month
-        if ('requestsThisMonth' in user) {
-          user.requestsThisMonth += 1;
-          // Save using proper method based on storage type
-          if ('save' in user && typeof user.save === 'function') {
-            await user.save();
-          }
-        }
-      } else {
-        log.warn(`API key not found: ${apiKey}`);
-        res.status(401).json({ error: 'Invalid API key' });
-        return;
-      }
-    } else {
-      log.warn('API key is required for usage tracking');
-      res.status(401).json({ error: 'API key is required' });
-      return;
-    }
-    
-    next();
-  } catch (error) {
-    log.error(`Error tracking API usage: ${error}`);
-    next(); // Continue even if tracking fails
-  }
-};
 
 // Register a new user
 router.post('/register', async (req: Request, res: Response) => {

@@ -5,14 +5,14 @@ import { ClientManager } from "./ClientManager";
 export class Client {
   private ws: WebSocket;
   private id: string;
-  private token: string;
+  private apiKey: string;
   private lastSeen: number;
   private connected: boolean;
 
-  constructor(ws: WebSocket, id: string, token: string) {
+  constructor(ws: WebSocket, id: string, apiKey: string) {
     this.ws = ws;
     this.id = id;
-    this.token = token;
+    this.apiKey = apiKey;
     this.lastSeen = Date.now();
     this.connected = true;
     this.setupHandlers();
@@ -84,8 +84,8 @@ export class Client {
     return this.id;
   }
 
-  public getToken(): string {
-    return this.token;
+  public getApiKey(): string {
+    return this.apiKey;
   }
 
   public updateLastSeen(): void {

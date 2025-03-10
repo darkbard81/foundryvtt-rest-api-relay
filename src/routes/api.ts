@@ -1,15 +1,13 @@
 import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import { log } from "../middleware/logger";
-import { DataStore } from "../core/DataStore"; 
 import { ClientManager } from "../core/ClientManager";
 import { Client } from "../core/Client"; // Import Client type
 import axios from 'axios';
 import { PassThrough } from 'stream';
 import { JSDOM } from 'jsdom';
 import { User } from '../models/user';
-import { authMiddleware } from '../middleware/auth';
-import { trackApiUsage } from '../routes/auth';
+import { authMiddleware, trackApiUsage } from '../middleware/auth';
 import * as bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 
@@ -99,8 +97,8 @@ export const apiRoutes = (app: express.Application): void => {
 
   // Get all connected clients
   router.get("/clients", authMiddleware, (req: Request, res: Response) => {
-    const token = req.query.token as string;
-    const clients = ClientManager.getConnectedClients(token);
+    const apiKey = req.header('x-api-key');
+    const clients = ClientManager.getConnectedClients(apiKey);
     
     safeResponse(res, 200, {
       total: clients.length,
@@ -109,7 +107,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
   
   // Search endpoint that relays to Foundry's Quick Insert
-  router.get("/search", trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/search", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const query = req.query.query as string;
     const filter = req.query.filter as string;
     const clientId = req.query.clientId as string;
@@ -135,10 +133,14 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id),
+        error: "Invalid client ID",
         tip: "Get a list of available client IDs at /clients"
       });
+      return;
+    }
+
+    if (client.getApiKey() !== req.user.apiKey) {
+      safeResponse(res, 403, { error: "Client ID does not match your API key" });
       return;
     }
     
@@ -155,9 +157,6 @@ export const apiRoutes = (app: express.Application): void => {
         filter: filter,
         timestamp: Date.now() 
       });
-      
-      // Clear any previous cached results for this client
-      DataStore.clearSearchResults(clientId);
       
       // Send request to Foundry for search
       const sent = client.send({
@@ -195,7 +194,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get entity by UUID
-  router.get("/get/:uuid", trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/get/:uuid", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const noCache = req.query.noCache === 'true';
@@ -217,27 +216,14 @@ export const apiRoutes = (app: express.Application): void => {
     // Find a connected client with this ID
     const client = ClientManager.getClient(clientId);
     if (!client) {
-      // Get a list of available clients to help the user
-      const availableClients = ClientManager.getConnectedClients();
-      
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClientIds: availableClients.map(c => c.id),
+        error: "Invalid client ID",
         tip: "Get a list of available client IDs at /clients"
       });
       return;
     }
     
     try {
-      // Check if we already have cached entity and should use it
-      if (!noCache) {
-        const cachedEntity = DataStore.getEntity(uuid);
-        if (cachedEntity) {
-          safeResponse(res, 200, cachedEntity);
-          return;
-        }
-      }
-      
       // Generate a unique requestId for this entity request
       const requestId = `entity_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
@@ -248,11 +234,6 @@ export const apiRoutes = (app: express.Application): void => {
         uuid,
         timestamp: Date.now() 
       });
-      
-      // If noCache is true, clear any existing cached entity
-      if (noCache) {
-        DataStore.clearEntityCache(uuid);
-      }
       
       // Send request to Foundry for entity data
       const sent = client.send({
@@ -288,7 +269,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all folders and compendiums
-  router.get("/structure", trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/structure", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
@@ -302,8 +283,7 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+        error: "Invalid client ID"
       });
 			return;
     }
@@ -346,7 +326,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all entity UUIDs in a folder or compendium
-  router.get("/contents/:path", trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/contents/:path", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const path = req.params.path;
     const clientId = req.query.clientId as string;
     
@@ -366,8 +346,7 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+        error: "Invalid client ID"
       });
 			return;
     }
@@ -412,7 +391,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Create a new entity
-  router.post("/entity", trackApiUsage, express.json(), async (req: Request, res: Response) => {
+  router.post("/entity", authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const { type, folder, data } = req.body;
     
@@ -435,8 +414,7 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+        error: "Invalid client ID"
       });
 			return;
     }
@@ -482,7 +460,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Update an entity by UUID
-  router.put("/entity/:uuid", trackApiUsage, express.json(), async (req: Request, res: Response) => {
+  router.put("/entity/:uuid", authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const updateData = req.body;
@@ -508,8 +486,7 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+        error: "Invalid client ID"
       });
 			return;
     }
@@ -555,7 +532,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Delete an entity by UUID
-  router.delete("/entity/:uuid", trackApiUsage, async (req: Request, res: Response) => {
+  router.delete("/entity/:uuid", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     
@@ -575,8 +552,7 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+        error: "Invalid client ID"
       });
 			return;
     }
@@ -621,7 +597,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get recent rolls
-  router.get("/rolls", trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/rolls", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const limit = parseInt(req.query.limit as string) || 20;
     
@@ -636,25 +612,13 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+        error: "Invalid client ID"
       });
 			return;
     }
     
     try {
-      // Check if we have cached roll data
-      const storedRolls = DataStore.get(clientId, 'recent-rolls') as any[];
-      
-      if (storedRolls && storedRolls.length > 0) {
-        safeResponse(res, 200, {
-          clientId,
-          rolls: storedRolls.slice(0, limit)
-        });
-			  return;
-      }
-      
-      // No cached data, request from Foundry client
+      // Request from Foundry client
       const requestId = `rolls_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
       pendingRequests.set(requestId, { 
@@ -697,7 +661,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get last roll
-  router.get("/lastroll", trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/lastroll", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
@@ -711,25 +675,13 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+        error: "Invalid client ID"
       });
 			return;
     }
     
     try {
-      // Check if we have cached roll data
-      const storedRolls = DataStore.get(clientId, 'recent-rolls') as any[];
-      
-      if (storedRolls && storedRolls.length > 0) {
-        safeResponse(res, 200, {
-          clientId,
-          roll: storedRolls[0]
-        });
-			  return;
-      }
-      
-      // No cached data, request from Foundry client
+      // Request from Foundry client
       const requestId = `lastroll_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       
       pendingRequests.set(requestId, { 
@@ -771,7 +723,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Create a new roll
-  router.post("/roll", trackApiUsage, express.json(), async (req: Request, res: Response) => {
+  router.post("/roll", authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const { formula, flavor, createChatMessage, whisper } = req.body;
     
@@ -794,8 +746,7 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+        error: "Invalid client ID"
       });
 			return;
     }
@@ -844,7 +795,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get actor sheet HTML
-  router.get("/sheet/:uuid", trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/sheet/:uuid", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const format = req.query.format as string || 'html';
@@ -863,8 +814,7 @@ export const apiRoutes = (app: express.Application): void => {
     const client = ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
-        error: "No connected Foundry instance found with this client ID",
-        availableClients: ClientManager.getConnectedClients().map(c => c.id)
+        error: "Invalid client ID"
       });
 			return;
     }
@@ -1047,8 +997,6 @@ function setupMessageHandlers() {
       const pending = pendingRequests.get(data.requestId)!;
       
       if (pending.type === 'search' && pending.clientId) {
-        // Store results in DataStore for reference
-        DataStore.storeSearchResults(pending.clientId, data.results);
         
         // Send response with metadata
         safeResponse(pending.res, 200, {
@@ -1065,11 +1013,6 @@ function setupMessageHandlers() {
         return;
       }
     }
-    
-    // Store results in case they're for a request we haven't processed yet
-    if (data.results && client) {
-      DataStore.storeSearchResults(client.getId(), data.results);
-    }
   });
   
   // Handler for entity data
@@ -1080,8 +1023,6 @@ function setupMessageHandlers() {
       const pending = pendingRequests.get(data.requestId)!;
       
       if (pending.type === 'entity' && data.data) {
-        // Store entity in DataStore
-        DataStore.storeEntity(data.uuid, data.data);
         
         // Include metadata in response wrapper
         safeResponse(pending.res, 200, {
@@ -1095,11 +1036,6 @@ function setupMessageHandlers() {
         pendingRequests.delete(data.requestId);
         return;
       }
-    }
-    
-    // Store entity in case it's for a request we haven't processed yet
-    if (data.uuid && data.data) {
-      DataStore.storeEntity(data.uuid, data.data);
     }
   });
 
@@ -1247,33 +1183,6 @@ function setupMessageHandlers() {
     }
   });
 
-  // Handler for roll data
-  ClientManager.onMessageType("roll-data", (client: Client, data: any) => {
-    log.info(`Received roll data from client: ${client.getId()}`);
-    
-    // Store the roll data
-    const clientId = client.getId();
-    let storedRolls = DataStore.get(clientId, 'recent-rolls') || [];
-    
-    // Check if this roll ID already exists
-    const existingIndex = storedRolls.findIndex((roll: any) => roll.id === data.data.id);
-    if (existingIndex !== -1) {
-      // If it exists, update it instead of adding a new entry
-      storedRolls[existingIndex] = data.data;
-    } else {
-      // Add to beginning of array
-      storedRolls.unshift(data.data);
-      
-      // Limit array size
-      if (storedRolls.length > 20) {
-        storedRolls.length = 20;
-      }
-    }
-    
-    // Save back to data store
-    DataStore.set(clientId, 'recent-rolls', storedRolls);
-  });
-
   // Handler for rolls data response
   ClientManager.onMessageType("rolls-data", (client: Client, data: any) => {
     log.info(`Received rolls data response for requestId: ${data.requestId}`);
@@ -1282,9 +1191,6 @@ function setupMessageHandlers() {
       const pending = pendingRequests.get(data.requestId)!;
       
       if (pending.type === 'rolls') {
-        // Store the rolls
-        DataStore.set(client.getId(), 'recent-rolls', data.data || []);
-        
         // Send response
         safeResponse(pending.res, 200, {
           clientId: client.getId(),
@@ -1305,23 +1211,6 @@ function setupMessageHandlers() {
       const pending = pendingRequests.get(data.requestId)!;
       
       if (pending.type === 'lastroll') {
-        // Update the stored rolls if we have data
-        if (data.data) {
-          let storedRolls = DataStore.get(client.getId(), 'recent-rolls') || [];
-          
-          // Add to beginning of array if not already there
-          const exists = storedRolls.some((roll: any) => roll.id === data.data.id);
-          if (!exists) {
-            storedRolls.unshift(data.data);
-            
-            // Limit array size
-            if (storedRolls.length > 20) {
-              storedRolls.length = 20;
-            }
-            
-            DataStore.set(client.getId(), 'recent-rolls', storedRolls);
-          }
-        }
         
         // Send response
         safeResponse(pending.res, 200, {
@@ -1349,30 +1238,6 @@ function setupMessageHandlers() {
             error: data.error || "Failed to perform roll"
           });
         } else {
-          // If data indicates chat message was created, we don't need to update stored rolls
-          // as the roll-data event will be sent separately
-          if (!data.data.chatMessageCreated) {
-            // Only update stored rolls if the roll wasn't created as a chat message
-            // (which would trigger the createChatMessage hook)
-            let storedRolls = DataStore.get(client.getId(), 'recent-rolls') || [];
-            
-            // Check if this roll ID already exists
-            const existingIndex = storedRolls.findIndex((roll: any) => roll.id === data.data.id);
-            if (existingIndex !== -1) {
-              // If it exists, update it instead of adding a new entry
-              storedRolls[existingIndex] = data.data;
-            } else {
-              // Add to beginning of array
-              storedRolls.unshift(data.data);
-              
-              // Limit array size
-              if (storedRolls.length > 20) {
-                storedRolls.length = 20;
-              }
-            }
-            
-            DataStore.set(client.getId(), 'recent-rolls', storedRolls);
-          }
           
           // Send response
           safeResponse(pending.res, 200, {

@@ -2,7 +2,6 @@
 import { WebSocket } from "ws";
 import { log } from "../middleware/logger";
 import { Client } from "./Client";
-import { DataStore } from "./DataStore";
 import { WSCloseCodes } from "../lib/constants";
 
 type MessageHandler = (client: Client, message: any) => void;
@@ -49,7 +48,7 @@ export class ClientManager {
     const client = this.clients.get(id);
     if (client) {
       // Remove from token group
-      const token = client.getToken();
+      const token = client.getApiKey();
       if (this.tokenGroups.has(token)) {
         this.tokenGroups.get(token)!.delete(id);
         // Clean up empty groups
@@ -91,7 +90,7 @@ export class ClientManager {
     const sender = this.clients.get(senderId);
     if (!sender) return;
 
-    const token = sender.getToken();
+    const token = sender.getApiKey();
     const groupClients = this.tokenGroups.get(token);
     
     if (groupClients) {
@@ -154,12 +153,12 @@ export class ClientManager {
   /**
    * Get information about connected clients
    */
-  static getConnectedClients(token?: string): { id: string, token: string, lastSeen: number, connectedSince: number }[] {
+  static getConnectedClients(apiKey?: string): { id: string, lastSeen: number, connectedSince: number }[] {
     const clients = [];
     
     for (const [id, client] of this.clients.entries()) {
-      // Filter by token if specified
-      if (token && client.getToken() !== token) {
+      // Filter by apiKey if specified
+      if (apiKey && client.getApiKey() !== apiKey) {
         continue;
       }
       
@@ -168,7 +167,6 @@ export class ClientManager {
         const lastSeen = client.getLastSeen();
         clients.push({
           id: id,
-          token: client.getToken(),
           lastSeen: lastSeen,
           connectedSince: lastSeen
         });
