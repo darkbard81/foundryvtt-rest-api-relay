@@ -47,13 +47,13 @@ document.addEventListener("DOMContentLoaded", function () {
   // Function to switch to logged-in menu
   function switchToLoggedInMenu() {
     loggedOutMenu.style.display = "none";
-    loggedInMenu.style.display = "block";
+    loggedInMenu.style.display = "inherit";
   }
   
   // Function to switch to logged-out menu
   function switchToLoggedOutMenu() {
     loggedInMenu.style.display = "none";
-    loggedOutMenu.style.display = "block";
+    loggedOutMenu.style.display = "inherit";
   }
   
   // Function to fetch fresh user data
