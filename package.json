@@ -10,7 +10,7 @@
     "db:migrate": "tsx src/models/init.ts",
     "local": "cross-env DB_TYPE=memory PORT=3010 tsx watch src/index.ts"
   },
-  "author": "JustAnotherIdea",
+  "author": "ThreeHats",
   "license": "MIT",
   "private": true,
   "dependencies": {

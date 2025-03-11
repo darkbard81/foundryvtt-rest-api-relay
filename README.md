@@ -1,19 +1,19 @@
 # Foundry REST API
 This project consists of two main components:
 
-- [Relay Server](https://github.com/JustAnotherIdea/foundryvtt-rest-api-relay): A WebSocket server that facilitates communication between Foundry VTT and external applications.
-- [Foundry Module](https://github.com/JustAnotherIdea/foundryvtt-rest-api): A Foundry VTT module that connects to the relay server and provides access to Foundry data through a REST API.
+- [Relay Server](https://github.com/ThreeHats/foundryvtt-rest-api-relay): A WebSocket server that facilitates communication between Foundry VTT and external applications.
+- [Foundry Module](https://github.com/ThreeHats/foundryvtt-rest-api): A Foundry VTT module that connects to the relay server and provides access to Foundry data through a REST API.
 
 ## Foundry REST API Relay Server
 The server provides WebSocket connectivity and a REST API to access Foundry VTT data remotely.
 
 ### Features
-- [Documentation](https://github.com/JustAnotherIdea/foundryvtt-rest-api/wiki)
+- [Documentation](https://github.com/ThreeHats/foundryvtt-rest-api/wiki)
 - WebSocket relay to connect Foundry clients with external applications
 - REST API endpoints for searching Foundry content and retrieving entity data
 - Client management for tracking Foundry connections
 - Data storage and search results
-- [Roadmap](https://github.com/users/JustAnotherIdea/projects/7)
+- [Roadmap](https://github.com/users/ThreeHats/projects/7)
 
 ### Installation
 ```
@@ -62,7 +62,7 @@ A Foundry VTT module that connects to the relay server and provides access to Fo
 - Configurable WebSocket relay URL and token
 
 ### Installation
-1. Install the module with the latest manifest link [https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json]([https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json](https://github.com/JustAnotherIdea/foundryvtt-rest-api/releases/latest/download/module.json))
+1. Install the module with the latest manifest link [https://github.com/ThreeHats/foundryvtt-rest-api/releases/latest/download/module.json]([https://github.com/ThreeHats/foundryvtt-rest-api/releases/latest/download/module.json](https://github.com/ThreeHats/foundryvtt-rest-api/releases/latest/download/module.json))
 2. Configure the WebSocket relay URL in module settings
 3. Set your relay token (defaults to your world ID)
 
