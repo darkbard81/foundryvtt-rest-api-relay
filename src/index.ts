@@ -21,6 +21,8 @@ const httpServer = createServer(app);
 // Setup CORS
 app.use(corsMiddleware());
 
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
+
 // Parse JSON bodies
 app.use(express.json());
 

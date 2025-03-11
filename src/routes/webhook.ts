@@ -6,7 +6,7 @@ import { log } from '../middleware/logger';
 const router = express.Router();
 
 // Stripe webhook handler
-router.post('/stripe', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
+router.post('/stripe', async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'] as string;
   let event;
 
