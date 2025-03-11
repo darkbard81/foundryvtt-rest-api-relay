@@ -77,6 +77,9 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("user-api-key").textContent = freshData.apiKey;
         document.getElementById("user-requests").textContent =
           freshData.requestsThisMonth || 0;
+        
+        // Fetch subscription status
+        await fetchSubscriptionStatus(apiKey);
       }
     } catch (error) {
       console.error("Failed to fetch fresh user data:", error);
@@ -195,39 +198,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // Handle report bug form submission
-  const reportBugForm = document.getElementById("reportbug-form");
-  reportBugForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const description = document.getElementById("bug-description").value;
-    const messageEl = document.getElementById("reportbug-message");
-
-    try {
-      const response = await fetch("/report-bug", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ description }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        messageEl.textContent = "Bug reported successfully!";
-        messageEl.className = "message success";
-        reportBugForm.reset();
-      } else {
-        messageEl.textContent = data.error || "Failed to report bug.";
-        messageEl.className = "message error";
-      }
-    } catch (error) {
-      messageEl.textContent = "An error occurred. Please try again.";
-      messageEl.className = "message error";
-      console.error(error);
-    }
-  });
-
   // Function to show dashboard
   function showDashboard(userData) {
     // Hide all tabs and show dashboard
@@ -247,5 +217,125 @@ document.addEventListener("DOMContentLoaded", function () {
     document.getElementById("user-api-key").textContent = userData.apiKey;
     document.getElementById("user-requests").textContent =
       userData.requestsThisMonth || 0;
+  }
+  
+  // Event handler for subscription button
+  const subscribeBtn = document.getElementById("subscribe-btn");
+  const manageSubscriptionBtn = document.getElementById("manage-subscription-btn");
+  
+  if (subscribeBtn) {
+    subscribeBtn.addEventListener("click", async () => {
+      try {
+        console.log("Subscribe button clicked");
+        const userData = JSON.parse(localStorage.getItem("foundryApiUser"));
+        console.log("User data from localStorage:", userData);
+        
+        if (!userData || !userData.apiKey) {
+          alert("Please log in first");
+          return;
+        }
+        
+        const response = await fetch("/api/subscriptions/create-checkout-session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": userData.apiKey
+          }
+        });
+        
+        console.log("Response status:", response.status);
+        
+        const responseData = await response.json().catch(e => ({ error: "Failed to parse JSON" }));
+        console.log("Response data:", responseData);
+        
+        if (response.ok) {
+          window.location = responseData.url;
+        } else {
+          alert(responseData.error || "Failed to create checkout session");
+        }
+      } catch (error) {
+        console.error("Detailed error:", error);
+        alert("An error occurred. Please check console for details.");
+      }
+    });
+  }
+  
+  if (manageSubscriptionBtn) {
+    manageSubscriptionBtn.addEventListener("click", async () => {
+      const userData = JSON.parse(localStorage.getItem("foundryApiUser"));
+      if (!userData || !userData.apiKey) {
+        alert("Please log in first");
+        return;
+      }
+      
+      try {
+        const response = await fetch("/api/subscriptions/create-portal-session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": userData.apiKey
+          }
+        });
+        
+        if (response.ok) {
+          const { url } = await response.json();
+          window.location = url;
+        } else {
+          alert("Failed to access subscription management");
+        }
+      } catch (error) {
+        console.error("Error creating portal session:", error);
+        alert("An error occurred. Please try again.");
+      }
+    });
+  }
+  
+  // Show subscription UI based on status
+  function updateSubscriptionUI(status) {
+    const statusElement = document.getElementById("user-subscription-status");
+    const subscribeBtn = document.getElementById("subscribe-btn");
+    const manageSubscriptionBtn = document.getElementById("manage-subscription-btn");
+    
+    // Update status display
+    statusElement.textContent = status === 'active' 
+      ? '✅ Active' 
+      : status === 'past_due'
+        ? '⚠️ Past Due'
+        : '❌ Not Subscribed';
+    
+    // Show/hide subscription buttons
+    if (status === 'active' || status === 'past_due') {
+      subscribeBtn.style.display = 'none';
+      manageSubscriptionBtn.style.display = 'inline-block';
+    } else {
+      subscribeBtn.style.display = 'inline-block';
+      manageSubscriptionBtn.style.display = 'none';
+    }
+  }
+
+  // Function to fetch subscription status
+  async function fetchSubscriptionStatus(apiKey) {
+    try {
+      const response = await fetch("/api/subscriptions/status", {
+        method: "GET",
+        headers: {
+          "x-api-key": apiKey,
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        updateSubscriptionUI(data.subscriptionStatus);
+        return data.subscriptionStatus;
+      } else {
+        console.error("Failed to fetch subscription status");
+        updateSubscriptionUI('free');
+        return 'free';
+      }
+    } catch (error) {
+      console.error("Error fetching subscription status:", error);
+      updateSubscriptionUI('free');
+      return 'free';
+    }
   }
 });

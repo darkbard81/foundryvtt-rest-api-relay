@@ -9,6 +9,8 @@ import authRoutes from "./routes/auth";
 import { config } from "dotenv";
 import * as path from "path";
 import { sequelize } from "./sequelize";
+import stripeRouter from './routes/stripe';
+import webhookRouter from './routes/webhook';
 
 config();
 
@@ -52,6 +54,8 @@ apiRoutes(app);
 
 // Setup Auth routes
 app.use("/", authRoutes);
+app.use('/api/subscriptions', stripeRouter);
+app.use('/api/webhooks', webhookRouter);
 
 // Add default static image for tokens
 app.get("/default-token.png", (req: Request, res: Response) => {

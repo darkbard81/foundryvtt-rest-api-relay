@@ -14,6 +14,10 @@ export class User extends Model {
   public requestsThisMonth!: number;
   public createdAt!: Date;
   public updatedAt!: Date;
+  public stripeCustomerId?: string;
+  public subscriptionStatus?: string; // 'free', 'active', 'past_due', 'canceled'
+  public subscriptionId?: string;
+  public subscriptionEndsAt?: Date;
 
   // Add these utility methods that work regardless of storage type
   static async findOne(options: any): Promise<any> {
@@ -62,6 +66,23 @@ if (!isMemoryStore) {
     requestsThisMonth: {
       type: DataTypes.INTEGER,
       defaultValue: 0
+    },
+    stripeCustomerId: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    subscriptionStatus: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'free'
+    },
+    subscriptionId: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    subscriptionEndsAt: {
+      type: DataTypes.DATE,
+      allowNull: true
     }
   }, {
     sequelize: sequelize as Sequelize,

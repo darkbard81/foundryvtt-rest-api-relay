@@ -7,10 +7,14 @@ import { log } from './logger';
 // Flag to check if we're using memory store
 const isMemoryStore = process.env.DB_TYPE === 'memory';
 
+// Free tier request limit per month
+const FREE_TIER_LIMIT = parseInt(process.env.FREE_API_REQUESTS_LIMIT || '100');
+
 declare global {
   namespace Express {
     interface Request {
-      user?: any;  // Changed from User type to any
+      user: any;
+      subscriptionStatus?: string;
     }
   }
 }
@@ -26,7 +30,8 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       id: 1, 
       email: 'admin@example.com', 
       apiKey: 'local-dev', 
-      requestsThisMonth: 0 
+      requestsThisMonth: 0,
+      subscriptionStatus: 'active'  // Always active in dev mode
     };
     next();
     return;
@@ -45,16 +50,22 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     // Find all users with the matching API key
     const users = await User.findAll({ where: { apiKey } });
     const client = ClientManager.getClient(clientId);
+    
     if (users.length === 0) {
       res.status(401).json({ error: 'Invalid API key' });
       return;
     }
+    
     if (clientId && client?.getApiKey() !== apiKey) {
       log.warn(`Client ID ${clientId} does not match API key ${apiKey}`);
       res.status(404).json({ error: 'Invalid client ID' });
       return;
     }
-    req.user = users;
+    
+    const user = users[0];
+    req.user = user;
+    req.subscriptionStatus = user.subscriptionStatus || 'free';
+    
     next();
   } catch (error) {
     log.error(`Auth error: ${error}`);
@@ -62,7 +73,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-export const trackApiUsage = async (req: Request, res: Response, next: NextFunction) => {
+export const trackApiUsage = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   // Skip usage tracking in memory store mode
   if (isMemoryStore) {
     return next();
@@ -77,7 +88,23 @@ export const trackApiUsage = async (req: Request, res: Response, next: NextFunct
       const user = await User.findOne({ where: { apiKey } });
       
       if (user) {
-        // Increment requests this month
+        // If the user has an active subscription, allow unlimited usage
+        if (user.subscriptionStatus === 'active') {
+          return next();
+        }
+        
+        // Check if free tier user has exceeded their monthly limit
+        if (user.requestsThisMonth >= FREE_TIER_LIMIT) {
+          res.status(429).json({
+            error: 'Monthly API request limit reached',
+            limit: FREE_TIER_LIMIT,
+            message: 'Please upgrade to a paid subscription for unlimited API access',
+            upgradeUrl: '/api/subscriptions/create-checkout-session'
+          });
+          return;
+        }
+        
+        // Increment requests this month for free tier users
         if ('requestsThisMonth' in user) {
           user.requestsThisMonth += 1;
           // Save using proper method based on storage type
