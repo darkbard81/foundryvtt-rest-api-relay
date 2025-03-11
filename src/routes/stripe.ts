@@ -80,26 +80,28 @@ router.post('/create-checkout-session', authMiddleware, async (req: Request, res
   }
 });
 
-// Customer portal session for managing subscription
+// Update the create-portal-session route
 router.post('/create-portal-session', authMiddleware, async (req: Request, res: Response) => {
   try {
+    // You can still get user info if needed for analytics
     const apiKey = req.headers['x-api-key'] as string;
     const user = await User.findOne({ where: { apiKey } });
 
-    if (!user || !user.dataValues.stripeCustomerId) {
-      res.status(404).json({ error: 'User or customer ID not found' });
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
       return;
     }
 
-    const portalSession = await stripe.billingPortal.sessions.create({
-      customer: user.dataValues.stripeCustomerId,
-      return_url: `${process.env.FRONTEND_URL}/dashboard`
-    });
-
-    res.json({ url: portalSession.url });
+    // Instead of creating a session, redirect to the shared portal URL
+    const portalUrl = process.env.STRIPE_PORTAL_URL;
+    
+    // Log the redirect for tracking
+    log.info(`Redirecting user ${user.id} to customer portal`);
+    
+    res.json({ url: portalUrl });
   } catch (error) {
-    log.error(`Error creating portal session: ${error}`);
-    res.status(500).json({ error: 'Failed to create portal session' });
+    log.error(`Error handling portal redirect: ${error}`);
+    res.status(500).json({ error: 'Failed to access customer portal' });
   }
 });
 
