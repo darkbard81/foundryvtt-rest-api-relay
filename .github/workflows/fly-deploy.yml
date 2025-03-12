@@ -112,3 +112,24 @@ jobs:
           artifacts: "./release/foundryvtt-rest-api-relay.zip"
           tag: ${{ github.ref_name }}
           body: ${{ env.RELEASE_NOTES }}
+
+      - name: Checkout wiki repository
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki
+          token: ${{ secrets.GH_PAT }} # Personal access token with repo permissions
+    
+      - name: Copy documentation to wiki
+        run: |
+          cp -r documentation/* wiki/
+          cd wiki
+          
+          # Configure Git
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          
+          # Add, commit, and push changes
+          git add .
+          git diff-index --quiet HEAD || git commit -m "Update wiki documentation from main repository"
+          git push
