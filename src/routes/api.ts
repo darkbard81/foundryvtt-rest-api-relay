@@ -138,11 +138,6 @@ export const apiRoutes = (app: express.Application): void => {
       });
       return;
     }
-
-    if (client.getApiKey() !== req.user.apiKey) {
-      safeResponse(res, 403, { error: "Client ID does not match your API key" });
-      return;
-    }
     
     try {
       // Generate a unique requestId for this search
