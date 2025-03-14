@@ -77,9 +77,9 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("user-api-key").textContent = freshData.apiKey;
         let status = freshData.subscriptionStatus || 'free';
         updateSubscriptionUI(status);
-        if (status === 'free') {
+        if (status != 'active') {
           document.getElementById("user-requests").textContent =
-            `${freshData.requestsThisMonth || 0} / ${freshData.freeApiRequestsLimit}`;
+          `${freshData.requestsThisMonth || 0} / ${freshData.freeApiRequestsLimit}`;
         } else {
           document.getElementById("user-requests").textContent = freshData.requestsThisMonth || 0;
         }

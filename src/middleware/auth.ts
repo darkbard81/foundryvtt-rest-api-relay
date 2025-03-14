@@ -88,30 +88,45 @@ export const trackApiUsage = async (req: Request, res: Response, next: NextFunct
       const user = await User.findOne({ where: { apiKey } });
       
       if (user) {
-        // If the user has an active subscription, allow unlimited usage
-        if (user.subscriptionStatus === 'active') {
-          return next();
-        }
-        
-        // Check if free tier user has exceeded their monthly limit
-        if (user.requestsThisMonth >= FREE_TIER_LIMIT) {
-          res.status(429).json({
-            error: 'Monthly API request limit reached',
-            limit: FREE_TIER_LIMIT,
-            message: 'Please upgrade to a paid subscription for unlimited API access',
-            upgradeUrl: '/api/subscriptions/create-checkout-session'
-          });
-          return;
-        }
-        
-        // Increment requests this month for free tier users
-        if ('requestsThisMonth' in user) {
-          user.requestsThisMonth += 1;
-          // Save using proper method based on storage type
+        // Always track api usage regardless of subscription status
+        if ('getDataValue' in user && typeof user.getDataValue === 'function') {
+          // Get current request count using getDataValue
+          const currentRequests = user.getDataValue('requestsThisMonth') || 0;
+          // Increment requests this month
+          user.setDataValue('requestsThisMonth', currentRequests + 1);
+          
+          // Log with proper data access
+          log.info(`Incrementing requests for user ${user.getDataValue('email')} to ${user.getDataValue('requestsThisMonth')}`);
+          
+          // Save the updated user
           if ('save' in user && typeof user.save === 'function') {
             await user.save();
           }
+        } else if ('requestsThisMonth' in user) {
+          // Fallback for memory store
+          user.requestsThisMonth += 1;
         }
+
+        // Enforce limits only for free tier
+        const subscriptionStatus = user.getDataValue ? 
+          user.getDataValue('subscriptionStatus') : user.subscriptionStatus;
+        
+        if (subscriptionStatus !== 'active') {
+          const requestCount = user.getDataValue ? 
+            user.getDataValue('requestsThisMonth') : user.requestsThisMonth;
+            
+          if (requestCount >= FREE_TIER_LIMIT) {
+            res.status(429).json({
+              error: 'Monthly API request limit reached',
+              limit: FREE_TIER_LIMIT,
+              message: 'Please upgrade to a paid subscription for unlimited API access',
+              upgradeUrl: '/api/subscriptions/create-checkout-session'
+            });
+            return;
+          }
+        }
+        
+        next();
       } else {
         log.warn(`API key not found: ${apiKey}`);
         res.status(401).json({ error: 'Invalid API key' });
@@ -122,8 +137,6 @@ export const trackApiUsage = async (req: Request, res: Response, next: NextFunct
       res.status(401).json({ error: 'API key is required' });
       return;
     }
-    
-    next();
   } catch (error) {
     log.error(`Error tracking API usage: ${error}`);
     next(); // Continue even if tracking fails
