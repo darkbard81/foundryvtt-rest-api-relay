@@ -1,88 +1,28 @@
-# Foundry REST API
-This project consists of two main components:
+### How to use Foundry REST API:
 
-- [Relay Server](https://github.com/ThreeHats/foundryvtt-rest-api-relay): A WebSocket server that facilitates communication between Foundry VTT and external applications.
-- [Foundry Module](https://github.com/ThreeHats/foundryvtt-rest-api): A Foundry VTT module that connects to the relay server and provides access to Foundry data through a REST API.
+- Install the [Foundry VTT Module](https://github.com/ThreeHats/foundryvtt-rest-api)
+    
+- Get an API key for the public relay server at [https://foundryvtt-rest-api-relay.fly.dev/](https://foundryvtt-rest-api-relay.fly.dev/) or you may Install and run the [Foundry REST Relay Server](https://github.com/ThreeHats/foundryvtt-rest-api-relay) locally
+    
+- Download [Postman](https://www.postman.com/downloads/) and the import the latest [API Test Collection](https://github.com/ThreeHats/foundryvtt-rest-api-relay/blob/main/Foundry%20REST%20API%20Documentation.postman_collection.json) for an easy way to start testing endpoints.
+    
+- Read this documentation for information about how to use each endpoint
+    
 
-## Foundry REST API Relay Server
-The server provides WebSocket connectivity and a REST API to access Foundry VTT data remotely.
+---
 
-### Features
-- [Documentation](https://github.com/ThreeHats/foundryvtt-rest-api/wiki)
-- WebSocket relay to connect Foundry clients with external applications
-- REST API endpoints for searching Foundry content and retrieving entity data
-- Client management for tracking Foundry connections
-- Data storage and search results
-- [Roadmap](https://github.com/users/ThreeHats/projects/7)
+Foundry REST API provides various API endpoints for fetching and interacting with your foundry world data through a node.js server that act as a relay.
 
-### Installation
-```
-### Install dependencies
-pnpm install
+## **Getting started guide**
 
-### Run in development mode
-PORT=3010 pnpm dev
+To start using the Foundry REST API, you need to -
 
-### Build for production
-pnpm build
-
-### Start production server
-pnpm start
-```
-
-### User Registration and API Key
-To use the API, you need to register and obtain an API key.
-
-#### Register a new user
-```
-POST /register
-{
-  "email": "user@example.com",
-  "password": "yourpassword"
-}
-```
-
-#### Example response
-```
-{
-  "apiKey": "your-generated-api-key"
-}
-```
-
-#### Using the API key
-Include the API key in the `x-api-key` header for all requests.
-
-## Foundry REST API Module
-A Foundry VTT module that connects to the relay server and provides access to Foundry data.
-
-### Features
-- WebSocket connection to relay server
-- Integration with Foundry's QuickInsert for powerful search capabilities
-- Entity retrieval by UUID
-- Configurable WebSocket relay URL and token
-
-### Installation
-1. Install the module with the latest manifest link [https://github.com/ThreeHats/foundryvtt-rest-api/releases/latest/download/module.json]([https://github.com/ThreeHats/foundryvtt-rest-api/releases/latest/download/module.json](https://github.com/ThreeHats/foundryvtt-rest-api/releases/latest/download/module.json))
-2. Configure the WebSocket relay URL in module settings
-3. Set your relay token (defaults to your world ID)
-
-### Configuration
-After installing the module, go to the module settings to configure:
-
-- WebSocket Relay URL - URL for the WebSocket relay server (default: ws://localhost:3010)
-- WebSocket Relay Token - Token for grouping users together (default: your world ID)
-
-### Technical Details
-#### Server Architecture
-- Express.js - HTTP server framework
-- WebSocket - For real-time communication
-- Data Store - In-memory storage for entities and search results
-- Client Manager - Handles client connections and message routing
-
-#### Module Architecture
-- Built with TypeScript for Foundry VTT
-- Integrates with Foundry's QuickInsert for powerful search capabilities
-- Provides WebSocket relay functionality for external applications
-
-#### Testing
-- The project includes a simple HTML test client at test-client.html that can be used to test the WebSocket relay functionality.
+- Have an API key or have the relay server running on your local machine or at an address your foundry game can access.
+    
+- Have the URL of that server (and port if running locally) set as the "WebSocket Relay URL" in the settings for the Foundry REST API module.
+    
+- Have your API key in the module settings.
+    
+- Each request must have the your API key in the "x-api-key" header.
+    
+- Endpoints other than /clients require a clientId parameter that matches a connected world.
