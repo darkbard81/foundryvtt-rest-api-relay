@@ -1,8 +1,8 @@
 {
 	"info": {
-		"_postman_id": "12b8bbc0-d465-4ccf-ab17-830ceb99485d",
+		"_postman_id": "8ec02a43-9f10-4b53-a5df-d6edc1164689",
 		"name": "Foundry REST API Documentation",
-		"description": "### How to use Foundry REST API:\n\n- Install the [Foundry VTT Module](https://github.com/ThreeHats/foundryvtt-rest-api)\n    \n- Install and run the [Foundry REST Relay Server](https://github.com/ThreeHats/foundryvtt-rest-api-relay)\n    \n- Download [Postman](https://www.postman.com/downloads/) and the import the API Test Collection (adding soon) to start testing endpoints.\n    \n\n---\n\nFoundry REST API provides various API endpoints for fetchting and interacting with your foundry world data through a locally run node.js server that act as a relay.\n\n## **Getting started guide**\n\n`List the steps or points required to start using your APIs. Make sure to cover everything required to reach success with your API as quickly as possible.`\n\nTo start using the Foundry REST API, you need to -\n\n`The points given below are from The Postman API's documentation. You can reference it to write your own getting started guide.`\n\n- Have the relay server running on your local machine or at an address your foundry game can access.\n    \n- Have the url of your server (and port if running locally) set as the \"WebSocket Relay URL\" in the settings for the Foundry REST API module.\n    \n- Have somthing set as your \"Token\" in the module settings. This can be used to identify groups of foundry worlds. If we move to web hosting, this will be your API key.\n    \n- Endpoints other than /clients require a clientId parameter that matches a connected world.",
+		"description": "### How to use Foundry REST API:\n\n- Install the [Foundry VTT Module](https://github.com/ThreeHats/foundryvtt-rest-api)\n    \n- Get an API key for the public relay server at [https://foundryvtt-rest-api-relay.fly.dev/](https://foundryvtt-rest-api-relay.fly.dev/) or you may Install and run the [Foundry REST Relay Server](https://github.com/ThreeHats/foundryvtt-rest-api-relay) locally\n    \n- Download [Postman](https://www.postman.com/downloads/) and the import the API Test Collection for an easy way to start testing endpoints.\n    \n- Read this documentation for information about how to use each endpoint\n    \n\n---\n\nFoundry REST API provides various API endpoints for fetching and interacting with your foundry world data through a node.js server that act as a relay.\n\n## **Getting started guide**\n\nTo start using the Foundry REST API, you need to -\n\n- Have an API key or have the relay server running on your local machine or at an address your foundry game can access.\n    \n- Have the URL of that server (and port if running locally) set as the \"WebSocket Relay URL\" in the settings for the Foundry REST API module.\n    \n- Have your API key in the module settings.\n    \n- Each request must have the your API key in the \"x-api-key\" header.\n    \n- Endpoints other than /clients require a clientId parameter that matches a connected world.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "27741668"
 	},
@@ -26,22 +26,20 @@
 					"type": "noauth"
 				},
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "localhost:3010/clients?clientId=id",
+					"raw": "{{baseUrl}}/clients",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"clients"
-					],
-					"query": [
-						{
-							"key": "clientId",
-							"value": "id",
-							"description": "(Optional) Filter clients by their token/world"
-						}
 					]
 				},
 				"description": "Returns connected client Foundry Worlds"
@@ -284,20 +282,25 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "localhost:3010/structure?clientId=id",
+					"raw": "{{baseUrl}}/structure?clientId={{clientId}}",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"structure"
 					],
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						}
 					]
@@ -474,13 +477,18 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "localhost:3010/contents/:path?clientId=id",
+					"raw": "{{baseUrl}}/contents/:path?clientId={{clientId}}",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"contents",
 						":path"
@@ -488,7 +496,7 @@
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						}
 					],
@@ -688,20 +696,25 @@
 					"type": "noauth"
 				},
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "localhost:3010/search?clientId=id&query=searchTerm&filter=filters",
+					"raw": "{{baseUrl}}/search?clientId={{clientId}}&query=searchTerm&filter=filters",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"search"
 					],
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						},
 						{
@@ -711,8 +724,7 @@
 						},
 						{
 							"key": "filter",
-							"value": "filters",
-							"description": "Filters to apply to the search query"
+							"value": "filters"
 						}
 					]
 				},
@@ -911,13 +923,18 @@
 					"type": "noauth"
 				},
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "localhost:3010/get/:uuid?clientId=id",
+					"raw": "{{baseUrl}}/get/:uuid?clientId={{clientId}}",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"get",
 						":uuid"
@@ -925,7 +942,7 @@
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						}
 					],
@@ -1124,7 +1141,13 @@
 			],
 			"request": {
 				"method": "POST",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"body": {
 					"mode": "raw",
 					"raw": "{\"type\": \"Actor\",\r\n\"data\": {\r\n  \"name\": \"Ape\",\r\n  \"type\": \"npc\",\r\n  \"img\": \"systems/dnd5e/tokens/beast/Ape.webp\",\r\n  \"system\": {\r\n    \"abilities\": {\r\n      \"str\": {\r\n        \"value\": 16,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"dex\": {\r\n        \"value\": 14,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"con\": {\r\n        \"value\": 14,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"int\": {\r\n        \"value\": 6,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"wis\": {\r\n        \"value\": 12,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"cha\": {\r\n        \"value\": 7,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      }\r\n    },\r\n    \"attributes\": {\r\n      \"ac\": {\r\n        \"flat\": 12,\r\n        \"calc\": \"natural\",\r\n        \"formula\": \"\"\r\n      },\r\n      \"hp\": {\r\n        \"value\": 19,\r\n        \"max\": 19,\r\n        \"temp\": 0,\r\n        \"tempmax\": 0,\r\n        \"formula\": \"3d8 + 6\"\r\n      },\r\n      \"init\": {\r\n        \"ability\": \"\",\r\n        \"bonus\": \"0\",\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"movement\": {\r\n        \"burrow\": 0,\r\n        \"climb\": 30,\r\n        \"fly\": 0,\r\n        \"swim\": 0,\r\n        \"walk\": 30,\r\n        \"units\": \"ft\",\r\n        \"hover\": false\r\n      },\r\n      \"attunement\": {\r\n        \"max\": 3\r\n      },\r\n      \"senses\": {\r\n        \"darkvision\": 0,\r\n        \"blindsight\": 0,\r\n        \"tremorsense\": 0,\r\n        \"truesight\": 0,\r\n        \"units\": \"ft\",\r\n        \"special\": \"\"\r\n      },\r\n      \"spellcasting\": \"\",\r\n      \"exhaustion\": 0,\r\n      \"concentration\": {\r\n        \"ability\": \"\",\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        },\r\n        \"bonuses\": {\r\n          \"save\": \"\"\r\n        },\r\n        \"limit\": 1\r\n      },\r\n      \"hd\": {\r\n        \"spent\": 0\r\n      },\r\n      \"death\": {\r\n        \"ability\": \"\",\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        },\r\n        \"success\": 0,\r\n        \"failure\": 0\r\n      }\r\n    },\r\n    \"details\": {\r\n      \"biography\": {\r\n        \"value\": \"<p>\\n        <em>\\n          Token artwork by\\n          <a href=\\\"https://www.forgotten-adventures.net/\\\" target=\\\"_blank\\\" rel=\\\"noopener\\\">Forgotten Adventures</a>.\\n        </em>      \\n      </p>\",\r\n        \"public\": \"\"\r\n      },\r\n      \"alignment\": \"Unaligned\",\r\n      \"race\": null,\r\n      \"type\": {\r\n        \"value\": \"beast\",\r\n        \"subtype\": \"\",\r\n        \"swarm\": \"\",\r\n        \"custom\": \"\"\r\n      },\r\n      \"environment\": \"Forest\",\r\n      \"cr\": 0.5,\r\n      \"spellLevel\": 0,\r\n      \"source\": {\r\n        \"custom\": \"\",\r\n        \"book\": \"SRD 5.1\",\r\n        \"page\": \"\",\r\n        \"license\": \"CC-BY-4.0\"\r\n      },\r\n      \"ideal\": \"\",\r\n      \"bond\": \"\",\r\n      \"flaw\": \"\"\r\n    },\r\n    \"traits\": {\r\n      \"size\": \"med\",\r\n      \"di\": {\r\n        \"value\": [],\r\n        \"bypasses\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"dr\": {\r\n        \"value\": [],\r\n        \"bypasses\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"dv\": {\r\n        \"value\": [],\r\n        \"bypasses\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"ci\": {\r\n        \"value\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"languages\": {\r\n        \"value\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"dm\": {\r\n        \"amount\": {},\r\n        \"bypasses\": []\r\n      }\r\n    },\r\n    \"currency\": {\r\n      \"pp\": 0,\r\n      \"gp\": 0,\r\n      \"ep\": 0,\r\n      \"sp\": 0,\r\n      \"cp\": 0\r\n    },\r\n    \"skills\": {\r\n      \"acr\": {\r\n        \"value\": 0,\r\n        \"ability\": \"dex\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ani\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"arc\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ath\": {\r\n        \"value\": 1,\r\n        \"ability\": \"str\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"dec\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"his\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ins\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"itm\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"inv\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"med\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"nat\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"prc\": {\r\n        \"value\": 1,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"prf\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"per\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"rel\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"slt\": {\r\n        \"value\": 0,\r\n        \"ability\": \"dex\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ste\": {\r\n        \"value\": 0,\r\n        \"ability\": \"dex\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"sur\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      }\r\n    },\r\n    \"spells\": {\r\n      \"spell1\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell2\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell3\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell4\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell5\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell6\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell7\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell8\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell9\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"pact\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell0\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      }\r\n    },\r\n    \"bonuses\": {\r\n      \"mwak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"rwak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"msak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"rsak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"abilities\": {\r\n        \"check\": \"\",\r\n        \"save\": \"\",\r\n        \"skill\": \"\"\r\n      },\r\n      \"spell\": {\r\n        \"dc\": \"\"\r\n      }\r\n    },\r\n    \"resources\": {\r\n      \"legact\": {\r\n        \"value\": 0,\r\n        \"max\": 0\r\n      },\r\n      \"legres\": {\r\n        \"value\": 0,\r\n        \"max\": 0\r\n      },\r\n      \"lair\": {\r\n        \"value\": false,\r\n        \"initiative\": null\r\n      }\r\n    },\r\n    \"tools\": {}\r\n  },\r\n  \"prototypeToken\": {\r\n    \"name\": \"Ape\",\r\n    \"displayName\": 20,\r\n    \"actorLink\": false,\r\n    \"width\": 1,\r\n    \"height\": 1,\r\n    \"lockRotation\": false,\r\n    \"rotation\": 0,\r\n    \"disposition\": -1,\r\n    \"displayBars\": 40,\r\n    \"bar1\": {\r\n      \"attribute\": \"attributes.hp\"\r\n    },\r\n    \"bar2\": {\r\n      \"attribute\": null\r\n    },\r\n    \"flags\": {},\r\n    \"randomImg\": false,\r\n    \"alpha\": 1,\r\n    \"light\": {\r\n      \"alpha\": 1,\r\n      \"angle\": 360,\r\n      \"bright\": 0,\r\n      \"coloration\": 1,\r\n      \"dim\": 0,\r\n      \"luminosity\": 0.5,\r\n      \"saturation\": 0,\r\n      \"contrast\": 0,\r\n      \"shadows\": 0,\r\n      \"animation\": {\r\n        \"speed\": 5,\r\n        \"intensity\": 5,\r\n        \"type\": null,\r\n        \"reverse\": false\r\n      },\r\n      \"darkness\": {\r\n        \"min\": 0,\r\n        \"max\": 1\r\n      },\r\n      \"attenuation\": 0.5,\r\n      \"color\": null,\r\n      \"negative\": false,\r\n      \"priority\": 0\r\n    },\r\n    \"texture\": {\r\n      \"src\": \"systems/dnd5e/tokens/beast/Ape.webp\",\r\n      \"tint\": \"#ffffff\",\r\n      \"scaleX\": 1.5,\r\n      \"scaleY\": 1.5,\r\n      \"offsetX\": 0,\r\n      \"offsetY\": 0,\r\n      \"rotation\": 0,\r\n      \"anchorX\": 0.5,\r\n      \"anchorY\": 0.5,\r\n      \"fit\": \"contain\",\r\n      \"alphaThreshold\": 0.75\r\n    },\r\n    \"sight\": {\r\n      \"angle\": 360,\r\n      \"enabled\": false,\r\n      \"range\": 0,\r\n      \"brightness\": 1,\r\n      \"visionMode\": \"basic\",\r\n      \"color\": null,\r\n      \"attenuation\": 0.1,\r\n      \"saturation\": 0,\r\n      \"contrast\": 0\r\n    },\r\n    \"detectionModes\": [],\r\n    \"appendNumber\": false,\r\n    \"prependAdjective\": false,\r\n    \"hexagonalShape\": 0,\r\n    \"occludable\": {\r\n      \"radius\": 0\r\n    },\r\n    \"ring\": {\r\n      \"enabled\": false,\r\n      \"colors\": {\r\n        \"ring\": null,\r\n        \"background\": null\r\n      },\r\n      \"effects\": 1,\r\n      \"subject\": {\r\n        \"scale\": 1,\r\n        \"texture\": null\r\n      }\r\n    }\r\n  },\r\n  \"items\": [\r\n    {\r\n      \"_id\": \"hbxC3Wg3H8cSIvM0\",\r\n      \"name\": \"Multiattack\",\r\n      \"type\": \"feat\",\r\n      \"img\": \"icons/skills/melee/blade-tips-triple-steel.webp\",\r\n      \"system\": {\r\n        \"description\": {\r\n          \"value\": \"<p>The ape makes two fist attacks.</p>\",\r\n          \"chat\": \"\"\r\n        },\r\n        \"source\": {\r\n          \"custom\": \"\",\r\n          \"book\": \"SRD 5.1\",\r\n          \"page\": \"\",\r\n          \"license\": \"CC-BY-4.0\"\r\n        },\r\n        \"activation\": {\r\n          \"type\": \"action\",\r\n          \"cost\": 1,\r\n          \"condition\": \"\"\r\n        },\r\n        \"duration\": {\r\n          \"value\": \"\",\r\n          \"units\": \"\"\r\n        },\r\n        \"cover\": null,\r\n        \"target\": {\r\n          \"value\": \"\",\r\n          \"width\": null,\r\n          \"units\": \"\",\r\n          \"type\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"range\": {\r\n          \"value\": null,\r\n          \"long\": null,\r\n          \"units\": \"\"\r\n        },\r\n        \"uses\": {\r\n          \"value\": null,\r\n          \"max\": \"\",\r\n          \"per\": null,\r\n          \"recovery\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"consume\": {\r\n          \"type\": \"\",\r\n          \"target\": null,\r\n          \"amount\": null,\r\n          \"scale\": false\r\n        },\r\n        \"ability\": \"\",\r\n        \"actionType\": \"\",\r\n        \"chatFlavor\": \"\",\r\n        \"critical\": {\r\n          \"threshold\": null,\r\n          \"damage\": \"\"\r\n        },\r\n        \"damage\": {\r\n          \"parts\": [],\r\n          \"versatile\": \"\"\r\n        },\r\n        \"formula\": \"\",\r\n        \"save\": {\r\n          \"ability\": \"\",\r\n          \"dc\": null,\r\n          \"scaling\": \"spell\"\r\n        },\r\n        \"type\": {\r\n          \"value\": \"\",\r\n          \"subtype\": \"\"\r\n        },\r\n        \"requirements\": \"\",\r\n        \"recharge\": {\r\n          \"value\": null,\r\n          \"charged\": false\r\n        },\r\n        \"crewed\": false,\r\n        \"properties\": [],\r\n        \"attack\": {\r\n          \"bonus\": \"\",\r\n          \"flat\": false\r\n        },\r\n        \"enchantment\": null,\r\n        \"summons\": null,\r\n        \"prerequisites\": {\r\n          \"level\": null\r\n        }\r\n      },\r\n      \"effects\": [],\r\n      \"folder\": null,\r\n      \"sort\": 0,\r\n      \"ownership\": {\r\n        \"default\": 0\r\n      },\r\n      \"flags\": {\r\n        \"core\": {\r\n          \"sourceId\": \"Compendium.dnd5e.monsterfeatures.EqoLg8T8EHvhJgKE\"\r\n        }\r\n      },\r\n      \"_stats\": {\r\n        \"compendiumSource\": \"Compendium.dnd5e.monsterfeatures.EqoLg8T8EHvhJgKE\",\r\n        \"duplicateSource\": null,\r\n        \"coreVersion\": \"12.331\",\r\n        \"systemId\": \"dnd5e\",\r\n        \"systemVersion\": \"3.3.1\",\r\n        \"createdTime\": null,\r\n        \"modifiedTime\": null,\r\n        \"lastModifiedBy\": null\r\n      }\r\n    },\r\n    {\r\n      \"_id\": \"jxC1VNaCf2VXlD6C\",\r\n      \"name\": \"Fist\",\r\n      \"type\": \"weapon\",\r\n      \"img\": \"icons/magic/fire/flame-burning-fist-strike.webp\",\r\n      \"system\": {\r\n        \"description\": {\r\n          \"value\": \"<section class=\\\"secret\\\">\\n<p><em>Melee Weapon Attack:</em><strong>+5 to hit,</strong>, <strong>5 ft.,</strong> one target. Hit: <strong>6 (1d6 + 3) <em>bludgeoning damage</em></strong>.</p></section>\\n<p>The Ape attacks with its Fist.</p>\",\r\n          \"chat\": \"\"\r\n        },\r\n        \"source\": {\r\n          \"custom\": \"\",\r\n          \"book\": \"SRD 5.1\",\r\n          \"page\": \"\",\r\n          \"license\": \"CC-BY-4.0\"\r\n        },\r\n        \"quantity\": 1,\r\n        \"weight\": {\r\n          \"value\": 0,\r\n          \"units\": \"lb\"\r\n        },\r\n        \"price\": {\r\n          \"value\": 0,\r\n          \"denomination\": \"gp\"\r\n        },\r\n        \"attunement\": \"\",\r\n        \"equipped\": true,\r\n        \"rarity\": \"\",\r\n        \"identified\": true,\r\n        \"activation\": {\r\n          \"type\": \"action\",\r\n          \"cost\": 1,\r\n          \"condition\": \"\"\r\n        },\r\n        \"duration\": {\r\n          \"value\": \"\",\r\n          \"units\": \"\"\r\n        },\r\n        \"cover\": null,\r\n        \"target\": {\r\n          \"value\": \"\",\r\n          \"width\": null,\r\n          \"units\": \"\",\r\n          \"type\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"range\": {\r\n          \"value\": 5,\r\n          \"long\": null,\r\n          \"units\": \"ft\"\r\n        },\r\n        \"uses\": {\r\n          \"value\": null,\r\n          \"max\": \"\",\r\n          \"per\": null,\r\n          \"recovery\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"consume\": {\r\n          \"type\": \"\",\r\n          \"target\": null,\r\n          \"amount\": null,\r\n          \"scale\": false\r\n        },\r\n        \"ability\": \"str\",\r\n        \"actionType\": \"mwak\",\r\n        \"chatFlavor\": \"\",\r\n        \"critical\": {\r\n          \"threshold\": null,\r\n          \"damage\": \"\"\r\n        },\r\n        \"damage\": {\r\n          \"parts\": [\r\n            [\r\n              \"1d6 + @mod\",\r\n              \"bludgeoning\"\r\n            ]\r\n          ],\r\n          \"versatile\": \"\"\r\n        },\r\n        \"formula\": \"\",\r\n        \"save\": {\r\n          \"ability\": \"\",\r\n          \"dc\": null,\r\n          \"scaling\": \"spell\"\r\n        },\r\n        \"armor\": {\r\n          \"value\": 10\r\n        },\r\n        \"hp\": {\r\n          \"value\": 0,\r\n          \"max\": 0,\r\n          \"dt\": null,\r\n          \"conditions\": \"\"\r\n        },\r\n        \"properties\": [],\r\n        \"proficient\": 1,\r\n        \"unidentified\": {\r\n          \"description\": \"\"\r\n        },\r\n        \"type\": {\r\n          \"value\": \"natural\",\r\n          \"baseItem\": \"\"\r\n        },\r\n        \"container\": null,\r\n        \"crewed\": false,\r\n        \"attack\": {\r\n          \"bonus\": \"\",\r\n          \"flat\": false\r\n        },\r\n        \"attuned\": false,\r\n        \"enchantment\": null,\r\n        \"summons\": null,\r\n        \"magicalBonus\": null\r\n      },\r\n      \"effects\": [],\r\n      \"folder\": null,\r\n      \"sort\": 0,\r\n      \"ownership\": {\r\n        \"default\": 0\r\n      },\r\n      \"flags\": {},\r\n      \"_stats\": {\r\n        \"compendiumSource\": null,\r\n        \"duplicateSource\": null,\r\n        \"coreVersion\": \"12.331\",\r\n        \"systemId\": \"dnd5e\",\r\n        \"systemVersion\": \"3.3.1\",\r\n        \"createdTime\": null,\r\n        \"modifiedTime\": null,\r\n        \"lastModifiedBy\": null\r\n      }\r\n    },\r\n    {\r\n      \"_id\": \"NsTx3MUaYkEI2t8M\",\r\n      \"name\": \"Rock\",\r\n      \"type\": \"weapon\",\r\n      \"img\": \"icons/magic/earth/projectile-stone-ball-brown.webp\",\r\n      \"system\": {\r\n        \"description\": {\r\n          \"value\": \"<section class=\\\"secret\\\">\\n<p>Ranged Weapon Attack: +5 to hit, range 25/50 ft., one target. Hit: <strong>6 (1d6 + 3) <em>bludgeoning damage</em></strong>.</p></section>\\n<p>The Ape attacks with its Rock.</p>\",\r\n          \"chat\": \"\"\r\n        },\r\n        \"source\": {\r\n          \"custom\": \"\",\r\n          \"book\": \"SRD 5.1\",\r\n          \"page\": \"\",\r\n          \"license\": \"CC-BY-4.0\"\r\n        },\r\n        \"quantity\": 1,\r\n        \"weight\": {\r\n          \"value\": 0,\r\n          \"units\": \"lb\"\r\n        },\r\n        \"price\": {\r\n          \"value\": 0,\r\n          \"denomination\": \"gp\"\r\n        },\r\n        \"attunement\": \"\",\r\n        \"equipped\": true,\r\n        \"rarity\": \"\",\r\n        \"identified\": true,\r\n        \"activation\": {\r\n          \"type\": \"action\",\r\n          \"cost\": 1,\r\n          \"condition\": \"\"\r\n        },\r\n        \"duration\": {\r\n          \"value\": \"\",\r\n          \"units\": \"\"\r\n        },\r\n        \"cover\": null,\r\n        \"target\": {\r\n          \"value\": \"\",\r\n          \"width\": null,\r\n          \"units\": \"\",\r\n          \"type\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"range\": {\r\n          \"value\": 25,\r\n          \"long\": 50,\r\n          \"units\": \"ft\"\r\n        },\r\n        \"uses\": {\r\n          \"value\": null,\r\n          \"max\": \"\",\r\n          \"per\": null,\r\n          \"recovery\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"consume\": {\r\n          \"type\": \"\",\r\n          \"target\": null,\r\n          \"amount\": null,\r\n          \"scale\": false\r\n        },\r\n        \"ability\": \"str\",\r\n        \"actionType\": \"rwak\",\r\n        \"chatFlavor\": \"\",\r\n        \"critical\": {\r\n          \"threshold\": null,\r\n          \"damage\": \"\"\r\n        },\r\n        \"damage\": {\r\n          \"parts\": [\r\n            [\r\n              \"1d6 + @mod\",\r\n              \"bludgeoning\"\r\n            ]\r\n          ],\r\n          \"versatile\": \"\"\r\n        },\r\n        \"formula\": \"\",\r\n        \"save\": {\r\n          \"ability\": \"\",\r\n          \"dc\": null,\r\n          \"scaling\": \"spell\"\r\n        },\r\n        \"armor\": {\r\n          \"value\": 10\r\n        },\r\n        \"hp\": {\r\n          \"value\": 0,\r\n          \"max\": 0,\r\n          \"dt\": null,\r\n          \"conditions\": \"\"\r\n        },\r\n        \"properties\": [\r\n          \"amm\"\r\n        ],\r\n        \"proficient\": 1,\r\n        \"unidentified\": {\r\n          \"description\": \"\"\r\n        },\r\n        \"type\": {\r\n          \"value\": \"natural\",\r\n          \"baseItem\": \"\"\r\n        },\r\n        \"container\": null,\r\n        \"crewed\": false,\r\n        \"attack\": {\r\n          \"bonus\": \"\",\r\n          \"flat\": false\r\n        },\r\n        \"attuned\": false,\r\n        \"enchantment\": null,\r\n        \"summons\": null,\r\n        \"magicalBonus\": null\r\n      },\r\n      \"effects\": [],\r\n      \"folder\": null,\r\n      \"sort\": 0,\r\n      \"ownership\": {\r\n        \"default\": 0\r\n      },\r\n      \"flags\": {},\r\n      \"_stats\": {\r\n        \"compendiumSource\": null,\r\n        \"duplicateSource\": null,\r\n        \"coreVersion\": \"12.331\",\r\n        \"systemId\": \"dnd5e\",\r\n        \"systemVersion\": \"3.3.1\",\r\n        \"createdTime\": null,\r\n        \"modifiedTime\": null,\r\n        \"lastModifiedBy\": null\r\n      }\r\n    }\r\n  ],\r\n  \"effects\": [],\r\n  \"folder\": \"g8DmtGW2tiBpzCMk\",\r\n  \"flags\": {\r\n    \"exportSource\": {\r\n      \"world\": \"5e-faerun-map\",\r\n      \"system\": \"dnd5e\",\r\n      \"coreVersion\": \"12.331\",\r\n      \"systemVersion\": \"3.3.1\"\r\n    }\r\n  },\r\n  \"_stats\": {\r\n    \"coreVersion\": \"12.331\",\r\n    \"systemId\": \"dnd5e\",\r\n    \"systemVersion\": \"3.3.1\",\r\n    \"createdTime\": 1741071113392,\r\n    \"modifiedTime\": 1741071113392,\r\n    \"lastModifiedBy\": \"rQLkX9c1U2Tzkyh8\"\r\n  }\r\n}}",
@@ -1135,18 +1158,17 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3010/entity?clientId=id",
+					"raw": "{{baseUrl}}/entity?clientId={{clientId}}",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"entity"
 					],
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						}
 					]
@@ -1256,7 +1278,13 @@
 			],
 			"request": {
 				"method": "PUT",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"body": {
 					"mode": "raw",
 					"raw": "{\r\n  \"name\": \"BIG APE\",\r\n  \"system\": {\r\n    \"abilities\": {\r\n      \"str\": {\r\n        \"value\": 20,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"dex\": {\r\n        \"value\": 20,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"con\": {\r\n        \"value\": 20,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"int\": {\r\n        \"value\": 20,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"wis\": {\r\n        \"value\": 20,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"cha\": {\r\n        \"value\": 20,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      }\r\n    },\r\n    \"attributes\": {\r\n      \"ac\": {\r\n        \"flat\": 20,\r\n        \"calc\": \"natural\",\r\n        \"formula\": \"\"\r\n      },\r\n      \"hp\": {\r\n        \"value\": 19,\r\n        \"max\": 19,\r\n        \"temp\": 0,\r\n        \"tempmax\": 0,\r\n        \"formula\": \"3d8 + 6\"\r\n      },\r\n      \"init\": {\r\n        \"ability\": \"\",\r\n        \"bonus\": \"0\",\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"movement\": {\r\n        \"burrow\": 0,\r\n        \"climb\": 30,\r\n        \"fly\": 0,\r\n        \"swim\": 0,\r\n        \"walk\": 30,\r\n        \"units\": \"ft\",\r\n        \"hover\": false\r\n      },\r\n      \"attunement\": {\r\n        \"max\": 3\r\n      },\r\n      \"senses\": {\r\n        \"darkvision\": 0,\r\n        \"blindsight\": 0,\r\n        \"tremorsense\": 0,\r\n        \"truesight\": 0,\r\n        \"units\": \"ft\",\r\n        \"special\": \"\"\r\n      },\r\n      \"spellcasting\": \"\",\r\n      \"exhaustion\": 0,\r\n      \"concentration\": {\r\n        \"ability\": \"\",\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        },\r\n        \"bonuses\": {\r\n          \"save\": \"\"\r\n        },\r\n        \"limit\": 1\r\n      },\r\n      \"hd\": {\r\n        \"spent\": 0\r\n      },\r\n      \"death\": {\r\n        \"ability\": \"\",\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        },\r\n        \"success\": 0,\r\n        \"failure\": 0\r\n      }\r\n    },\r\n    \"details\": {\r\n      \"biography\": {\r\n        \"value\": \"<p>\\n        <em>\\n          Token artwork by\\n          <a href=\\\"https://www.forgotten-adventures.net/\\\" target=\\\"_blank\\\" rel=\\\"noopener\\\">Forgotten Adventures</a>.\\n        </em>      \\n      </p>\",\r\n        \"public\": \"\"\r\n      },\r\n      \"alignment\": \"Unaligned\",\r\n      \"race\": null,\r\n      \"type\": {\r\n        \"value\": \"beast\",\r\n        \"subtype\": \"\",\r\n        \"swarm\": \"\",\r\n        \"custom\": \"\"\r\n      },\r\n      \"environment\": \"Forest\",\r\n      \"cr\": 0.5,\r\n      \"spellLevel\": 0,\r\n      \"source\": {\r\n        \"custom\": \"\",\r\n        \"book\": \"SRD 5.1\",\r\n        \"page\": \"\",\r\n        \"license\": \"CC-BY-4.0\"\r\n      },\r\n      \"ideal\": \"\",\r\n      \"bond\": \"\",\r\n      \"flaw\": \"\"\r\n    },\r\n    \"traits\": {\r\n      \"size\": \"med\",\r\n      \"di\": {\r\n        \"value\": [],\r\n        \"bypasses\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"dr\": {\r\n        \"value\": [],\r\n        \"bypasses\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"dv\": {\r\n        \"value\": [],\r\n        \"bypasses\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"ci\": {\r\n        \"value\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"languages\": {\r\n        \"value\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"dm\": {\r\n        \"amount\": {},\r\n        \"bypasses\": []\r\n      }\r\n    },\r\n    \"currency\": {\r\n      \"pp\": 0,\r\n      \"gp\": 0,\r\n      \"ep\": 0,\r\n      \"sp\": 0,\r\n      \"cp\": 0\r\n    },\r\n    \"skills\": {\r\n      \"acr\": {\r\n        \"value\": 0,\r\n        \"ability\": \"dex\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ani\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"arc\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ath\": {\r\n        \"value\": 1,\r\n        \"ability\": \"str\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"dec\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"his\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ins\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"itm\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"inv\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"med\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"nat\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"prc\": {\r\n        \"value\": 1,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"prf\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"per\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"rel\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"slt\": {\r\n        \"value\": 0,\r\n        \"ability\": \"dex\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ste\": {\r\n        \"value\": 0,\r\n        \"ability\": \"dex\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"sur\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      }\r\n    },\r\n    \"spells\": {\r\n      \"spell1\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell2\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell3\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell4\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell5\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell6\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell7\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell8\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell9\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"pact\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell0\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      }\r\n    },\r\n    \"bonuses\": {\r\n      \"mwak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"rwak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"msak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"rsak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"abilities\": {\r\n        \"check\": \"\",\r\n        \"save\": \"\",\r\n        \"skill\": \"\"\r\n      },\r\n      \"spell\": {\r\n        \"dc\": \"\"\r\n      }\r\n    },\r\n    \"resources\": {\r\n      \"legact\": {\r\n        \"value\": 0,\r\n        \"max\": 0\r\n      },\r\n      \"legres\": {\r\n        \"value\": 0,\r\n        \"max\": 0\r\n      },\r\n      \"lair\": {\r\n        \"value\": false,\r\n        \"initiative\": null\r\n      }\r\n    },\r\n    \"tools\": {}\r\n  }\r\n}",
@@ -1267,11 +1295,10 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3010/entity/:uuid?clientId=id",
+					"raw": "{{baseUrl}}/entity/:uuid?clientId={{clientId}}",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"entity",
 						":uuid"
@@ -1279,7 +1306,7 @@
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						}
 					],
@@ -1496,13 +1523,18 @@
 			],
 			"request": {
 				"method": "DELETE",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "localhost:3010/entity/:uuid?clientId=id",
+					"raw": "{{baseUrl}}/entity/:uuid?clientId={{clientId}}",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"entity",
 						":uuid"
@@ -1510,7 +1542,7 @@
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						}
 					],
@@ -1709,13 +1741,18 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "localhost:3010/sheet/:uuid?clientId=id&scale=1&tab=0&darkMode=true",
+					"raw": "{{baseUrl}}/sheet/:uuid?clientId={{clientId}}&scale=0.5&tab=0&darkMode=true",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"sheet",
 						":uuid"
@@ -1723,12 +1760,12 @@
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						},
 						{
 							"key": "scale",
-							"value": "1",
+							"value": "0.5",
 							"description": "(Optional) Amount to scale the HTML by Default = 1"
 						},
 						{
@@ -1964,20 +2001,25 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "localhost:3010/rolls?clientId=id&limit=20",
+					"raw": "{{baseUrl}}/rolls?clientId={{clientId}}&limit=20",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"rolls"
 					],
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						},
 						{
@@ -2088,20 +2130,25 @@
 			],
 			"request": {
 				"method": "GET",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"url": {
-					"raw": "localhost:3010/lastroll?clientId=id",
+					"raw": "{{baseUrl}}/lastroll?clientId={{clientId}}",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"lastroll"
 					],
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						}
 					]
@@ -2202,7 +2249,13 @@
 			],
 			"request": {
 				"method": "POST",
-				"header": [],
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
 				"body": {
 					"mode": "raw",
 					"raw": "{\r\n  \"formula\": \"2d20kl+2d8\",\r\n  \"flavor\": \"Attack Roll\",\r\n  \"createChatMessage\": true,\r\n  \"speaker\": \"Token.9pfmuUogOYKDsC9C\",\r\n  \"whisper\": [\"userId1\", \"userId2\"]\r\n}",
@@ -2213,18 +2266,17 @@
 					}
 				},
 				"url": {
-					"raw": "localhost:3010/roll?clientId=id",
+					"raw": "{{baseUrl}}/roll?clientId={{clientId}}",
 					"host": [
-						"localhost"
+						"{{baseUrl}}"
 					],
-					"port": "3010",
 					"path": [
 						"roll"
 					],
 					"query": [
 						{
 							"key": "clientId",
-							"value": "id",
+							"value": "{{clientId}}",
 							"description": "Auth token to connect to specific Foundry world"
 						}
 					]
@@ -2342,7 +2394,17 @@
 	"variable": [
 		{
 			"key": "baseUrl",
-			"value": "https://localhost:3010"
+			"value": "https://foundryvtt-rest-api-relay.fly.dev"
+		},
+		{
+			"key": "apiKey",
+			"value": "apiKey",
+			"type": "string"
+		},
+		{
+			"key": "clientId",
+			"value": "clientId",
+			"type": "string"
 		}
 	]
 }

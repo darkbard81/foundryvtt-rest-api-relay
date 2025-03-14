@@ -192,10 +192,10 @@ def gen_resource_section(name, group):
         resource_section = gen_request_section(item) + gen_response_section(item) + "\n"
         # Write to a separate output file
         # Sanitize the name by replacing invalid filename characters
-        safe_name = name.replace("/", "-").replace("\\", "-").replace(":", "-").replace("*", "-") \
+        safe_name = name.replace("/", "").replace("\\", "-").replace(":", "-").replace("*", "-") \
                        .replace("?", "-").replace("\"", "-").replace("<", "-").replace(">", "-") \
                        .replace("|", "-")
-        file_name = str(serial_num) + "." + safe_name + "-" + str(item["request"]["method"]) + ".md"
+        file_name = safe_name + "-" + str(item["request"]["method"]) + ".md"
         output_path = os.path.join(working_dir, output_dir, file_name)
         with open(output_path, 'w') as output_file:
             output_file.write(resource_section)

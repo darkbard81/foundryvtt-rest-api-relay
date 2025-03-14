@@ -7,19 +7,20 @@
 #### Request URL
 
 ```
-localhost:3010/rolls?clientId=id&limit=20
+$baseUrl/rolls?clientId=$clientId&limit=20
 ```
 
 #### Request Headers
 
 | Key | Value | Description |
 | --- | ----- | ----------- |
+| x-api-key | \{\{apiKey\}\} |   |
 
 #### Request Parameters
 
 | Parameter Type | Key | Value | Description |
 | -------------- | --- | ----- | ----------- |
-| Query String Parameter | clientId | id | Auth token to connect to specific Foundry world |
+| Query String Parameter | clientId | \{\{clientId\}\} | Auth token to connect to specific Foundry world |
 | Query String Parameter | limit | 20 | (Optional) Max number of rolls to return. Max 20. Default 20. |
 
 ### Response

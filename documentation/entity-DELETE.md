@@ -7,19 +7,20 @@
 #### Request URL
 
 ```
-localhost:3010/entity/:uuid?clientId=id
+$baseUrl/entity/:uuid?clientId=$clientId
 ```
 
 #### Request Headers
 
 | Key | Value | Description |
 | --- | ----- | ----------- |
+| x-api-key | \{\{apiKey\}\} |   |
 
 #### Request Parameters
 
 | Parameter Type | Key | Value | Description |
 | -------------- | --- | ----- | ----------- |
-| Query String Parameter | clientId | id | Auth token to connect to specific Foundry world |
+| Query String Parameter | clientId | \{\{clientId\}\} | Auth token to connect to specific Foundry world |
 
 #### Request Payload
 
@@ -29,15 +30,14 @@ localhost:3010/entity/:uuid?clientId=id
 
 ### Response
 
-#### Status: 400 Bad Request
+#### Status: 200 OK
 
 ```json
 {
-  "requestId": "delete_1741128852112_p5x83ji",
+  "requestId": "delete_1741128863204_waoz8h8",
   "clientId": "foundry-rQLkX9c1U2Tzkyh8",
-  "uuid": "Actor.Z8x2HrpidaGLJhpW",
-  "error": "Entity not found: Actor.Z8x2HrpidaGLJhpW",
-  "message": "Failed to delete entity"
+  "uuid": "Actor.bGTFSQJZCIYycF7W",
+  "message": "Entity successfully deleted"
 }
 ```
 

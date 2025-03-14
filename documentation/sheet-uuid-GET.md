@@ -11,20 +11,21 @@ If returning JSON the HTML is untouched.
 #### Request URL
 
 ```
-localhost:3010/sheet/:uuid?clientId=id&scale=1&tab=0&darkMode=true
+$baseUrl/sheet/:uuid?clientId=$clientId&scale=0.5&tab=0&darkMode=true
 ```
 
 #### Request Headers
 
 | Key | Value | Description |
 | --- | ----- | ----------- |
+| x-api-key | \{\{apiKey\}\} |   |
 
 #### Request Parameters
 
 | Parameter Type | Key | Value | Description |
 | -------------- | --- | ----- | ----------- |
-| Query String Parameter | clientId | id | Auth token to connect to specific Foundry world |
-| Query String Parameter | scale | 1 | (Optional) Amount to scale the HTML by Default = 1 |
+| Query String Parameter | clientId | \{\{clientId\}\} | Auth token to connect to specific Foundry world |
+| Query String Parameter | scale | 0.5 | (Optional) Amount to scale the HTML by Default = 1 |
 | Query String Parameter | tab | 0 | (Optional) Tab to open if available |
 | Query String Parameter | darkMode | true | (Optional) Return dark mode HTML. Default = false |
 
