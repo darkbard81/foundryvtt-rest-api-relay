@@ -75,8 +75,13 @@ document.addEventListener("DOMContentLoaded", function () {
         // Update dashboard with fresh data
         document.getElementById("user-email").textContent = freshData.email;
         document.getElementById("user-api-key").textContent = freshData.apiKey;
-        document.getElementById("user-requests").textContent =
-          freshData.requestsThisMonth || 0;
+        document.getElementById("user-subscription-status").textContent = freshData.subscriptionStatus || '🔸 Free';
+        if (freshData.subscriptionStatus === 'free') {
+          document.getElementById("user-requests").textContent =
+            `${freshData.requestsThisMonth || 0} / ${freshData.freeApiRequestsLimit}`;
+        } else {
+          document.getElementById("user-requests").textContent = freshData.requestsThisMonth || 0;
+        }
         
         // Fetch subscription status
         await fetchSubscriptionStatus(apiKey);
@@ -301,7 +306,7 @@ document.addEventListener("DOMContentLoaded", function () {
       ? '✅ Active' 
       : status === 'past_due'
         ? '⚠️ Past Due'
-        : '❌ Not Subscribed';
+        : '🔸 Free';
     
     // Show/hide subscription buttons
     if (status === 'active' || status === 'past_due') {
