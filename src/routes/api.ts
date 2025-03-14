@@ -96,30 +96,6 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
-  // Function to fetch user data
-  router.get("/user-data", authMiddleware, async (req: Request, res: Response) => {
-    try {
-      const apiKey = req.headers['x-api-key'] as string;
-      const user = await User.findOne({ where: { apiKey } });
-
-      if (!user) {
-        safeResponse(res, 404, { error: "User not found" });
-        return;
-      }
-
-      safeResponse(res, 200, {
-        email: user.email,
-        apiKey: user.apiKey,
-        requestsThisMonth: user.requestsThisMonth || 0,
-        freeApiRequestsLimit: process.env.FREE_API_REQUESTS_LIMIT || 100,
-        subscriptionStatus: user.subscriptionStatus || 'free'
-      });
-    } catch (error) {
-      log.error(`Error fetching user data: ${error}`);
-      safeResponse(res, 500, { error: "Failed to fetch user data" });
-    }
-  });
-
   // Get all connected clients
   router.get("/clients", authMiddleware, (req: Request, res: Response) => {
     const apiKey = req.header('x-api-key');

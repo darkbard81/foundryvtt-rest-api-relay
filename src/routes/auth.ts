@@ -163,7 +163,7 @@ router.get('/user-data', async (req: Request, res: Response) => {
       email: user.getDataValue('email'),
       apiKey: user.getDataValue('apiKey'),
       requestsThisMonth: user.getDataValue('requestsThisMonth'),
-      createdAt: user.getDataValue('createdAt')
+      freeApiRequestsLimit: process.env.FREE_API_REQUESTS_LIMIT || 100
     });
     return;
   } catch (error) {
