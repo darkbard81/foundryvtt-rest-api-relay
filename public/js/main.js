@@ -75,16 +75,14 @@ document.addEventListener("DOMContentLoaded", function () {
         // Update dashboard with fresh data
         document.getElementById("user-email").textContent = freshData.email;
         document.getElementById("user-api-key").textContent = freshData.apiKey;
-        document.getElementById("user-subscription-status").textContent = freshData.subscriptionStatus || '🔸 Free';
-        if (freshData.subscriptionStatus === 'free') {
+        let status = freshData.subscriptionStatus || 'free';
+        updateSubscriptionUI(status);
+        if (status === 'free') {
           document.getElementById("user-requests").textContent =
             `${freshData.requestsThisMonth || 0} / ${freshData.freeApiRequestsLimit}`;
         } else {
           document.getElementById("user-requests").textContent = freshData.requestsThisMonth || 0;
         }
-        
-        // Fetch subscription status
-        await fetchSubscriptionStatus(apiKey);
       }
     } catch (error) {
       console.error("Failed to fetch fresh user data:", error);
@@ -315,32 +313,6 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       subscribeBtn.style.display = 'inline-block';
       manageSubscriptionBtn.style.display = 'none';
-    }
-  }
-
-  // Function to fetch subscription status
-  async function fetchSubscriptionStatus(apiKey) {
-    try {
-      const response = await fetch("/api/subscriptions/status", {
-        method: "GET",
-        headers: {
-          "x-api-key": apiKey,
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        updateSubscriptionUI(data.subscriptionStatus);
-        return data.subscriptionStatus;
-      } else {
-        console.error("Failed to fetch subscription status");
-        updateSubscriptionUI('free');
-        return 'free';
-      }
-    } catch (error) {
-      console.error("Error fetching subscription status:", error);
-      updateSubscriptionUI('free');
-      return 'free';
     }
   }
 });
