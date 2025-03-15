@@ -37,3 +37,6 @@ primary_region = 'ord'
 [[vm.mounts]]
   source = "myapp_data"
   destination = "/data"
+  
+[env]
+  ENABLE_REDIS = "true"
