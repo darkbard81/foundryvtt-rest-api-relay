@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 import { log } from '../middleware/logger';
 import dns from 'dns';
 
@@ -67,7 +67,7 @@ export function getRedisClient(): Redis | null {
         }
         
         // Improved connection options
-        let options = {
+        let options: RedisOptions = {
           maxRetriesPerRequest: 1,
           connectTimeout: 5000, // 5 second connection timeout
           retryStrategy: (times: number) => {
@@ -92,14 +92,14 @@ export function getRedisClient(): Redis | null {
             ...options,
             enableReadyCheck: false,
             maxRetriesPerRequest: 3,
-            retryStrategy: (times) => {
-              if (times > 5) {
-                log.error(`Too many Redis retry attempts, disabling Redis`);
-                redisEnabled = false;
-                return null;
+            retryStrategy: (times: number): 1000 | null => {
+                if (times > 5) {
+                  log.error(`Too many Redis retry attempts, disabling Redis`);
+                  redisEnabled = false;
+                  return null;
+                }
+                return 1000; // Fixed return type to match expected 1000 | null
               }
-              return Math.min(times * 200, 1000);
-            }
           };
         }
 
