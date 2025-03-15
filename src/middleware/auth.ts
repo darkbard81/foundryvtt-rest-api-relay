@@ -106,25 +106,25 @@ export const trackApiUsage = async (req: Request, res: Response, next: NextFunct
           // Fallback for memory store
           user.requestsThisMonth += 1;
         }
-
+        // Uncomment for free tier limit enforcement
         // Enforce limits only for free tier
-        const subscriptionStatus = user.getDataValue ? 
-          user.getDataValue('subscriptionStatus') : user.subscriptionStatus;
+        // const subscriptionStatus = user.getDataValue ? 
+        //   user.getDataValue('subscriptionStatus') : user.subscriptionStatus;
         
-        if (subscriptionStatus !== 'active') {
-          const requestCount = user.getDataValue ? 
-            user.getDataValue('requestsThisMonth') : user.requestsThisMonth;
+        // if (subscriptionStatus !== 'active') {
+        //   const requestCount = user.getDataValue ? 
+        //     user.getDataValue('requestsThisMonth') : user.requestsThisMonth;
             
-          if (requestCount >= FREE_TIER_LIMIT) {
-            res.status(429).json({
-              error: 'Monthly API request limit reached',
-              limit: FREE_TIER_LIMIT,
-              message: 'Please upgrade to a paid subscription for unlimited API access',
-              upgradeUrl: '/api/subscriptions/create-checkout-session'
-            });
-            return;
-          }
-        }
+        //   if (requestCount >= FREE_TIER_LIMIT) {
+        //     res.status(429).json({
+        //       error: 'Monthly API request limit reached',
+        //       limit: FREE_TIER_LIMIT,
+        //       message: 'Please upgrade to a paid subscription for unlimited API access',
+        //       upgradeUrl: '/api/subscriptions/create-checkout-session'
+        //     });
+        //     return;
+        //   }
+        // }
         
         next();
       } else {

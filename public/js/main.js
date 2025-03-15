@@ -76,13 +76,14 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("user-email").textContent = freshData.email;
         document.getElementById("user-api-key").textContent = freshData.apiKey;
         let status = freshData.subscriptionStatus || 'free';
-        updateSubscriptionUI(status);
-        if (status != 'active') {
-          document.getElementById("user-requests").textContent =
-          `${freshData.requestsThisMonth || 0} / ${freshData.freeApiRequestsLimit}`;
-        } else {
+        // Uncomment for payments integration
+        // updateSubscriptionUI(status);
+        // if (status != 'active') {
+        //   document.getElementById("user-requests").textContent =
+        //   `${freshData.requestsThisMonth || 0} / ${freshData.freeApiRequestsLimit}`;
+        // } else {
           document.getElementById("user-requests").textContent = freshData.requestsThisMonth || 0;
-        }
+        // }
       }
     } catch (error) {
       console.error("Failed to fetch fresh user data:", error);
