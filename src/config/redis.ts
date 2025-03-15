@@ -32,6 +32,10 @@ export function getRedisClient(): Redis | null {
             return null; // Stop retrying
           }
           return 1000; // Retry once after 1 second
+        },
+        // Add TLS options for Upstash
+        tls: {
+          rejectUnauthorized: false // Only if needed
         }
       };
       
