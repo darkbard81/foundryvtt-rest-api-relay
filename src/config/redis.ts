@@ -7,7 +7,7 @@ const ENABLE_REDIS = process.env.ENABLE_REDIS !== 'false';
 // Create Redis client singleton
 let redisClient: Redis | null = null;
 let redisEnabled = ENABLE_REDIS;
-let connectionAttempted = false; // Track if we've already tried connecting
+let connectionAttempted = false;
 
 // Define a Redis error interface to include the code property
 interface RedisError extends Error {
@@ -15,7 +15,6 @@ interface RedisError extends Error {
 }
 
 export function getRedisClient(): Redis | null {
-  // If Redis is disabled or we already tried and failed, don't try again
   if (!redisEnabled || (connectionAttempted && !redisClient)) {
     return null;
   }
@@ -23,9 +22,10 @@ export function getRedisClient(): Redis | null {
   if (!redisClient) {
     connectionAttempted = true;
     try {
-      // Set connection options to prevent excessive retrying
+      // Improved connection options
       const options = {
         maxRetriesPerRequest: 1,
+        connectTimeout: 5000, // 5 second connection timeout
         retryStrategy: (times: number) => {
           if (times > 1) {
             redisEnabled = false;
@@ -33,10 +33,11 @@ export function getRedisClient(): Redis | null {
           }
           return 1000; // Retry once after 1 second
         },
-        // Add TLS options for Upstash
-        tls: {
-          rejectUnauthorized: false // Only if needed
-        }
+        // DNS lookup options to improve reliability
+        family: 4, // Force IPv4
+        tls: process.env.REDIS_URL?.includes('tls://') ? {
+          rejectUnauthorized: false
+        } : undefined
       };
       
       redisClient = new Redis(REDIS_URL, options);
@@ -47,12 +48,16 @@ export function getRedisClient(): Redis | null {
       
       redisClient.on('error', (err: RedisError) => {
         if (redisClient) {
-          if (err.code === 'ECONNREFUSED') {
-            log.error(`Redis connection refused. Disabling Redis for this session.`);
+          if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+            log.error(`Redis connection issue: ${err.message}. Disabling Redis for this session.`);
             redisEnabled = false;
             
             // Close and nullify the client to prevent further attempts
-            redisClient.disconnect(false);
+            try {
+              redisClient.disconnect(false);
+            } catch (e) {
+              // Ignore disconnect errors
+            }
             redisClient = null;
           } else {
             log.error(`Redis error: ${err}`);
@@ -74,17 +79,23 @@ export function isRedisEnabled(): boolean {
   return redisEnabled && redisClient !== null;
 }
 
-// Close Redis connection on app shutdown
+// Close Redis connection on app shutdown with better error handling
 export function closeRedis(): Promise<void> {
   if (redisClient) {
-    return redisClient.quit().then(() => {
-      log.info('Redis connection closed');
-      redisClient = null;
-    }).catch((err) => {
-      log.error(`Error closing Redis: ${err}`);
+    try {
+      return redisClient.quit().then(() => {
+        log.info('Redis connection closed properly');
+        redisClient = null;
+      }).catch((err) => {
+        log.error(`Error during Redis quit: ${err}`);
+        redisClient = null;
+        return Promise.resolve();
+      });
+    } catch (err) {
+      log.error(`Error attempting to close Redis: ${err}`);
       redisClient = null;
       return Promise.resolve();
-    });
+    }
   }
   return Promise.resolve();
 }

@@ -15,6 +15,7 @@ primary_region = 'ord'
   auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 1
+  force_instance_key = true
   
   [[http_service.checks]]
     grace_period = "10s" 
@@ -28,13 +29,14 @@ primary_region = 'ord'
     hard_limit = 1000
     soft_limit = 500
 
-  # Remove sticky_sessions if you configured them before
-  # Let the app handle the routing with Redis instead
-
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+
+[[vm.mounts]]
+  source = "myapp_data"
+  destination = "/data"
 
 [env]
   REDIS_URL = "${FLY_REDIS_FOUNDRY_REST_API_REDIS_URL}"
