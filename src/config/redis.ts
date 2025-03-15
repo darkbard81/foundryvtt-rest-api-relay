@@ -1,10 +1,19 @@
 import Redis, { RedisOptions } from 'ioredis';
 import { log } from '../middleware/logger';
 
+// Fix Redis URL protocol if needed
+function fixRedisUrl(url: string): string {
+  // If it's an Upstash URL but doesn't use rediss://, fix it
+  if (url.includes('upstash.io') && !url.startsWith('rediss://')) {
+    return url.replace(/^redis:\/\//, 'rediss://');
+  }
+  return url;
+}
+
 // Use direct URL approach to avoid DNS resolution issues
 const FLY_INTERNAL_REDIS = process.env.REDIS_URL || 'redis://localhost:6379';
+export const REDIS_URL = fixRedisUrl(FLY_INTERNAL_REDIS);
 
-export const REDIS_URL = FLY_INTERNAL_REDIS;
 const ENABLE_REDIS = process.env.ENABLE_REDIS !== 'false';
 
 // Create Redis client singleton
@@ -37,15 +46,15 @@ export function getRedisClient(): Redis | null {
           }
           return Math.min(times * 500, 2000); // Progressive backoff
         },
-        // Try IPv6 instead of IPv4 (critical fix for many cloud environments)
-        family: 6,
-        // For TLS connections
-        tls: REDIS_URL.includes('tls://') || REDIS_URL.includes('upstash.io') ? {
+        // Force IPv4 for better compatibility with various Redis providers
+        family: 4,
+        // For TLS connections - don't use this flag since we're handling it in the URL
+        tls: REDIS_URL.startsWith('rediss://') ? {
           rejectUnauthorized: false
         } : undefined
       };
 
-      log.info(`Attempting Redis connection to ${REDIS_URL.replace(/redis:\/\/.*?@/, 'redis://[hidden]@')}...`);
+      log.info(`Attempting Redis connection to ${REDIS_URL.replace(/rediss?:\/\/.*?@/, 'redis://[hidden]@')}...`);
       redisClient = new Redis(REDIS_URL, options);
       
       redisClient.on('connect', () => {
