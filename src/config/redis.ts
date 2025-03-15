@@ -2,7 +2,11 @@ import Redis from 'ioredis';
 import { log } from '../middleware/logger';
 import dns from 'dns';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const FLY_INTERNAL_REDIS = process.env.FLY_REDIS_FOUNDRY_REST_API_REDIS_URL || 
+                           process.env.REDIS_URL || 
+                           'redis://localhost:6379';
+
+export const REDIS_URL = FLY_INTERNAL_REDIS;
 const ENABLE_REDIS = process.env.ENABLE_REDIS !== 'false';
 
 // Extract hostname for DNS pre-resolution
@@ -63,7 +67,7 @@ export function getRedisClient(): Redis | null {
         }
         
         // Improved connection options
-        const options = {
+        let options = {
           maxRetriesPerRequest: 1,
           connectTimeout: 5000, // 5 second connection timeout
           retryStrategy: (times: number) => {
@@ -80,6 +84,25 @@ export function getRedisClient(): Redis | null {
           } : undefined
         };
         
+        // In your getRedisClient function, add this special handling for Fly.io internal Redis
+        if (process.env.FLY_ALLOC_ID && process.env.FLY_REDIS_FOUNDRY_REST_API_REDIS_URL) {
+          log.info('Using Fly.io internal Redis connection');
+          // Use special options for Fly.io internal Redis
+          options = {
+            ...options,
+            enableReadyCheck: false,
+            maxRetriesPerRequest: 3,
+            retryStrategy: (times) => {
+              if (times > 5) {
+                log.error(`Too many Redis retry attempts, disabling Redis`);
+                redisEnabled = false;
+                return null;
+              }
+              return Math.min(times * 200, 1000);
+            }
+          };
+        }
+
         log.info(`Attempting Redis connection to ${redisHostname || 'localhost'}...`);
         redisClient = new Redis(REDIS_URL, options);
         

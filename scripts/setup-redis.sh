@@ -2,13 +2,13 @@
 
 # Create Redis instance with minimal options
 echo "Creating Redis instance..."
-fly redis create
+fly redis create foundry-rest-api-redis \
+  --region ord \
+  --no-replicas
 
-# The command will prompt for:
-# - Name (enter: foundry-rest-api-redis)
-# - Organization (select yours)
-# - Region (select one close to you)
-# - Eviction policy (answer Y)
+# After creation, extract and set the Redis URL as a secret
+echo "Setting Redis URL as a secret for your app..."
+REDIS_URL=$(fly redis status foundry-rest-api-redis | grep "Connection string" | awk '{print $3}')
+fly secrets set REDIS_URL="$REDIS_URL"
 
-# After creation completes, attach it to your app
-echo "Attac your Redis app using the returned url..."
+echo "Redis setup complete. URL set as secret."
