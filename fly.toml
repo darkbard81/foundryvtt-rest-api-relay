@@ -18,7 +18,7 @@ primary_region = 'ord'
   force_instance_key = true
   
   [[http_service.checks]]
-    grace_period = "15s" 
+    grace_period = "30s" 
     interval = "30s"
     method = "GET"
     path = "/health"
