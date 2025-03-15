@@ -37,6 +37,3 @@ primary_region = 'ord'
 [[vm.mounts]]
   source = "myapp_data"
   destination = "/data"
-
-[env]
-  REDIS_URL = "${FLY_REDIS_FOUNDRY_REST_API_REDIS_URL}"
