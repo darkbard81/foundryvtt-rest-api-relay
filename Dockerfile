@@ -20,11 +20,12 @@ COPY package-lock.json* ./
 RUN npm install -g pnpm && \
     if [ -f pnpm-lock.yaml ]; then \
       pnpm install --frozen-lockfile; \
-    elif [ -f yarn.lock ]; then \
-      yarn install --frozen-lockfile; \
     else \
       npm install; \
     fi
+
+# Add node-fetch explicitly since it's needed for the forwarder
+RUN pnpm add node-fetch @types/node-fetch
 
 # Copy source code
 COPY . .
@@ -35,7 +36,7 @@ RUN pnpm build
 # Set environment variables
 ENV NODE_ENV=production
 
-# Expose port (use 3000 to match fly.toml)
+# Expose port
 EXPOSE 3010
 
 # Start the application

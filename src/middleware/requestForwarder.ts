@@ -52,14 +52,22 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     // Build the internal Fly.io address
     const targetUrl = `http://${instanceId}.vm.fly-local.internal:${FLY_INTERNAL_PORT}${req.originalUrl}`;
     
+    // Create safe headers object
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (value && typeof value === 'string') {
+        headers[key] = value;
+      }
+    }
+    
+    // Add extra headers
+    headers['x-forwarded-from'] = INSTANCE_ID;
+    headers['x-original-host'] = req.headers.host as string || '';
+    
     // Forward the request
     const response = await fetch(targetUrl, {
       method: req.method,
-      headers: {
-        ...req.headers as any,
-        'x-forwarded-from': INSTANCE_ID,
-        'x-original-host': req.headers.host || ''
-      },
+      headers: headers,
       body: req.method !== 'GET' && req.method !== 'HEAD' && req.body ? 
             JSON.stringify(req.body) : undefined
     });
@@ -71,6 +79,7 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     // Copy status and headers from the forwarded response
     res.status(response.status);
     
+    // Handle response headers safely
     for (const [key, value] of Object.entries(response.headers.raw())) {
       if (key.toLowerCase() !== 'transfer-encoding') { // Skip problematic headers
         res.setHeader(key, value);
@@ -79,7 +88,7 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     
     // Stream the response body
     const responseBody = await response.text();
-    res.send(responseBody);
+    return res.send(responseBody);
     
   } catch (error) {
     log.error(`Error in request forwarder: ${error}`);
