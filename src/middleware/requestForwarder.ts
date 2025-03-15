@@ -88,7 +88,7 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     
     // Stream the response body
     const responseBody = await response.text();
-    return res.send(responseBody);
+    res.send(responseBody);
     
   } catch (error) {
     log.error(`Error in request forwarder: ${error}`);
