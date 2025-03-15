@@ -11,6 +11,8 @@ import * as path from "path";
 import { sequelize } from "./sequelize";
 import stripeRouter from './routes/stripe';
 import webhookRouter from './routes/webhook';
+import { requestForwarderMiddleware } from './middleware/requestForwarder';
+import { closeRedis } from './config/redis';
 
 config();
 
@@ -34,6 +36,9 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   }
   // Don't call next with error to prevent Express from handling it again
 });
+
+// Add request forwarder middleware before other routes
+app.use(requestForwarderMiddleware);
 
 // Serve static files from public directory
 app.use("/static", express.static(path.join(__dirname, "../public")));
@@ -74,8 +79,12 @@ sequelize.sync().then(() => {
 });
 
 // Handle graceful shutdown
-const shutdown = (): void => {
+const shutdown = async (): Promise<void> => {
   log.info("Shutting down server...");
+  
+  // Close Redis connections
+  await closeRedis();
+  
   httpServer.close(() => {
     log.info("Server closed successfully");
     process.exit(0);

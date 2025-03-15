@@ -10,6 +10,7 @@ import { User } from '../models/user';
 import { authMiddleware, trackApiUsage } from '../middleware/auth';
 import * as bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { healthCheck } from '../routes/health';
 
 // Add this helper function at the top of your file
 function safeResponse(res: Response, statusCode: number, data: any): void {
@@ -32,13 +33,7 @@ export const apiRoutes = (app: express.Application): void => {
     res.sendFile(path.join(__dirname, "../../_test/test-client.html"));
   });
 
-  router.get("/health", (req: Request, res: Response) => {
-    res.json({
-      status: "ok",
-      instance: process.env.FLY_MACHINE_ID,
-    });
-    return;
-  });
+  router.get("/health", healthCheck);
 
   router.get("/api/status", (req: Request, res: Response) => {
     res.json({ 
@@ -97,9 +92,9 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all connected clients
-  router.get("/clients", authMiddleware, (req: Request, res: Response) => {
-    const apiKey = req.header('x-api-key');
-    const clients = ClientManager.getConnectedClients(apiKey);
+  router.get("/clients", authMiddleware, async (req: Request, res: Response) => {
+    const apiKey = req.header('x-api-key') || '';
+    const clients = await ClientManager.getConnectedClients(apiKey);
     
     safeResponse(res, 200, {
       total: clients.length,
@@ -130,8 +125,8 @@ export const apiRoutes = (app: express.Application): void => {
       return;
     }
     
-    // Find a connected client with this ID
-    const client = ClientManager.getClient(clientId);
+    // Find a connected client with this ID - now with await
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID",
@@ -210,7 +205,7 @@ export const apiRoutes = (app: express.Application): void => {
     }
     
     // Find a connected client with this ID
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID",
@@ -276,7 +271,7 @@ export const apiRoutes = (app: express.Application): void => {
 			return;
     }
     
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
@@ -339,7 +334,7 @@ export const apiRoutes = (app: express.Application): void => {
       return;
     }
     
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
@@ -407,7 +402,7 @@ export const apiRoutes = (app: express.Application): void => {
 			return;
     }
     
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
@@ -479,7 +474,7 @@ export const apiRoutes = (app: express.Application): void => {
       return;
     }
     
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
@@ -545,7 +540,7 @@ export const apiRoutes = (app: express.Application): void => {
       return;
     }
     
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
@@ -605,7 +600,7 @@ export const apiRoutes = (app: express.Application): void => {
 			return;
     }
     
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
@@ -668,7 +663,7 @@ export const apiRoutes = (app: express.Application): void => {
 			return;
     }
     
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
@@ -739,7 +734,7 @@ export const apiRoutes = (app: express.Application): void => {
 			return;
     }
     
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
@@ -807,7 +802,7 @@ export const apiRoutes = (app: express.Application): void => {
     }
     
     // Find a connected client with this ID
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
@@ -878,7 +873,7 @@ export const apiRoutes = (app: express.Application): void => {
       
       // If we have client info, use its URL
       if (clientId) {
-        const client = ClientManager.getClient(clientId);
+        const client = await ClientManager.getClient(clientId);
         if (client && 'metadata' in client && client.metadata && (client.metadata as any).origin) {
           foundryBaseUrl = (client.metadata as any).origin;
         }

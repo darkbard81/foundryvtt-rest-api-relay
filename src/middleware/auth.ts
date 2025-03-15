@@ -49,7 +49,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
   try {
     // Find all users with the matching API key
     const users = await User.findAll({ where: { apiKey } });
-    const client = ClientManager.getClient(clientId);
+    const client = await ClientManager.getClient(clientId);
     
     if (users.length === 0) {
       res.status(401).json({ error: 'Invalid API key' });
