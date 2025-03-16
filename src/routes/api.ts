@@ -1059,6 +1059,400 @@ export const apiRoutes = (app: express.Application): void => {
       return;
     }
   });
+
+  // Get all active encounters
+  router.get("/encounters", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `encounters_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'encounters',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "get-encounters",
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send encounters request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing encounters request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process encounters request" });
+    }
+  });
+
+  // Update the start-encounter endpoint to include the new options
+  router.post("/start-encounter", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const tokenUuids = req.body.tokens || [];
+    const startWithSelected = req.body.startWithSelected === true;
+    const startWithPlayers = req.body.startWithPlayers === true;
+    const rollNPC = req.body.rollNPC === true;
+    const rollAll = req.body.rollAll === true;
+    const name = req.body.name || "";
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `start_encounter_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'start-encounter',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "start-encounter",
+        tokenUuids,
+        startWithSelected,
+        startWithPlayers,
+        rollNPC,
+        rollAll,
+        name,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send start encounter request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing start encounter request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process start encounter request" });
+    }
+  });
+
+  // Next turn in encounter
+  router.post("/next-turn", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const encounterId = req.query.encounter as string || req.body.encounter;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `next_turn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'next-turn',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "encounter-next-turn",
+        encounterId,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send next turn request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing next turn request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process next turn request" });
+    }
+  });
+
+  // Next round in encounter
+  router.post("/next-round", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const encounterId = req.query.encounter as string || req.body.encounter;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `next_round_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'next-round',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "encounter-next-round",
+        encounterId,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send next round request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing next round request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process next round request" });
+    }
+  });
+
+  // Previous turn in encounter
+  router.post("/last-turn", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const encounterId = req.query.encounter as string || req.body.encounter;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `last_turn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'last-turn',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "encounter-previous-turn",
+        encounterId,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send previous turn request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing previous turn request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process previous turn request" });
+    }
+  });
+
+  // Previous round in encounter
+  router.post("/last-round", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const encounterId = req.query.encounter as string || req.body.encounter;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `last_round_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'last-round',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "encounter-previous-round",
+        encounterId,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send previous round request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing previous round request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process previous round request" });
+    }
+  });
+
+  // End an encounter
+  router.post("/end-encounter", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const encounterId = req.query.encounter as string || req.body.encounter;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    if (!encounterId) {
+      safeResponse(res, 400, { 
+        error: "Encounter ID is required",
+        howToUse: "Add ?encounter=encounterID to your request or include it in the request body"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `end_encounter_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'end-encounter',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "end-encounter",
+        encounterId,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send end encounter request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing end encounter request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process end encounter request" });
+    }
+  });
   
   // Add this route before mounting the router
   router.get('/proxy-asset/:path(*)', requestForwarderMiddleware, async (req: Request, res: Response) => {
@@ -1379,6 +1773,107 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "GET",
+          path: "/encounters",
+          description: "Returns all active encounters in the world",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/start-encounter",
+          description: "Starts a new encounter with optional tokens",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "tokens", type: "array", description: "Array of token UUIDs to add to the encounter", location: "body" },
+            { name: "startWithSelected", type: "boolean", description: "Whether to start with selected tokens", location: "body" },
+            { name: "startWithPlayers", type: "boolean", description: "Whether to start with player tokens", location: "body" },
+            { name: "rollNPC", type: "boolean", description: "Whether to roll initiative for NPC tokens", location: "body" },
+            { name: "rollAll", type: "boolean", description: "Whether to roll initiative for all tokens", location: "body" },
+            { name: "name", type: "string", description: "Name for the encounter", location: "body" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/next-turn",
+          description: "Advances to the next turn in an encounter",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "encounter", type: "string", description: "ID of the encounter to advance (uses active encounter if not specified)", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/next-round",
+          description: "Advances to the next round in an encounter",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "encounter", type: "string", description: "ID of the encounter to advance (uses active encounter if not specified)", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/last-turn",
+          description: "Goes back to the previous turn in an encounter",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "encounter", type: "string", description: "ID of the encounter to rewind (uses active encounter if not specified)", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/last-round",
+          description: "Goes back to the previous round in an encounter",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "encounter", type: "string", description: "ID of the encounter to rewind (uses active encounter if not specified)", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/end-encounter",
+          description: "Ends a specific encounter",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "encounter", type: "string", description: "ID of the encounter to end", location: "query" }
+          ],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "GET",
           path: "/api/status",
           description: "Returns the API status and version",
           requiredParameters: [],
@@ -1417,7 +1912,9 @@ export const apiRoutes = (app: express.Application): void => {
 // Track pending requests
 interface PendingRequest {
   res: express.Response;
-  type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 'rolls' | 'lastroll' | 'roll' | 'actor-sheet' | 'macro-execute' | 'macros';
+  type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 
+         'rolls' | 'lastroll' | 'roll' | 'actor-sheet' | 'macro-execute' | 'macros' | 
+         'encounters' | 'start-encounter' | 'next-turn' | 'next-round' | 'last-turn' | 'last-round' | 'end-encounter';
   clientId?: string;
   uuid?: string;
   path?: string;
@@ -2325,6 +2822,127 @@ function setupMessageHandlers() {
     }
   });
 
+  // Handler for encounters list
+  ClientManager.onMessageType("encounters-list", (client: Client, data: any) => {
+    log.info(`Received encounters list for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'encounters') {
+        // Send response with metadata
+        safeResponse(pending.res, 200, {
+          requestId: data.requestId,
+          clientId: pending.clientId,
+          encounters: data.encounters || []
+        });
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+        return;
+      }
+    }
+  });
+
+  // Handler for start encounter response
+  ClientManager.onMessageType("encounter-started", (client: Client, data: any) => {
+    log.info(`Received encounter started response for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'start-encounter') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            error: data.error,
+            message: data.message || "Failed to start encounter"
+          });
+        } else {
+          // Send response with the new encounter data
+          safeResponse(pending.res, 201, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            encounterId: data.encounterId,
+            encounter: data.encounter || {}
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+        return;
+      }
+    }
+  });
+
+  // Handler for encounter navigation (next/previous turn/round)
+  ClientManager.onMessageType("encounter-navigation", (client: Client, data: any) => {
+    log.info(`Received encounter navigation response for requestId: ${data.requestId}, action: ${data.action}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      // Check if this is any of our navigation types
+      if (['next-turn', 'next-round', 'last-turn', 'last-round'].includes(pending.type)) {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            error: data.error,
+            message: data.message || `Failed to perform ${pending.type}`
+          });
+        } else {
+          // Send response with the current state
+          safeResponse(pending.res, 200, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            encounterId: data.encounterId,
+            action: data.action,
+            currentTurn: data.currentTurn,
+            currentRound: data.currentRound,
+            encounter: data.encounter || {}
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+        return;
+      }
+    }
+  });
+
+  // Handler for encounter ended
+  ClientManager.onMessageType("encounter-ended", (client: Client, data: any) => {
+    log.info(`Received encounter ended response for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'end-encounter') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            error: data.error,
+            message: data.message || "Failed to end encounter"
+          });
+        } else {
+          // Send response with metadata
+          safeResponse(pending.res, 200, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            encounterId: data.encounterId,
+            message: "Encounter successfully ended"
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+        return;
+      }
+    }
+  });
 
   // Clean up old pending requests periodically
   setInterval(() => {
