@@ -13,7 +13,7 @@ const CLIENT_EXPIRY = 60 * 60 * 2; // 2 hours expiry for Redis keys
 export class ClientManager {
   private static clients = new Map<string, Client>();
   private static tokenGroups = new Map<string, Set<string>>(); 
-  private static messageHandlers = new Map<string, MessageHandler>();
+  private static messageHandlers = new Map<string, MessageHandler[]>();
 
   /**
    * Add a new client to the manager
@@ -84,15 +84,16 @@ export class ClientManager {
       try {
         const redis = getRedisClient();
         if (redis) {
-          await redis.del(`client:id:${id}:instance`);
-          await redis.del(`client:id:${id}:token`);
-          await redis.srem(`token:${token}:clients`, id);
+          // FIXED: Consistent key naming
+          await redis.del(`client:${id}:instance`);
+          await redis.del(`client:${id}:apikey`);
+          await redis.srem(`apikey:${token}:clients`, id);
           
           // If this was the last client for this token, remove instance mapping
-          const remainingClients = await redis.scard(`token:${token}:clients`);
+          const remainingClients = await redis.scard(`apikey:${token}:clients`);
           if (remainingClients === 0) {
-            await redis.del(`client:${token}:instance`);
-            await redis.del(`token:${token}:clients`);
+            await redis.del(`apikey:${token}:instance`);
+            await redis.del(`apikey:${token}:clients`);
           }
         }
       } catch (error) {
@@ -118,7 +119,8 @@ export class ClientManager {
     try {
       const redis = getRedisClient();
       if (redis) {
-        const instanceId = await redis.get(`client:id:${id}:instance`);
+        // FIXED: Consistent key naming
+        const instanceId = await redis.get(`client:${id}:instance`);
         
         if (instanceId && instanceId !== INSTANCE_ID) {
           // This client exists but is connected to a different instance
@@ -211,11 +213,11 @@ export class ClientManager {
         if (redis) {
           const token = client.getApiKey();
           
-          // Refresh expiry for all Redis keys related to this client
-          redis.expire(`client:id:${id}:instance`, CLIENT_EXPIRY);
-          redis.expire(`client:id:${id}:token`, CLIENT_EXPIRY);
-          redis.expire(`token:${token}:clients`, CLIENT_EXPIRY);
-          redis.expire(`client:${token}:instance`, CLIENT_EXPIRY);
+          // FIXED: Refresh expiry for all Redis keys with consistent naming
+          redis.expire(`client:${id}:instance`, CLIENT_EXPIRY);
+          redis.expire(`client:${id}:apikey`, CLIENT_EXPIRY);
+          redis.expire(`apikey:${token}:clients`, CLIENT_EXPIRY);
+          redis.expire(`apikey:${token}:instance`, CLIENT_EXPIRY);
         }
       } catch (error) {
         // Ignore Redis errors for heartbeat updates
@@ -254,7 +256,10 @@ export class ClientManager {
    * Register a handler for a specific message type
    */
   static onMessageType(type: string, handler: MessageHandler): void {
-    this.messageHandlers.set(type, handler);
+    if (!this.messageHandlers.has(type)) {
+      this.messageHandlers.set(type, []);
+    }
+    this.messageHandlers.get(type)!.push(handler);
   }
 
   /**
@@ -275,7 +280,9 @@ export class ClientManager {
     
     // Handle other message types with registered handlers
     if (message.type && this.messageHandlers.has(message.type)) {
-      this.messageHandlers.get(message.type)!(client, message);
+      for (const handler of this.messageHandlers.get(message.type)!) {
+        handler(client, message);
+      }
       return;
     }
 
