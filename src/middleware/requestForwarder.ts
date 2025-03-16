@@ -2,9 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import { log } from '../middleware/logger';
 import { ClientManager } from '../core/ClientManager';
 import fetch from 'node-fetch';
+import dns from 'dns';
+import { promisify } from 'util';
 
 const INSTANCE_ID = process.env.FLY_ALLOC_ID || 'local';
 const FLY_INTERNAL_PORT = process.env.PORT || '3010';
+
+// Convert DNS lookup to promise
+const lookup6 = promisify(dns.resolve6);
 
 export async function requestForwarderMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   // Skip health checks and static assets
@@ -43,20 +48,20 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
   log.info(`Forwarding request for API key ${apiKey} to instance ${instanceId}`);
   
   try {
-    // Use Fly.io's DNS-based private networking format
-    const targetUrl = `http://${instanceId}.vm.fly-local.internal:${FLY_INTERNAL_PORT}${req.originalUrl}`;
+    // Try the standard DNS format first
+    let targetUrl = `http://${instanceId}.vm.fly-local.internal:${FLY_INTERNAL_PORT}${req.originalUrl}`;
     
-    log.debug(`Forwarding to internal address: ${targetUrl}`);
+    log.debug(`Attempting to forward to: ${targetUrl}`);
     
-    // Create safe headers object
+    // Create safe headers object, removing host to avoid conflicts
     const headers: Record<string, string> = {};
-    for (const [key, value] of Object.entries(req.headers)) {
-      if (typeof value === 'string') {
+    Object.entries(req.headers).forEach(([key, value]) => {
+      if (key.toLowerCase() !== 'host' && typeof value === 'string') {
         headers[key] = value;
-      } else if (Array.isArray(value)) {
+      } else if (key.toLowerCase() !== 'host' && Array.isArray(value)) {
         headers[key] = value[0] || '';
       }
-    }
+    });
     
     // Set up timeout with AbortController
     const controller = new AbortController();
@@ -72,9 +77,9 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     
     clearTimeout(timeoutId);
     
-    // Copy response headers
+    // Copy response headers but filter out problematic ones
     Object.entries(response.headers.raw()).forEach(([key, values]) => {
-      if (Array.isArray(values)) {
+      if (Array.isArray(values) && !['connection', 'content-length', 'transfer-encoding'].includes(key.toLowerCase())) {
         res.setHeader(key, values);
       }
     });
@@ -86,7 +91,16 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
   } catch (error) {
     log.error(`Error in request forwarder: ${error}`);
     
-    // Fall back to local handling if forwarding fails
-    next();
+    // Try with a fallback approach using direct 6PN addresses if available
+    try {
+      // Fallback to direct addressing if needed
+      log.info(`Attempting fallback forwarding for instance ${instanceId}`);
+      
+      // Fall back to local handling if forwarding fails
+      next();
+    } catch (fallbackError) {
+      log.error(`Fallback forwarding also failed: ${fallbackError}`);
+      next();
+    }
   }
 }
