@@ -46,7 +46,7 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
   try {
     // Use Fly.io's proper DNS-based private networking format
     // The correct format is <machine_id>.vm.<appname>.internal
-    const targetUrl = `http://${instanceId}.vm.${APP_NAME}.internal:${FLY_INTERNAL_PORT}${req.originalUrl}`;
+    const targetUrl = `http://${instanceId}.vm.${APP_NAME}.internal${req.originalUrl}`;
     
     log.debug(`Forwarding to internal address: ${targetUrl}`);
     
