@@ -956,6 +956,238 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
+  // API Documentation endpoint - returns all available endpoints with their documentation
+  router.get("/api/docs", async (req: Request, res: Response) => {
+    // Build comprehensive documentation object with all endpoints
+    const apiDocs = {
+      version: "1.0.0",
+      baseUrl: `${req.protocol}://${req.get('host')}`,
+      authentication: {
+        required: true,
+        headerName: "x-api-key",
+        description: "API key must be included in the x-api-key header for all endpoints except /api/status"
+      },
+      endpoints: [
+        {
+          method: "GET",
+          path: "/clients",
+          description: "Returns connected client Foundry Worlds",
+          requiredParameters: [],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ],
+          responseExample: {
+            total: 2,
+            clients: [
+              {
+                id: "foundry-LZw0ywlj1iYpkUSR",
+                lastSeen: 1741132430381,
+                connectedSince: 1741132430381
+              },
+              {
+                id: "foundry-rQLkX9c1U2Tzkyh8",
+                lastSeen: 1741132381381,
+                connectedSince: 1741132381381
+              }
+            ]
+          }
+        },
+        {
+          method: "GET",
+          path: "/search",
+          description: "Searches Foundry VTT entities using QuickInsert",
+          requiredParameters: [
+            { name: "query", type: "string", description: "Search term", location: "query" },
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "filter", type: "string", description: "Filter results by type", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/get/:uuid",
+          description: "Returns JSON data for the specified entity",
+          requiredParameters: [
+            { name: "uuid", type: "string", description: "The UUID of the entity to retrieve", location: "path" },
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "noCache", type: "boolean", description: "If true, forces a fresh fetch of the entity", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/structure",
+          description: "Returns the folder structure and compendiums in Foundry",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/contents/:path",
+          description: "Returns the contents of a folder or compendium",
+          requiredParameters: [
+            { name: "path", type: "string", description: "Path to the folder or compendium", location: "path" },
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/entity",
+          description: "Creates a new entity in Foundry with the given JSON",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "type", type: "string", description: "Entity type (Actor, Item, etc.)", location: "body" },
+            { name: "data", type: "object", description: "Entity data", location: "body" }
+          ],
+          optionalParameters: [
+            { name: "folder", type: "string", description: "Folder ID to place the entity in", location: "body" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "PUT",
+          path: "/entity/:uuid",
+          description: "Updates an entity with the given JSON props",
+          requiredParameters: [
+            { name: "uuid", type: "string", description: "UUID of the entity to update", location: "path" },
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [],
+          requestPayload: "JSON object containing the properties to update",
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "DELETE",
+          path: "/entity/:uuid",
+          description: "Deletes the specified entity",
+          requiredParameters: [
+            { name: "uuid", type: "string", description: "UUID of the entity to delete", location: "path" },
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/rolls",
+          description: "Returns up to the last 20 dice rolls",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "limit", type: "number", description: "Maximum number of rolls to return", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/lastroll",
+          description: "Returns the last roll made",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/roll",
+          description: "Makes a new roll in Foundry",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "formula", type: "string", description: "Dice roll formula (e.g. '2d6+3')", location: "body" }
+          ],
+          optionalParameters: [
+            { name: "flavor", type: "string", description: "Text to display with the roll", location: "body" },
+            { name: "createChatMessage", type: "boolean", description: "Whether to create a chat message", location: "body" },
+            { name: "whisper", type: "array", description: "Array of user IDs to whisper the roll to", location: "body" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/sheet/:uuid",
+          description: "Returns raw HTML (or a string in a JSON response) for an entity",
+          requiredParameters: [
+            { name: "uuid", type: "string", description: "UUID of the entity to get the sheet for", location: "path" },
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "format", type: "string", description: "Response format, 'html' or 'json'", location: "query" },
+            { name: "scale", type: "number", description: "Scale factor for the sheet", location: "query" },
+            { name: "tab", type: "number", description: "Index of the tab to activate", location: "query" },
+            { name: "darkMode", type: "boolean", description: "Whether to use dark mode", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/api/status",
+          description: "Returns the API status and version",
+          requiredParameters: [],
+          optionalParameters: [],
+          requestHeaders: [],
+          authentication: false
+        },
+        {
+          method: "GET",
+          path: "/health",
+          description: "Health check endpoint for the API",
+          requiredParameters: [],
+          optionalParameters: [],
+          requestHeaders: [],
+          authentication: false
+        },
+        {
+          method: "GET",
+          path: "/api/docs",
+          description: "Returns this API documentation",
+          requiredParameters: [],
+          optionalParameters: [],
+          requestHeaders: [],
+          authentication: false
+        }
+      ]
+    };
+
+    safeResponse(res, 200, apiDocs);
+  });
+
   // Mount the router
   app.use("/", router);
 };
