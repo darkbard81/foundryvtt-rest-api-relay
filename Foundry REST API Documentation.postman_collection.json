@@ -1263,6 +1263,287 @@
 			]
 		},
 		{
+			"name": "/macros",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/macros?clientId={{clientId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"macros"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}",
+							"description": "Auth token to connect to specific Foundry world"
+						}
+					]
+				},
+				"description": "## Returns all available macros"
+			},
+			"response": [
+				{
+					"name": "Successful Response",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/macros?clientId=clientId",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"macros"
+							],
+							"query": [
+								{
+									"key": "clientId",
+									"value": "clientId",
+									"description": "Auth token to connect to specific Foundry world"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "17635"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"44e3-TVWyLV0qSn/wuUDH3iLpxk2am10\""
+						},
+						{
+							"key": "Date",
+							"value": "Sun, 16 Mar 2025 12:46:17 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"clientId\": \"foundry-rQLkX9c1U2Tzkyh8\",\n    \"total\": 6,\n    \"macros\": [\n        {\n            \"uuid\": \"Macro.3Rk37Uyyz23zqlQ9\",\n            \"id\": \"3Rk37Uyyz23zqlQ9\",\n            \"name\": \"get-wiki-journals-from-text\",\n            \"type\": \"script\",\n            \"author\": \"Gamemaster\",\n            \"command\": \"(async () => {\\n    // Verify we have access to the necessary Foundry VTT APIs\\n    if (!game.journal || !game.WikiImporter) {\\n        ui.notifications.error(\\\"Required Foundry VTT features not available\\\");\\n        return;\\n    }\\n\\n    // Prompt the user for the journal ID\\n    let targetJournal;\\n    let journalID = await new Promise((resolve) => {\\n        new Dialog({\\n            title: \\\"Journal ID\\\",\\n            content: `<p>Enter the Journal Entry ID:</p><input type=\\\"text\\\" id=\\\"journal-id\\\" style=\\\"width: 100%;\\\" />`,\\n            buttons: {\\n                ok: {\\n                    label: \\\"Create Journals\\\",\\n                    callback: (html) => resolve(html.find(\\\"#journal-id\\\").val()),\\n                },\\n                cancel: {\\n                    label: \\\"Cancel\\\",\\n                },\\n            },\\n            default: \\\"ok\\\",\\n        }).render(true);\\n    });\\n\\n    // Verify journal exists\\n    if (!journalID) {\\n        ui.notifications.error(\\\"No Journal ID provided.\\\");\\n        return;\\n    }\\n\\n    targetJournal = game.journal.get(journalID);\\n    if (!targetJournal) {\\n        ui.notifications.error(\\\"Invalid Journal ID provided.\\\");\\n        return;\\n    }\\n\\n    // Rest of the location input dialog\\n    let locations = await new Promise((resolve) => {\\n        new Dialog({\\n            title: \\\"Location Data\\\",\\n            content: `<p>Enter each location in format \\\"Name|X,Y\\\" on a new line:</p><textarea id=\\\"names\\\" rows=\\\"10\\\" style=\\\"width: 100%;\\\"></textarea>`,\\n            buttons: {\\n                ok: {\\n                    label: \\\"Fetch & Create Journals\\\",\\n                    callback: (html) => {\\n                        const input = html.find(\\\"#names\\\").val();\\n                        return resolve(input.split('\\\\n')\\n                            .map(line => line.trim())\\n                            .filter(line => line)\\n                            .map(line => {\\n                                const [name, coords] = line.split('|');\\n                                const [x, y] = coords ? coords.split(',').map(n => n.trim()) : [null, null];\\n                                return { name: name.trim(), x, y };\\n                            }));\\n                    },\\n                },\\n                cancel: {\\n                    label: \\\"Cancel\\\",\\n                },\\n            },\\n            default: \\\"ok\\\",\\n        }).render(true);\\n    });\\n\\n    if (!locations.length) {\\n        ui.notifications.error(\\\"No locations provided.\\\");\\n        return;\\n    }\\n\\n    // Log for names that return undefined\\n    let undefinedNames = [];\\n\\n    // Loop through each location\\n    for (let location of locations) {\\n        try {\\n            let nameToFetch = location.name.split(',')[0].replace(/[\\\\[\\\\]\\\"]/g, '').trim();\\n            console.log(nameToFetch)\\n            let content = await game.WikiImporter.fetchPage(`https://forgottenrealms.fandom.com/wiki/${nameToFetch.replace(/\\\\s+/g, '_')}`);\\n\\n            if (!content) {\\n                undefinedNames.push(nameToFetch);\\n                console.warn(`No content found for ${nameToFetch}`);\\n                continue;\\n            }\\n\\n            // Add coordinates to the content if they exist\\n            if (location.x !== null && location.y !== null) {\\n                const coordinates = `<p><strong>Map Coordinates:</strong> X: ${location.x}, Y: ${location.y}</p>`;\\n                content = coordinates + content;\\n            }\\n\\n            // Create the journal entry page with proper error handling\\n            try {\\n                const pageData = {\\n                    name: nameToFetch,\\n                    type: 'text',\\n                    text: { content },\\n                    title: { show: true, level: 2 }\\n                };\\n\\n                await targetJournal.createEmbeddedDocuments(\\\"JournalEntryPage\\\", [pageData]);\\n                ui.notifications.info(`Journal entry created for ${nameToFetch}`);\\n            } catch (dbError) {\\n                console.error(`Database error for ${nameToFetch}:`, dbError);\\n                ui.notifications.error(`Failed to save journal for ${nameToFetch}`);\\n                continue;\\n            }\\n\\n            // Add a small delay to prevent rate limiting\\n            await new Promise(resolve => setTimeout(resolve, 1000));\\n        } catch (error) {\\n            console.error(`Error processing ${nameToFetch}:`, error);\\n            ui.notifications.error(`Failed to process ${nameToFetch}`);\\n        }\\n    }\\n\\n    // Create undefined names log if needed\\n    if (undefinedNames.length > 0) {\\n        try {\\n            const undefinedContent = `<h2>Undefined Names</h2><p>The following names returned undefined and no journal was created:</p><ul>${undefinedNames.map(name => `<li>${name}</li>`).join('')}</ul>`;\\n            \\n            await targetJournal.createEmbeddedDocuments(\\\"JournalEntryPage\\\", [{\\n                name: 'Undefined Names Log',\\n                type: 'text',\\n                text: { content: undefinedContent },\\n                title: { show: true, level: 2 }\\n            }]);\\n\\n            ui.notifications.info(\\\"Journal entry created for undefined names.\\\");\\n        } catch (error) {\\n            console.error(\\\"Failed to create undefined names log:\\\", error);\\n            ui.notifications.error(\\\"Failed to create undefined names log\\\");\\n        }\\n    }\\n})();\",\n            \"img\": \"icons/svg/book.svg\",\n            \"scope\": \"global\",\n            \"canExecute\": true\n        },\n        {\n            \"uuid\": \"Macro.4fO3XD4AIIDag7iI\",\n            \"id\": \"4fO3XD4AIIDag7iI\",\n            \"name\": \"world\",\n            \"type\": \"script\",\n            \"author\": \"Gamemaster\",\n            \"command\": \"try {\\n  const worldId = game.world.id;\\n  ui.notifications.info(`Current World ID: ${worldId}`);\\n  console.log(`Current World ID: ${worldId}`);\\n  return worldId;\\n} catch (error) {\\n  ui.notifications.error(\\\"Failed to retrieve World ID\\\");\\n  console.error(\\\"Error retrieving World ID:\\\", error);\\n}\",\n            \"img\": \"icons/svg/dice-target.svg\",\n            \"scope\": \"global\",\n            \"canExecute\": true\n        },\n        {\n            \"uuid\": \"Macro.fTZVnV21Pydodehg\",\n            \"id\": \"fTZVnV21Pydodehg\",\n            \"name\": \"Refresh\",\n            \"type\": \"script\",\n            \"author\": \"Gamemaster\",\n            \"command\": \"// To use this macro in Foundry VTT, create a new macro and paste this code\\nasync function refreshClient() {\\n    // Force a full page reload\\n    window.location.reload();\\n}\\n\\n// Execute the refresh\\nrefreshClient();\",\n            \"img\": \"icons/svg/sun.svg\",\n            \"scope\": \"global\",\n            \"canExecute\": true\n        },\n        {\n            \"uuid\": \"Macro.jpLNxFG0D17VaQay\",\n            \"id\": \"jpLNxFG0D17VaQay\",\n            \"name\": \"clear-all-map-notes\",\n            \"type\": \"script\",\n            \"author\": \"Gamemaster\",\n            \"command\": \"// A macro to clear all map notes from the current scene\\nlet notes = canvas.notes.placeables;\\nif (notes.length === 0) {\\n  ui.notifications.info(\\\"No map notes found in this scene.\\\");\\n  return;\\n}\\n\\nDialog.confirm({\\n  title: \\\"Clear Map Notes\\\",\\n  content: `<p>Are you sure you want to delete all ${notes.length} map notes from this scene?</p>`,\\n  yes: async () => {\\n    const noteIds = notes.map(note => note.id);\\n    await canvas.scene.deleteEmbeddedDocuments(\\\"Note\\\", noteIds);\\n    ui.notifications.info(`Deleted ${notes.length} map notes.`);\\n  },\\n  no: () => {},\\n  defaultYes: false\\n});\",\n            \"img\": \"icons/svg/cancel.svg\",\n            \"scope\": \"global\",\n            \"canExecute\": true\n        },\n        {\n            \"uuid\": \"Macro.teeuNfocGxXncIxM\",\n            \"id\": \"teeuNfocGxXncIxM\",\n            \"name\": \"create-map-notes\",\n            \"type\": \"script\",\n            \"author\": \"Gamemaster\",\n            \"command\": \"const iconMap = {\\n    \\\"camp\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Camp.png\\\",\\n    \\\"castle\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Castle.png\\\",\\n    \\\"cathedral\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Cathedral.png\\\",\\n    \\\"dwarven\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Dwarven%20Building.png\\\",\\n    \\\"tower\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Fortified%20Tower.png\\\",\\n    \\\"fortress\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Fortress.png\\\",\\n    \\\"house\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/House.png\\\",\\n    \\\"hut\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Hut.png\\\",\\n    \\\"keep\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Keep.png\\\",\\n    \\\"city\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Large%20City%20Stone%20Wall.png\\\",\\n    \\\"mill\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Mill.png\\\",\\n    \\\"mine\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Mine.png\\\",\\n    \\\"orc\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Orc%20Camp.png\\\",\\n    \\\"tavern\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Tavern.png\\\",\\n    \\\"town\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Town%20Wood%20Wall.png\\\",\\n    \\\"village\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Village.png\\\",\\n    \\\"ruin\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/Monster%20Town.png\\\",\\n    \\\"other\\\": \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/position-marker.svg\\\"\\n};\\n\\nfunction getIconUrl(content, num) {\\n    // If the content is not provided, return the default icon\\n    if (content) content = content.toLowerCase();\\n    else return iconMap[\\\"other\\\"];\\n    \\n    length = num;\\n    if (content.length < length) length = content.length;\\n    contextWindow = content.length < 10 ? content.length : 10;\\n    for (let i = 0; i <= length - contextWindow; i++) {\\n        const substring = content.substring(i, i + contextWindow);\\n        for (const [key, url] of Object.entries(iconMap)) {\\n            if (substring.includes(key)) {\\n                return url;\\n            }\\n        }\\n    }\\n    return iconMap[\\\"other\\\"];\\n}\\n\\n// Get the current scene\\nconst scene = game.scenes.current;\\nif (!scene) {\\n    ui.notifications.error(\\\"No scene is currently active!\\\");\\n    return;\\n}\\n\\n// Function to create map notes\\nasync function createMapNotes(locations) {\\n    let unfound = [];\\n    let sleepCounter = 0;\\n    for (let [name, x, y] of locations) {\\n        console.log(`Creating map note for ${name} at (${x}, ${y})`);\\n        // Search for the page associated with the map note\\n        if (QuickInsert) {\\n            // Force the index to be created if it doesn't exist\\n            if (!QuickInsert.hasIndex) {\\n                ui.notifications.info(\\\"Creating QuickInsert index. This may take a few seconds.\\\");\\n                await QuickInsert.forceIndex();\\n            }\\n            const result = await QuickInsert.search(name, (result) => result?.item?.uuid.split(\\\"\\\\.\\\")[2] === \\\"JournalEntryPage\\\", 1);\\n            console.log(result);\\n            if (result && result.length > 0) {\\n                const page = await fromUuid(result[0].item.uuid);\\n                console.log(page);\\n                if (page && page instanceof JournalEntryPage) {\\n                    let text = page.text.content;\\n                    let iconUrl = getIconUrl(text, 500);\\n                    console.log(\\\"Icon URL:\\\", iconUrl);\\n                    // Create the map note\\n                    await scene.createEmbeddedDocuments(\\\"Note\\\", [{\\n                        x: x,\\n                        y: y,\\n                        text: name,\\n                        fontSize: 24,\\n                        texture: { src: iconUrl },  // Use the appropriate icon URL\\n                        iconSize: 32,\\n                        textAnchor: CONST.TEXT_ANCHOR_POINTS.CENTER,\\n                        entryId: page.uuid.split(\\\"\\\\.\\\")[1],\\n                        pageId: page.uuid.split(\\\"\\\\.\\\")[3]\\n                    }]);\\n                } else {\\n                    console.error(\\\"Result is not a journal page:\\\", name);\\n                }\\n            } else {\\n                console.log(\\\"No journal entry found for location:\\\", name);\\n                unfound.push(name);\\n                // Create the map note without a linked journal entry in red\\n                await scene.createEmbeddedDocuments(\\\"Note\\\", [{\\n                    x: x,\\n                    y: y,\\n                    text: name,\\n                    fontSize: 24,\\n                    texture: { src: \\\"https://assets.forge-vtt.com/62d5c907656f589e87d9b070/MapIcons/pencil/globe.svg\\\" },\\n                    iconSize: 32,\\n                    textAnchor: CONST.TEXT_ANCHOR_POINTS.CENTER,\\n                    textColor: \\\"#FF0000\\\"\\n                }]);\\n            }\\n        } else {\\n            console.error(\\\"QuickInsert is not available. Make sure the module is installed and enabled.\\\");\\n        }\\n        if (sleepCounter > 10) {\\n            sleepCounter = 0;\\n            await sleep(3000); // Add a delay of 3s after every 10 notes\\n        }\\n        else {\\n            sleepCounter++;\\n            await sleep(500); // Add a delay of 0.5s between each note creation\\n        }\\n    }\\n    ui.notifications.info(`Created ${locations.length} map notes!`);\\n    if (unfound.length > 0) {\\n        ui.notifications.warn(`${unfound.length} locations could not be found. Check the Journal Entries folder for more information.`);\\n    }\\n    // Create journal entry for unfound locations\\n    await JournalEntry.create({\\n        name: \\\"Unfound Locations\\\",\\n        content: `<p>The following locations could not be found:</p><ul>${unfound.map(name => `<li>${name}</li>`).join(\\\"\\\")}</ul>`,\\n        folder: game.folders.find(f => f.name === \\\"Journal Entries\\\")\\n    });\\n}\\n\\n// Function to clean up and validate the input\\nfunction cleanInput(input) {\\n    try {\\n        return JSON.parse(input);\\n    } catch (e) {\\n        throw new Error(\\\"Invalid JSON format. Please check your input.\\\");\\n    }\\n}\\n\\n// Function to open a dialog and get the raw text input\\nfunction openLocationInputDialog() {\\n    new Dialog({\\n        title: \\\"Paste Locations\\\",\\n        content: `\\n            <form>\\n                <div class=\\\"form-group\\\">\\n                    <label>Locations Array:</label>\\n                    <textarea id=\\\"locations-input\\\" name=\\\"locations\\\" rows=\\\"10\\\" style=\\\"width:100%;\\\"></textarea>\\n                </div>\\n            </form>\\n        `,\\n        buttons: {\\n            ok: {\\n                label: \\\"Create Notes\\\",\\n                callback: async (html) => {\\n                    const input = html.find('[name=\\\"locations\\\"]').val();\\n                    try {\\n                        const locations = cleanInput(input);\\n                        await createMapNotes(locations);\\n                    } catch (e) {\\n                        ui.notifications.error(e.message);\\n                        console.error(e);\\n                    }\\n                }\\n            },\\n            cancel: {\\n                label: \\\"Cancel\\\"\\n            }\\n        },\\n        default: \\\"ok\\\"\\n    }).render(true);\\n}\\n\\n// Function to add a delay\\nfunction sleep(ms) {\\n    return new Promise(resolve => setTimeout(resolve, ms));\\n}\\n\\n// Open the dialog to paste locations\\nopenLocationInputDialog();\",\n            \"img\": \"icons/svg/stone-path.svg\",\n            \"scope\": \"global\",\n            \"canExecute\": true\n        },\n        {\n            \"uuid\": \"Macro.y2MEiOj8EJpssaed\",\n            \"id\": \"y2MEiOj8EJpssaed\",\n            \"name\": \"format-journal-entries-from-url\",\n            \"type\": \"script\",\n            \"author\": \"Gamemaster\",\n            \"command\": \"// A macro to clean up journal page names by decoding URL characters and formatting\\n\\nasync function getJournalId() {\\n    const dialogContent = `\\n        <form>\\n            <div class=\\\"form-group\\\">\\n                <label>Journal Entry ID:</label>\\n                <input type=\\\"text\\\" name=\\\"journalId\\\"/>\\n            </div>\\n        </form>`;\\n\\n    return new Promise((resolve) => {\\n        new Dialog({\\n            title: \\\"Clean Journal Page Names\\\",\\n            content: dialogContent,\\n            buttons: {\\n                submit: {\\n                    label: \\\"Clean Names\\\",\\n                    callback: (html) => {\\n                        resolve(html.find(\\\"input[name='journalId']\\\").val());\\n                    }\\n                },\\n                cancel: {\\n                    label: \\\"Cancel\\\",\\n                    callback: () => resolve(null)\\n                }\\n            },\\n            default: \\\"submit\\\"\\n        }).render(true);\\n    });\\n}\\n\\nasync function cleanPageNames(journalId) {\\n    const journal = game.journal.get(journalId);\\n    \\n    if (!journal) {\\n        ui.notifications.error(\\\"Journal entry not found!\\\");\\n        return;\\n    }\\n\\n    const updates = journal.pages.map(page => {\\n        const decodedName = decodeURIComponent(page.name)\\n            .replace(/_/g, ' ')\\n            .replace(/\\\\s+/g, ' ')\\n            .trim();\\n            \\n        return {\\n            _id: page.id,\\n            name: decodedName\\n        };\\n    });\\n\\n    await journal.updateEmbeddedDocuments(\\\"JournalEntryPage\\\", updates);\\n    ui.notifications.info(`Updated ${updates.length} page names in journal \\\"${journal.name}\\\"`);\\n}\\n\\n// Main execution\\n(async () => {\\n    const journalId = await getJournalId();\\n    if (journalId) {\\n        await cleanPageNames(journalId);\\n    }\\n})();\",\n            \"img\": \"icons/svg/acid.svg\",\n            \"scope\": \"global\",\n            \"canExecute\": true\n        }\n    ]\n}"
+				}
+			]
+		},
+		{
+			"name": "/macro/:uuid/execute",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/macro/:uuid/execute?clientId={{clientId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"macro",
+						":uuid",
+						"execute"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}",
+							"description": "Auth token to connect to specific Foundry world"
+						}
+					],
+					"variable": [
+						{
+							"key": "uuid",
+							"value": "UUID",
+							"description": "UUID of the macro to execute"
+						}
+					]
+				},
+				"description": "## Executes a macro"
+			},
+			"response": [
+				{
+					"name": "Successful Response",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\"type\": \"Actor\",\r\n\"data\": {\r\n  \"name\": \"Ape\",\r\n  \"type\": \"npc\",\r\n  \"img\": \"systems/dnd5e/tokens/beast/Ape.webp\",\r\n  \"system\": {\r\n    \"abilities\": {\r\n      \"str\": {\r\n        \"value\": 16,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"dex\": {\r\n        \"value\": 14,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"con\": {\r\n        \"value\": 14,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"int\": {\r\n        \"value\": 6,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"wis\": {\r\n        \"value\": 12,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      },\r\n      \"cha\": {\r\n        \"value\": 7,\r\n        \"proficient\": 0,\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"save\": \"\"\r\n        },\r\n        \"max\": null\r\n      }\r\n    },\r\n    \"attributes\": {\r\n      \"ac\": {\r\n        \"flat\": 12,\r\n        \"calc\": \"natural\",\r\n        \"formula\": \"\"\r\n      },\r\n      \"hp\": {\r\n        \"value\": 19,\r\n        \"max\": 19,\r\n        \"temp\": 0,\r\n        \"tempmax\": 0,\r\n        \"formula\": \"3d8 + 6\"\r\n      },\r\n      \"init\": {\r\n        \"ability\": \"\",\r\n        \"bonus\": \"0\",\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"movement\": {\r\n        \"burrow\": 0,\r\n        \"climb\": 30,\r\n        \"fly\": 0,\r\n        \"swim\": 0,\r\n        \"walk\": 30,\r\n        \"units\": \"ft\",\r\n        \"hover\": false\r\n      },\r\n      \"attunement\": {\r\n        \"max\": 3\r\n      },\r\n      \"senses\": {\r\n        \"darkvision\": 0,\r\n        \"blindsight\": 0,\r\n        \"tremorsense\": 0,\r\n        \"truesight\": 0,\r\n        \"units\": \"ft\",\r\n        \"special\": \"\"\r\n      },\r\n      \"spellcasting\": \"\",\r\n      \"exhaustion\": 0,\r\n      \"concentration\": {\r\n        \"ability\": \"\",\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        },\r\n        \"bonuses\": {\r\n          \"save\": \"\"\r\n        },\r\n        \"limit\": 1\r\n      },\r\n      \"hd\": {\r\n        \"spent\": 0\r\n      },\r\n      \"death\": {\r\n        \"ability\": \"\",\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        },\r\n        \"success\": 0,\r\n        \"failure\": 0\r\n      }\r\n    },\r\n    \"details\": {\r\n      \"biography\": {\r\n        \"value\": \"<p>\\n        <em>\\n          Token artwork by\\n          <a href=\\\"https://www.forgotten-adventures.net/\\\" target=\\\"_blank\\\" rel=\\\"noopener\\\">Forgotten Adventures</a>.\\n        </em>      \\n      </p>\",\r\n        \"public\": \"\"\r\n      },\r\n      \"alignment\": \"Unaligned\",\r\n      \"race\": null,\r\n      \"type\": {\r\n        \"value\": \"beast\",\r\n        \"subtype\": \"\",\r\n        \"swarm\": \"\",\r\n        \"custom\": \"\"\r\n      },\r\n      \"environment\": \"Forest\",\r\n      \"cr\": 0.5,\r\n      \"spellLevel\": 0,\r\n      \"source\": {\r\n        \"custom\": \"\",\r\n        \"book\": \"SRD 5.1\",\r\n        \"page\": \"\",\r\n        \"license\": \"CC-BY-4.0\"\r\n      },\r\n      \"ideal\": \"\",\r\n      \"bond\": \"\",\r\n      \"flaw\": \"\"\r\n    },\r\n    \"traits\": {\r\n      \"size\": \"med\",\r\n      \"di\": {\r\n        \"value\": [],\r\n        \"bypasses\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"dr\": {\r\n        \"value\": [],\r\n        \"bypasses\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"dv\": {\r\n        \"value\": [],\r\n        \"bypasses\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"ci\": {\r\n        \"value\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"languages\": {\r\n        \"value\": [],\r\n        \"custom\": \"\"\r\n      },\r\n      \"dm\": {\r\n        \"amount\": {},\r\n        \"bypasses\": []\r\n      }\r\n    },\r\n    \"currency\": {\r\n      \"pp\": 0,\r\n      \"gp\": 0,\r\n      \"ep\": 0,\r\n      \"sp\": 0,\r\n      \"cp\": 0\r\n    },\r\n    \"skills\": {\r\n      \"acr\": {\r\n        \"value\": 0,\r\n        \"ability\": \"dex\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ani\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"arc\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ath\": {\r\n        \"value\": 1,\r\n        \"ability\": \"str\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"dec\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"his\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ins\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"itm\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"inv\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"med\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"nat\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"prc\": {\r\n        \"value\": 1,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"prf\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"per\": {\r\n        \"value\": 0,\r\n        \"ability\": \"cha\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"rel\": {\r\n        \"value\": 0,\r\n        \"ability\": \"int\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"slt\": {\r\n        \"value\": 0,\r\n        \"ability\": \"dex\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"ste\": {\r\n        \"value\": 0,\r\n        \"ability\": \"dex\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      },\r\n      \"sur\": {\r\n        \"value\": 0,\r\n        \"ability\": \"wis\",\r\n        \"bonuses\": {\r\n          \"check\": \"\",\r\n          \"passive\": \"\"\r\n        },\r\n        \"roll\": {\r\n          \"min\": null,\r\n          \"max\": null,\r\n          \"mode\": 0\r\n        }\r\n      }\r\n    },\r\n    \"spells\": {\r\n      \"spell1\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell2\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell3\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell4\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell5\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell6\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell7\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell8\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell9\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"pact\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      },\r\n      \"spell0\": {\r\n        \"value\": 0,\r\n        \"override\": null\r\n      }\r\n    },\r\n    \"bonuses\": {\r\n      \"mwak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"rwak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"msak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"rsak\": {\r\n        \"attack\": \"\",\r\n        \"damage\": \"\"\r\n      },\r\n      \"abilities\": {\r\n        \"check\": \"\",\r\n        \"save\": \"\",\r\n        \"skill\": \"\"\r\n      },\r\n      \"spell\": {\r\n        \"dc\": \"\"\r\n      }\r\n    },\r\n    \"resources\": {\r\n      \"legact\": {\r\n        \"value\": 0,\r\n        \"max\": 0\r\n      },\r\n      \"legres\": {\r\n        \"value\": 0,\r\n        \"max\": 0\r\n      },\r\n      \"lair\": {\r\n        \"value\": false,\r\n        \"initiative\": null\r\n      }\r\n    },\r\n    \"tools\": {}\r\n  },\r\n  \"prototypeToken\": {\r\n    \"name\": \"Ape\",\r\n    \"displayName\": 20,\r\n    \"actorLink\": false,\r\n    \"width\": 1,\r\n    \"height\": 1,\r\n    \"lockRotation\": false,\r\n    \"rotation\": 0,\r\n    \"disposition\": -1,\r\n    \"displayBars\": 40,\r\n    \"bar1\": {\r\n      \"attribute\": \"attributes.hp\"\r\n    },\r\n    \"bar2\": {\r\n      \"attribute\": null\r\n    },\r\n    \"flags\": {},\r\n    \"randomImg\": false,\r\n    \"alpha\": 1,\r\n    \"light\": {\r\n      \"alpha\": 1,\r\n      \"angle\": 360,\r\n      \"bright\": 0,\r\n      \"coloration\": 1,\r\n      \"dim\": 0,\r\n      \"luminosity\": 0.5,\r\n      \"saturation\": 0,\r\n      \"contrast\": 0,\r\n      \"shadows\": 0,\r\n      \"animation\": {\r\n        \"speed\": 5,\r\n        \"intensity\": 5,\r\n        \"type\": null,\r\n        \"reverse\": false\r\n      },\r\n      \"darkness\": {\r\n        \"min\": 0,\r\n        \"max\": 1\r\n      },\r\n      \"attenuation\": 0.5,\r\n      \"color\": null,\r\n      \"negative\": false,\r\n      \"priority\": 0\r\n    },\r\n    \"texture\": {\r\n      \"src\": \"systems/dnd5e/tokens/beast/Ape.webp\",\r\n      \"tint\": \"#ffffff\",\r\n      \"scaleX\": 1.5,\r\n      \"scaleY\": 1.5,\r\n      \"offsetX\": 0,\r\n      \"offsetY\": 0,\r\n      \"rotation\": 0,\r\n      \"anchorX\": 0.5,\r\n      \"anchorY\": 0.5,\r\n      \"fit\": \"contain\",\r\n      \"alphaThreshold\": 0.75\r\n    },\r\n    \"sight\": {\r\n      \"angle\": 360,\r\n      \"enabled\": false,\r\n      \"range\": 0,\r\n      \"brightness\": 1,\r\n      \"visionMode\": \"basic\",\r\n      \"color\": null,\r\n      \"attenuation\": 0.1,\r\n      \"saturation\": 0,\r\n      \"contrast\": 0\r\n    },\r\n    \"detectionModes\": [],\r\n    \"appendNumber\": false,\r\n    \"prependAdjective\": false,\r\n    \"hexagonalShape\": 0,\r\n    \"occludable\": {\r\n      \"radius\": 0\r\n    },\r\n    \"ring\": {\r\n      \"enabled\": false,\r\n      \"colors\": {\r\n        \"ring\": null,\r\n        \"background\": null\r\n      },\r\n      \"effects\": 1,\r\n      \"subject\": {\r\n        \"scale\": 1,\r\n        \"texture\": null\r\n      }\r\n    }\r\n  },\r\n  \"items\": [\r\n    {\r\n      \"_id\": \"hbxC3Wg3H8cSIvM0\",\r\n      \"name\": \"Multiattack\",\r\n      \"type\": \"feat\",\r\n      \"img\": \"icons/skills/melee/blade-tips-triple-steel.webp\",\r\n      \"system\": {\r\n        \"description\": {\r\n          \"value\": \"<p>The ape makes two fist attacks.</p>\",\r\n          \"chat\": \"\"\r\n        },\r\n        \"source\": {\r\n          \"custom\": \"\",\r\n          \"book\": \"SRD 5.1\",\r\n          \"page\": \"\",\r\n          \"license\": \"CC-BY-4.0\"\r\n        },\r\n        \"activation\": {\r\n          \"type\": \"action\",\r\n          \"cost\": 1,\r\n          \"condition\": \"\"\r\n        },\r\n        \"duration\": {\r\n          \"value\": \"\",\r\n          \"units\": \"\"\r\n        },\r\n        \"cover\": null,\r\n        \"target\": {\r\n          \"value\": \"\",\r\n          \"width\": null,\r\n          \"units\": \"\",\r\n          \"type\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"range\": {\r\n          \"value\": null,\r\n          \"long\": null,\r\n          \"units\": \"\"\r\n        },\r\n        \"uses\": {\r\n          \"value\": null,\r\n          \"max\": \"\",\r\n          \"per\": null,\r\n          \"recovery\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"consume\": {\r\n          \"type\": \"\",\r\n          \"target\": null,\r\n          \"amount\": null,\r\n          \"scale\": false\r\n        },\r\n        \"ability\": \"\",\r\n        \"actionType\": \"\",\r\n        \"chatFlavor\": \"\",\r\n        \"critical\": {\r\n          \"threshold\": null,\r\n          \"damage\": \"\"\r\n        },\r\n        \"damage\": {\r\n          \"parts\": [],\r\n          \"versatile\": \"\"\r\n        },\r\n        \"formula\": \"\",\r\n        \"save\": {\r\n          \"ability\": \"\",\r\n          \"dc\": null,\r\n          \"scaling\": \"spell\"\r\n        },\r\n        \"type\": {\r\n          \"value\": \"\",\r\n          \"subtype\": \"\"\r\n        },\r\n        \"requirements\": \"\",\r\n        \"recharge\": {\r\n          \"value\": null,\r\n          \"charged\": false\r\n        },\r\n        \"crewed\": false,\r\n        \"properties\": [],\r\n        \"attack\": {\r\n          \"bonus\": \"\",\r\n          \"flat\": false\r\n        },\r\n        \"enchantment\": null,\r\n        \"summons\": null,\r\n        \"prerequisites\": {\r\n          \"level\": null\r\n        }\r\n      },\r\n      \"effects\": [],\r\n      \"folder\": null,\r\n      \"sort\": 0,\r\n      \"ownership\": {\r\n        \"default\": 0\r\n      },\r\n      \"flags\": {\r\n        \"core\": {\r\n          \"sourceId\": \"Compendium.dnd5e.monsterfeatures.EqoLg8T8EHvhJgKE\"\r\n        }\r\n      },\r\n      \"_stats\": {\r\n        \"compendiumSource\": \"Compendium.dnd5e.monsterfeatures.EqoLg8T8EHvhJgKE\",\r\n        \"duplicateSource\": null,\r\n        \"coreVersion\": \"12.331\",\r\n        \"systemId\": \"dnd5e\",\r\n        \"systemVersion\": \"3.3.1\",\r\n        \"createdTime\": null,\r\n        \"modifiedTime\": null,\r\n        \"lastModifiedBy\": null\r\n      }\r\n    },\r\n    {\r\n      \"_id\": \"jxC1VNaCf2VXlD6C\",\r\n      \"name\": \"Fist\",\r\n      \"type\": \"weapon\",\r\n      \"img\": \"icons/magic/fire/flame-burning-fist-strike.webp\",\r\n      \"system\": {\r\n        \"description\": {\r\n          \"value\": \"<section class=\\\"secret\\\">\\n<p><em>Melee Weapon Attack:</em><strong>+5 to hit,</strong>, <strong>5 ft.,</strong> one target. Hit: <strong>6 (1d6 + 3) <em>bludgeoning damage</em></strong>.</p></section>\\n<p>The Ape attacks with its Fist.</p>\",\r\n          \"chat\": \"\"\r\n        },\r\n        \"source\": {\r\n          \"custom\": \"\",\r\n          \"book\": \"SRD 5.1\",\r\n          \"page\": \"\",\r\n          \"license\": \"CC-BY-4.0\"\r\n        },\r\n        \"quantity\": 1,\r\n        \"weight\": {\r\n          \"value\": 0,\r\n          \"units\": \"lb\"\r\n        },\r\n        \"price\": {\r\n          \"value\": 0,\r\n          \"denomination\": \"gp\"\r\n        },\r\n        \"attunement\": \"\",\r\n        \"equipped\": true,\r\n        \"rarity\": \"\",\r\n        \"identified\": true,\r\n        \"activation\": {\r\n          \"type\": \"action\",\r\n          \"cost\": 1,\r\n          \"condition\": \"\"\r\n        },\r\n        \"duration\": {\r\n          \"value\": \"\",\r\n          \"units\": \"\"\r\n        },\r\n        \"cover\": null,\r\n        \"target\": {\r\n          \"value\": \"\",\r\n          \"width\": null,\r\n          \"units\": \"\",\r\n          \"type\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"range\": {\r\n          \"value\": 5,\r\n          \"long\": null,\r\n          \"units\": \"ft\"\r\n        },\r\n        \"uses\": {\r\n          \"value\": null,\r\n          \"max\": \"\",\r\n          \"per\": null,\r\n          \"recovery\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"consume\": {\r\n          \"type\": \"\",\r\n          \"target\": null,\r\n          \"amount\": null,\r\n          \"scale\": false\r\n        },\r\n        \"ability\": \"str\",\r\n        \"actionType\": \"mwak\",\r\n        \"chatFlavor\": \"\",\r\n        \"critical\": {\r\n          \"threshold\": null,\r\n          \"damage\": \"\"\r\n        },\r\n        \"damage\": {\r\n          \"parts\": [\r\n            [\r\n              \"1d6 + @mod\",\r\n              \"bludgeoning\"\r\n            ]\r\n          ],\r\n          \"versatile\": \"\"\r\n        },\r\n        \"formula\": \"\",\r\n        \"save\": {\r\n          \"ability\": \"\",\r\n          \"dc\": null,\r\n          \"scaling\": \"spell\"\r\n        },\r\n        \"armor\": {\r\n          \"value\": 10\r\n        },\r\n        \"hp\": {\r\n          \"value\": 0,\r\n          \"max\": 0,\r\n          \"dt\": null,\r\n          \"conditions\": \"\"\r\n        },\r\n        \"properties\": [],\r\n        \"proficient\": 1,\r\n        \"unidentified\": {\r\n          \"description\": \"\"\r\n        },\r\n        \"type\": {\r\n          \"value\": \"natural\",\r\n          \"baseItem\": \"\"\r\n        },\r\n        \"container\": null,\r\n        \"crewed\": false,\r\n        \"attack\": {\r\n          \"bonus\": \"\",\r\n          \"flat\": false\r\n        },\r\n        \"attuned\": false,\r\n        \"enchantment\": null,\r\n        \"summons\": null,\r\n        \"magicalBonus\": null\r\n      },\r\n      \"effects\": [],\r\n      \"folder\": null,\r\n      \"sort\": 0,\r\n      \"ownership\": {\r\n        \"default\": 0\r\n      },\r\n      \"flags\": {},\r\n      \"_stats\": {\r\n        \"compendiumSource\": null,\r\n        \"duplicateSource\": null,\r\n        \"coreVersion\": \"12.331\",\r\n        \"systemId\": \"dnd5e\",\r\n        \"systemVersion\": \"3.3.1\",\r\n        \"createdTime\": null,\r\n        \"modifiedTime\": null,\r\n        \"lastModifiedBy\": null\r\n      }\r\n    },\r\n    {\r\n      \"_id\": \"NsTx3MUaYkEI2t8M\",\r\n      \"name\": \"Rock\",\r\n      \"type\": \"weapon\",\r\n      \"img\": \"icons/magic/earth/projectile-stone-ball-brown.webp\",\r\n      \"system\": {\r\n        \"description\": {\r\n          \"value\": \"<section class=\\\"secret\\\">\\n<p>Ranged Weapon Attack: +5 to hit, range 25/50 ft., one target. Hit: <strong>6 (1d6 + 3) <em>bludgeoning damage</em></strong>.</p></section>\\n<p>The Ape attacks with its Rock.</p>\",\r\n          \"chat\": \"\"\r\n        },\r\n        \"source\": {\r\n          \"custom\": \"\",\r\n          \"book\": \"SRD 5.1\",\r\n          \"page\": \"\",\r\n          \"license\": \"CC-BY-4.0\"\r\n        },\r\n        \"quantity\": 1,\r\n        \"weight\": {\r\n          \"value\": 0,\r\n          \"units\": \"lb\"\r\n        },\r\n        \"price\": {\r\n          \"value\": 0,\r\n          \"denomination\": \"gp\"\r\n        },\r\n        \"attunement\": \"\",\r\n        \"equipped\": true,\r\n        \"rarity\": \"\",\r\n        \"identified\": true,\r\n        \"activation\": {\r\n          \"type\": \"action\",\r\n          \"cost\": 1,\r\n          \"condition\": \"\"\r\n        },\r\n        \"duration\": {\r\n          \"value\": \"\",\r\n          \"units\": \"\"\r\n        },\r\n        \"cover\": null,\r\n        \"target\": {\r\n          \"value\": \"\",\r\n          \"width\": null,\r\n          \"units\": \"\",\r\n          \"type\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"range\": {\r\n          \"value\": 25,\r\n          \"long\": 50,\r\n          \"units\": \"ft\"\r\n        },\r\n        \"uses\": {\r\n          \"value\": null,\r\n          \"max\": \"\",\r\n          \"per\": null,\r\n          \"recovery\": \"\",\r\n          \"prompt\": true\r\n        },\r\n        \"consume\": {\r\n          \"type\": \"\",\r\n          \"target\": null,\r\n          \"amount\": null,\r\n          \"scale\": false\r\n        },\r\n        \"ability\": \"str\",\r\n        \"actionType\": \"rwak\",\r\n        \"chatFlavor\": \"\",\r\n        \"critical\": {\r\n          \"threshold\": null,\r\n          \"damage\": \"\"\r\n        },\r\n        \"damage\": {\r\n          \"parts\": [\r\n            [\r\n              \"1d6 + @mod\",\r\n              \"bludgeoning\"\r\n            ]\r\n          ],\r\n          \"versatile\": \"\"\r\n        },\r\n        \"formula\": \"\",\r\n        \"save\": {\r\n          \"ability\": \"\",\r\n          \"dc\": null,\r\n          \"scaling\": \"spell\"\r\n        },\r\n        \"armor\": {\r\n          \"value\": 10\r\n        },\r\n        \"hp\": {\r\n          \"value\": 0,\r\n          \"max\": 0,\r\n          \"dt\": null,\r\n          \"conditions\": \"\"\r\n        },\r\n        \"properties\": [\r\n          \"amm\"\r\n        ],\r\n        \"proficient\": 1,\r\n        \"unidentified\": {\r\n          \"description\": \"\"\r\n        },\r\n        \"type\": {\r\n          \"value\": \"natural\",\r\n          \"baseItem\": \"\"\r\n        },\r\n        \"container\": null,\r\n        \"crewed\": false,\r\n        \"attack\": {\r\n          \"bonus\": \"\",\r\n          \"flat\": false\r\n        },\r\n        \"attuned\": false,\r\n        \"enchantment\": null,\r\n        \"summons\": null,\r\n        \"magicalBonus\": null\r\n      },\r\n      \"effects\": [],\r\n      \"folder\": null,\r\n      \"sort\": 0,\r\n      \"ownership\": {\r\n        \"default\": 0\r\n      },\r\n      \"flags\": {},\r\n      \"_stats\": {\r\n        \"compendiumSource\": null,\r\n        \"duplicateSource\": null,\r\n        \"coreVersion\": \"12.331\",\r\n        \"systemId\": \"dnd5e\",\r\n        \"systemVersion\": \"3.3.1\",\r\n        \"createdTime\": null,\r\n        \"modifiedTime\": null,\r\n        \"lastModifiedBy\": null\r\n      }\r\n    }\r\n  ],\r\n  \"effects\": [],\r\n  \"folder\": \"g8DmtGW2tiBpzCMk\",\r\n  \"flags\": {\r\n    \"exportSource\": {\r\n      \"world\": \"5e-faerun-map\",\r\n      \"system\": \"dnd5e\",\r\n      \"coreVersion\": \"12.331\",\r\n      \"systemVersion\": \"3.3.1\"\r\n    }\r\n  },\r\n  \"_stats\": {\r\n    \"coreVersion\": \"12.331\",\r\n    \"systemId\": \"dnd5e\",\r\n    \"systemVersion\": \"3.3.1\",\r\n    \"createdTime\": 1741071113392,\r\n    \"modifiedTime\": 1741071113392,\r\n    \"lastModifiedBy\": \"rQLkX9c1U2Tzkyh8\"\r\n  }\r\n}}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/macro/:uuid/execute?clientId=clientId",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"macro",
+								":uuid",
+								"execute"
+							],
+							"query": [
+								{
+									"key": "clientId",
+									"value": "clientId",
+									"description": "Auth token to connect to specific Foundry world"
+								}
+							],
+							"variable": [
+								{
+									"key": "uuid",
+									"value": "Macro.4fO3XD4AIIDag7iI",
+									"description": "UUID of the macro to execute"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "121"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"79-++bujGV+zxdIwRkptlpv5/gNjAk\""
+						},
+						{
+							"key": "Date",
+							"value": "Sun, 16 Mar 2025 12:50:24 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=5"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"clientId\": \"foundry-rQLkX9c1U2Tzkyh8\",\n    \"uuid\": \"Macro.4fO3XD4AIIDag7iI\",\n    \"success\": true,\n    \"result\": {\n        \"value\": \"5e-faerun-map\"\n    }\n}"
+				}
+			]
+		},
+		{
 			"name": "/entity",
 			"event": [
 				{
@@ -2258,7 +2539,7 @@
 				],
 				"body": {
 					"mode": "raw",
-					"raw": "{\r\n  \"formula\": \"2d20kl+2d8\",\r\n  \"flavor\": \"Attack Roll\",\r\n  \"createChatMessage\": true,\r\n  \"speaker\": \"Token.9pfmuUogOYKDsC9C\",\r\n  \"whisper\": [\"userId1\", \"userId2\"]\r\n}",
+					"raw": "{\r\n    // \"formula\": \"10d20kl\",\r\n    \"itemUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.ZnkW99xVqJLLEKJq.Actor.qrSmgi9HEQ7tHCqd.Item.sgauK8Lyt8qxsxOH\",\r\n    // \"flavor\": \"Attack Roll\",\r\n    \"createChatMessage\": true,\r\n    \"target\": \"Scene.If9IwEwsCxjEqlNk.Token.YQjYrJBqFdqbcbvZ\",\r\n    // \"speaker\": \"Actor.uPTN71qDWhDokIyr\"\r\n    \"whisper\": [\"User.rQLkX9c1U2Tzkyh8\"]\r\n}",
 					"options": {
 						"raw": {
 							"language": "json"
@@ -2367,6 +2648,598 @@
 					],
 					"cookie": [],
 					"body": "{\n    \"clientId\": \"foundry-rQLkX9c1U2Tzkyh8\",\n    \"success\": true,\n    \"roll\": {\n        \"id\": \"manual_1741128675717_nk13z3fkh\",\n        \"chatMessageCreated\": true,\n        \"roll\": {\n            \"formula\": \"2d20kl + 2d8\",\n            \"total\": 16,\n            \"isCritical\": false,\n            \"isFumble\": false,\n            \"dice\": [\n                {\n                    \"faces\": 20,\n                    \"results\": [\n                        {\n                            \"result\": 12,\n                            \"active\": true\n                        },\n                        {\n                            \"result\": 14,\n                            \"active\": false\n                        }\n                    ]\n                },\n                {\n                    \"faces\": 8,\n                    \"results\": [\n                        {\n                            \"result\": 1,\n                            \"active\": true\n                        },\n                        {\n                            \"result\": 3,\n                            \"active\": true\n                        }\n                    ]\n                }\n            ],\n            \"timestamp\": 1741128675737\n        }\n    }\n}"
+				},
+				{
+					"name": "/roll",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "{{apiKey}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    // \"formula\": \"10d20kl\",\r\n    \"itemUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.ZnkW99xVqJLLEKJq.Actor.qrSmgi9HEQ7tHCqd.Item.sgauK8Lyt8qxsxOH\",\r\n    // \"flavor\": \"Attack Roll\",\r\n    \"createChatMessage\": true,\r\n    \"target\": \"Scene.If9IwEwsCxjEqlNk.Token.YQjYrJBqFdqbcbvZ\",\r\n    // \"speaker\": \"Actor.uPTN71qDWhDokIyr\"\r\n    \"whisper\": [\"User.rQLkX9c1U2Tzkyh8\"]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/roll?clientId={{clientId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"roll"
+							],
+							"query": [
+								{
+									"key": "clientId",
+									"value": "{{clientId}}",
+									"description": "Auth token to connect to specific Foundry world"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "458"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"1ca-+GH1xppVHWfdsQJATiIQgNiWkRw\""
+						},
+						{
+							"key": "Date",
+							"value": "Sun, 16 Mar 2025 21:48:53 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"clientId\": \"foundry-rQLkX9c1U2Tzkyh8\",\n    \"success\": true,\n    \"roll\": {\n        \"id\": \"item_display_1742161733339_qisrijjdg09\",\n        \"chatMessageCreated\": true,\n        \"itemDisplayed\": {\n            \"uuid\": \"Scene.If9IwEwsCxjEqlNk.Token.ZnkW99xVqJLLEKJq.Actor.qrSmgi9HEQ7tHCqd.Item.sgauK8Lyt8qxsxOH\",\n            \"name\": \"Tentacle\",\n            \"type\": \"weapon\",\n            \"img\": \"icons/creatures/tentacles/tentacles-thing-green.webp\"\n        },\n        \"target\": {\n            \"uuid\": \"Scene.If9IwEwsCxjEqlNk.Token.YQjYrJBqFdqbcbvZ\",\n            \"name\": \"Ape\"\n        },\n        \"messageId\": \"z8QL84xnKe821Qf5\"\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "/encounters",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/encounters?clientId={{clientId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"encounters"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}",
+							"description": "Auth token to connect to specific Foundry world"
+						}
+					]
+				},
+				"description": "## Returns all encounters"
+			},
+			"response": []
+		},
+		{
+			"name": "/start-encounter",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"startWithSelected\": true,\r\n    \"startWithPlayers\": true,\r\n    \"rollNPC\": true,\r\n    \"rollAll\": true,\r\n    \"name\": \"BATTLE\"\r\n    // \"tokens\": [\r\n    //     \"Scene.OS0HCAmQwLhwZp5B.Token.9pfmuUogOYKDsC9C\"\r\n    // ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/start-encounter?clientId={{clientId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"start-encounter"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}",
+							"description": "Auth token to connect to specific Foundry world"
+						}
+					]
+				},
+				"description": "## Starts an encouter"
+			},
+			"response": [
+				{
+					"name": "/encounters Copy",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"startWithSelected\": true,\r\n    \"startWithPlayers\": true,\r\n    \"rollNPC\": true,\r\n    \"rollAll\": true,\r\n    \"name\": \"BATTLE\"\r\n    // \"tokens\": [\r\n    //     \"Scene.OS0HCAmQwLhwZp5B.Token.9pfmuUogOYKDsC9C\"\r\n    // ]\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/start-encounter?clientId=clientId",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"start-encounter"
+							],
+							"query": [
+								{
+									"key": "clientId",
+									"value": "clientId",
+									"description": "Auth token to connect to specific Foundry world"
+								}
+							]
+						}
+					},
+					"status": "Created",
+					"code": 201,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "2067"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"813-xqiDVEwMkCPFeh/QxDyKuPLZ5Jc\""
+						},
+						{
+							"key": "Date",
+							"value": "Sun, 16 Mar 2025 22:06:34 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"requestId\": \"start_encounter_1742162794220_obo7b8q\",\n    \"clientId\": \"foundry-rQLkX9c1U2Tzkyh8\",\n    \"encounterId\": \"iv6aFhdKBulpjuDX\",\n    \"encounter\": {\n        \"id\": \"iv6aFhdKBulpjuDX\",\n        \"round\": 1,\n        \"turn\": 6,\n        \"combatants\": [\n            {\n                \"id\": \"2062UW6yEWxzsEpX\",\n                \"name\": \"yo\",\n                \"tokenUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.re8tHNcrraXzc96l\",\n                \"actorUuid\": \"Actor.uPTN71qDWhDokIyr\",\n                \"img\": \"icons/svg/mystery-man.svg\",\n                \"initiative\": 3,\n                \"hidden\": false,\n                \"defeated\": false\n            },\n            {\n                \"id\": \"Tu3li2xhZRkEbi0R\",\n                \"name\": \"Aboleth\",\n                \"tokenUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.ZnkW99xVqJLLEKJq\",\n                \"actorUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.ZnkW99xVqJLLEKJq.Actor.qrSmgi9HEQ7tHCqd\",\n                \"img\": \"systems/dnd5e/tokens/aberration/Aboleth.webp\",\n                \"initiative\": 15,\n                \"hidden\": false,\n                \"defeated\": false\n            },\n            {\n                \"id\": \"BgArmsrMBzYa0pKp\",\n                \"name\": \"Ape\",\n                \"tokenUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.vvW6K4cI3WCbrQpB\",\n                \"actorUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.vvW6K4cI3WCbrQpB.Actor.LY5ybkqYtrM2mPMh\",\n                \"img\": \"systems/dnd5e/tokens/beast/Ape.webp\",\n                \"initiative\": 13,\n                \"hidden\": false,\n                \"defeated\": false\n            },\n            {\n                \"id\": \"JwLIBU8rfpkoYww8\",\n                \"name\": \"Ape\",\n                \"tokenUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.YQjYrJBqFdqbcbvZ\",\n                \"actorUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.YQjYrJBqFdqbcbvZ.Actor.LY5ybkqYtrM2mPMh\",\n                \"img\": \"systems/dnd5e/tokens/beast/Ape.webp\",\n                \"initiative\": 4,\n                \"hidden\": false,\n                \"defeated\": false\n            },\n            {\n                \"id\": \"aXBWv9UatdAhDKXZ\",\n                \"name\": \"Ape\",\n                \"tokenUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.5DJYVUfur79k6TjB\",\n                \"actorUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.5DJYVUfur79k6TjB.Actor.LY5ybkqYtrM2mPMh\",\n                \"img\": \"systems/dnd5e/tokens/beast/Ape.webp\",\n                \"initiative\": 11,\n                \"hidden\": false,\n                \"defeated\": false\n            },\n            {\n                \"id\": \"F9KKmJSWoY2I84ck\",\n                \"name\": \"Ape\",\n                \"tokenUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.eqKezJpXTnOPULvg\",\n                \"actorUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.eqKezJpXTnOPULvg.Actor.LY5ybkqYtrM2mPMh\",\n                \"img\": \"systems/dnd5e/tokens/beast/Ape.webp\",\n                \"initiative\": 6,\n                \"hidden\": false,\n                \"defeated\": false\n            },\n            {\n                \"id\": \"jl3jibGUxDuQooD0\",\n                \"name\": \"Ape\",\n                \"tokenUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.d9ASJmZyhlcqn15n\",\n                \"actorUuid\": \"Scene.If9IwEwsCxjEqlNk.Token.d9ASJmZyhlcqn15n.Actor.LY5ybkqYtrM2mPMh\",\n                \"img\": \"systems/dnd5e/tokens/beast/Ape.webp\",\n                \"initiative\": 16,\n                \"hidden\": false,\n                \"defeated\": false\n            }\n        ]\n    }\n}"
+				}
+			]
+		},
+		{
+			"name": "/next-turn",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/next-turn?clientId={{clientId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"next-turn"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}",
+							"description": "Auth token to connect to specific Foundry world"
+						},
+						{
+							"key": "encounter",
+							"value": "encounterId",
+							"disabled": true
+						}
+					]
+				},
+				"description": "## Move forward 1 turn"
+			},
+			"response": []
+		},
+		{
+			"name": "/next-round",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/next-round?clientId={{clientId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"next-round"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}",
+							"description": "Auth token to connect to specific Foundry world"
+						},
+						{
+							"key": "encounter",
+							"value": null,
+							"disabled": true
+						}
+					]
+				},
+				"description": "## Move forward 1 round"
+			},
+			"response": []
+		},
+		{
+			"name": "/last-turn",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/last-turn?clientId={{clientId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"last-turn"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}",
+							"description": "Auth token to connect to specific Foundry world"
+						},
+						{
+							"key": "encounter",
+							"value": "encounterId",
+							"disabled": true
+						}
+					]
+				},
+				"description": "## Move backward 1 turn"
+			},
+			"response": []
+		},
+		{
+			"name": "/last-round",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/last-round?clientId={{clientId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"last-round"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}",
+							"description": "Auth token to connect to specific Foundry world"
+						},
+						{
+							"key": "encounter",
+							"value": "encounterId",
+							"disabled": true
+						}
+					]
+				},
+				"description": "## Move backward 1 round"
+			},
+			"response": []
+		},
+		{
+			"name": "/end-encounter",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/end-encounter?clientId={{clientId}}&encounter=encounterId",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"end-encounter"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}",
+							"description": "Auth token to connect to specific Foundry world"
+						},
+						{
+							"key": "encounter",
+							"value": "encounterId"
+						}
+					]
+				},
+				"description": "## End an encounter"
+			},
+			"response": [
+				{
+					"name": "/last-round Copy",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/end-encounter?clientId=clientId&encounter=GhoIBCoHXUkbZMqz",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"end-encounter"
+							],
+							"query": [
+								{
+									"key": "clientId",
+									"value": "clientId",
+									"description": "Auth token to connect to specific Foundry world"
+								},
+								{
+									"key": "encounter",
+									"value": "GhoIBCoHXUkbZMqz"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "163"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"a3-Y5dAL0deRV1SLkxFXwqwJ34x7Mg\""
+						},
+						{
+							"key": "Date",
+							"value": "Sun, 16 Mar 2025 22:06:17 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"requestId\": \"end_encounter_1742162777463_qpjkjxd\",\n    \"clientId\": \"foundry-rQLkX9c1U2Tzkyh8\",\n    \"encounterId\": \"HSHg4tWxYX8jESza\",\n    \"message\": \"Encounter successfully ended\"\n}"
 				}
 			]
 		}
