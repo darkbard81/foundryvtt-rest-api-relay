@@ -43,9 +43,8 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
   log.info(`Forwarding request for API key ${apiKey} to instance ${instanceId}`);
   
   try {
-    // Use 6PN internal addressing instead of DNS
-    // Format: http://[fdaa:0:6PN_ID:a:b:c:d:e]:PORT
-    const targetUrl = `http://[fdaa:0:6PN:a:b:c:d:${instanceId}]:${FLY_INTERNAL_PORT}${req.originalUrl}`;
+    // Use Fly.io's DNS-based private networking (much more reliable)
+    const targetUrl = `http://${instanceId}.vm.fly-local.internal:${FLY_INTERNAL_PORT}${req.originalUrl}`;
     
     log.debug(`Forwarding to internal address: ${targetUrl}`);
     
@@ -74,12 +73,16 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     clearTimeout(timeoutId);
     
     // Copy response headers
-    for (const [key, value] of Object.entries(response.headers.raw())) {
-      res.setHeader(key, value);
-    }
+    Object.entries(response.headers.raw()).forEach(([key, values]) => {
+      if (Array.isArray(values)) {
+        res.setHeader(key, values);
+      }
+    });
     
     // Send response
-    res.status(response.status).send(await response.text());
+    const text = await response.text();
+    res.status(response.status).send(text);
+    
   } catch (error) {
     log.error(`Error in request forwarder: ${error}`);
     
