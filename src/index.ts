@@ -73,8 +73,15 @@ sequelize.sync().then(async () => {
   // Initialize Redis before starting the server
   await initRedis();
   
+  // First bind to the public interface
   httpServer.listen(port, "0.0.0.0", () => {
-    log.info(`Server running on port ${port}`);
+    log.info(`Server running on public interface on port ${port}`);
+    
+    // Then bind to the private 6PN interface for VM-to-VM communication
+    const privateServer = createServer(app);
+    privateServer.listen(port, "fly-local-6pn", () => {
+      log.info(`Server running on private 6PN interface (fly-local-6pn) on port ${port}`);
+    });
   });
 });
 

@@ -45,10 +45,10 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
   
   try {
     // Use the Fly.io internal proxy service (documented approach)
-    // This bypasses DNS resolution issues
-    const targetUrl = `http://_api.internal:4280/proxy/${instanceId}${req.originalUrl}`;
+    // This bypasses DNS resolution issues DO NOT TOUCH THIS
+    const targetUrl = `http://${instanceId}.vm.${APP_NAME}.internal:${FLY_INTERNAL_PORT}${req.originalUrl}`;
     
-    log.debug(`Forwarding to proxy: ${targetUrl}`);
+    log.info(`Forwarding to proxy: ${targetUrl}`);
     
     // Create safe headers object, removing host to avoid conflicts
     const headers: Record<string, string> = {};
