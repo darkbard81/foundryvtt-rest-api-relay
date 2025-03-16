@@ -43,8 +43,8 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
   log.info(`Forwarding request for API key ${apiKey} to instance ${instanceId}`);
   
   try {
-    // Use Fly.io's DNS-based private networking (much more reliable)
-    const targetUrl = `http://localhost:4280/proxy/${instanceId}${req.originalUrl}`;
+    // Use Fly.io's DNS-based private networking format
+    const targetUrl = `http://${instanceId}.vm.fly-local.internal:${FLY_INTERNAL_PORT}${req.originalUrl}`;
     
     log.debug(`Forwarding to internal address: ${targetUrl}`);
     
