@@ -13,6 +13,7 @@ import stripeRouter from './routes/stripe';
 import webhookRouter from './routes/webhook';
 import { requestForwarderMiddleware } from './middleware/requestForwarder';
 import { closeRedis } from './config/redis';
+import { initRedis } from './config/redis';
 
 config();
 
@@ -72,7 +73,10 @@ app.get("/default-token.png", (req: Request, res: Response) => {
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
 
 // Sync database and start HTTP server
-sequelize.sync().then(() => {
+sequelize.sync().then(async () => {
+  // Initialize Redis before starting the server
+  await initRedis();
+  
   httpServer.listen(port, "0.0.0.0", () => {
     log.info(`Server running on port ${port}`);
   });

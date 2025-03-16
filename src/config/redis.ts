@@ -91,6 +91,22 @@ export function getRedisClient(): Redis | null {
   return redisClient;
 }
 
+// Add this function to explicitly initialize Redis
+export async function initRedis(): Promise<boolean> {
+  try {
+    const client = getRedisClient();
+    if (client) {
+      await client.ping();
+      log.info('Redis initialized successfully');
+      return true;
+    }
+    return false;
+  } catch (error) {
+    log.error(`Redis initialization failed: ${error}`);
+    return false;
+  }
+}
+
 export function isRedisEnabled(): boolean {
   return redisEnabled && redisClient !== null;
 }
