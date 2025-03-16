@@ -20,6 +20,8 @@ COPY package-lock.json* ./
 RUN npm install -g pnpm && \
     if [ -f pnpm-lock.yaml ]; then \
       pnpm install --frozen-lockfile; \
+    elif [ -f yarn.lock ]; then \
+      yarn install --frozen-lockfile; \
     else \
       npm install; \
     fi
