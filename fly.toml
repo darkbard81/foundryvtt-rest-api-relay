@@ -33,6 +33,10 @@ primary_region = 'ord'
     hard_limit = 1000
     soft_limit = 500
 
+# Add this for private networking
+[experimental]
+  enable_6pn = true  # Enable private networking for VM-to-VM communication
+
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'

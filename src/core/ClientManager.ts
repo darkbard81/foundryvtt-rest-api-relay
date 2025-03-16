@@ -12,7 +12,7 @@ const CLIENT_EXPIRY = 60 * 60 * 2; // 2 hours expiry for Redis keys
 
 export class ClientManager {
   private static clients = new Map<string, Client>();
-  private static tokenGroups = new Map<string, Set<string>>();
+  private static tokenGroups = new Map<string, Set<string>>(); 
   private static messageHandlers = new Map<string, MessageHandler>();
 
   /**
@@ -45,10 +45,10 @@ export class ClientManager {
         await redis.set(`apikey:${token}:instance`, INSTANCE_ID, 'EX', CLIENT_EXPIRY);
         
         // Store the client ID -> instance ID mapping
-        await redis.set(`client:id:${id}:instance`, INSTANCE_ID, 'EX', CLIENT_EXPIRY);
+        await redis.set(`client:${id}:instance`, INSTANCE_ID, 'EX', CLIENT_EXPIRY);
         
         // Store client ID -> API key mapping for lookup
-        await redis.set(`client:id:${id}:apikey`, token, 'EX', CLIENT_EXPIRY);
+        await redis.set(`client:${id}:apikey`, token, 'EX', CLIENT_EXPIRY);
         
         // Add client ID to the list of clients for this token/API key
         await redis.sadd(`apikey:${token}:clients`, id);
