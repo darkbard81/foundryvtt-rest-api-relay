@@ -779,22 +779,31 @@ export const apiRoutes = (app: express.Application): void => {
   // Create a new roll
   router.post("/roll", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
-    const { formula, flavor, createChatMessage, whisper } = req.body;
+    const { formula, flavor, createChatMessage, whisper, itemUuid, speaker, target } = req.body;
     
     if (!clientId) {
       safeResponse(res, 400, { 
         error: "Client ID is required",
         howToUse: "Add ?clientId=yourClientId to your request"
       });
-			return;
+      return;
     }
     
-    if (!formula) {
+    // Require either formula or itemUuid
+    if (!formula && !itemUuid) {
       safeResponse(res, 400, { 
-        error: "Roll formula is required",
-        example: { formula: "2d6+3", flavor: "Attack roll", createChatMessage: true }
+        error: "Either roll formula or itemUuid is required",
+        example: { 
+          formula: "2d6+3", 
+          flavor: "Attack roll", 
+          createChatMessage: true 
+        },
+        altExample: {
+          itemUuid: "Scene.If9IwEwsCxjEqlNk.Token.ZnkW99xVqJLLEKJq.Actor.qrSmgi9HEQ7tHCqd.Item.sgauK8Lyt8qxsxOH",
+          target: "Scene.If9IwEwsCxjEqlNk.Token.YQjYrJBqFdqbcbvZ"
+        }
       });
-			return;
+      return;
     }
     
     const client = await ClientManager.getClient(clientId);
@@ -802,7 +811,7 @@ export const apiRoutes = (app: express.Application): void => {
       safeResponse(res, 404, { 
         error: "Invalid client ID"
       });
-			return;
+      return;
     }
     
     try {
@@ -819,8 +828,11 @@ export const apiRoutes = (app: express.Application): void => {
       const sent = client.send({
         type: "perform-roll",
         formula,
+        itemUuid,
         flavor,
         createChatMessage,
+        speaker,
+        target,
         whisper,
         requestId
       });
@@ -830,7 +842,7 @@ export const apiRoutes = (app: express.Application): void => {
         safeResponse(res, 500, { 
           error: "Failed to send roll request to Foundry client"
         });
-			  return;
+        return;
       }
       
       // Set timeout for request
@@ -1706,13 +1718,15 @@ export const apiRoutes = (app: express.Application): void => {
           path: "/roll",
           description: "Makes a new roll in Foundry",
           requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "formula", type: "string", description: "Dice roll formula (e.g. '2d6+3')", location: "body" }
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
           ],
           optionalParameters: [
+            { name: "formula", type: "string", description: "Dice roll formula (e.g. '2d6+3') - required if itemUuid is not provided", location: "body" },
+            { name: "itemUuid", type: "string", description: "UUID of item to roll - required if formula is not provided", location: "body" },
             { name: "flavor", type: "string", description: "Text to display with the roll", location: "body" },
             { name: "createChatMessage", type: "boolean", description: "Whether to create a chat message", location: "body" },
-            { name: "speaker", type: "string", description: "Speaker token UUID for the chat message", location: "body" },
+            { name: "speaker", type: "string", description: "Speaker token/actor UUID for the chat message", location: "body" },
+            { name: "target", type: "string", description: "Target token/actor UUID for the roll", location: "body" },
             { name: "whisper", type: "array", description: "Array of user IDs to whisper the roll to", location: "body" }
           ],
           requestHeaders: [
@@ -2894,6 +2908,8 @@ function setupMessageHandlers() {
             action: data.action,
             currentTurn: data.currentTurn,
             currentRound: data.currentRound,
+            actorTurn: data.actorTurn,
+            tokenTurn: data.tokenTurn,
             encounter: data.encounter || {}
           });
         }
