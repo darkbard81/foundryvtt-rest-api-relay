@@ -8,6 +8,7 @@ import { PassThrough } from 'stream';
 import { JSDOM } from 'jsdom';
 import { User } from '../models/user';
 import { authMiddleware, trackApiUsage } from '../middleware/auth';
+import { requestForwarderMiddleware } from '../middleware/requestForwarder';
 import * as bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { healthCheck } from '../routes/health';
@@ -92,7 +93,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all connected clients
-  router.get("/clients", authMiddleware, async (req: Request, res: Response) => {
+  router.get("/clients", requestForwarderMiddleware, authMiddleware, async (req: Request, res: Response) => {
     const apiKey = req.header('x-api-key') || '';
     const clients = await ClientManager.getConnectedClients(apiKey);
     
@@ -103,7 +104,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
   
   // Search endpoint that relays to Foundry's Quick Insert
-  router.get("/search", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/search", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const query = req.query.query as string;
     const filter = req.query.filter as string;
     const clientId = req.query.clientId as string;
@@ -185,7 +186,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get entity by UUID
-  router.get("/get/:uuid", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/get/:uuid", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const noCache = req.query.noCache === 'true';
@@ -260,7 +261,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all folders and compendiums
-  router.get("/structure", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/structure", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
@@ -317,7 +318,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all entity UUIDs in a folder or compendium
-  router.get("/contents/:path", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/contents/:path", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const path = req.params.path;
     const clientId = req.query.clientId as string;
     
@@ -382,7 +383,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Create a new entity
-  router.post("/entity", authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+  router.post("/entity", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const { type, folder, data } = req.body;
     
@@ -451,7 +452,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Update an entity by UUID
-  router.put("/entity/:uuid", authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+  router.put("/entity/:uuid", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const updateData = req.body;
@@ -523,7 +524,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Delete an entity by UUID
-  router.delete("/entity/:uuid", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+  router.delete("/entity/:uuid", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     
@@ -588,7 +589,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get recent rolls
-  router.get("/rolls", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/rolls", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const limit = parseInt(req.query.limit as string) || 20;
     
@@ -652,7 +653,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get last roll
-  router.get("/lastroll", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/lastroll", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
@@ -714,7 +715,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Create a new roll
-  router.post("/roll", authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+  router.post("/roll", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const { formula, flavor, createChatMessage, whisper } = req.body;
     
@@ -786,7 +787,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get actor sheet HTML
-  router.get("/sheet/:uuid", authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+  router.get("/sheet/:uuid", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
     const uuid = req.params.uuid;
     const clientId = req.query.clientId as string;
     const format = req.query.format as string || 'html';
@@ -865,7 +866,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
   
   // Add this route before mounting the router
-  router.get('/proxy-asset/:path(*)', async (req: Request, res: Response) => {
+  router.get('/proxy-asset/:path(*)', requestForwarderMiddleware, async (req: Request, res: Response) => {
     try {
       // Get the Foundry URL from the client metadata or use default
       const clientId = req.query.clientId as string;

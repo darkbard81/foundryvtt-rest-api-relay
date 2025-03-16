@@ -11,7 +11,6 @@ import * as path from "path";
 import { sequelize } from "./sequelize";
 import stripeRouter from './routes/stripe';
 import webhookRouter from './routes/webhook';
-import { requestForwarderMiddleware } from './middleware/requestForwarder';
 import { closeRedis } from './config/redis';
 import { initRedis } from './config/redis';
 
@@ -37,9 +36,6 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   }
   // Don't call next with error to prevent Express from handling it again
 });
-
-// Add request forwarder middleware before other routes
-app.use(requestForwarderMiddleware);
 
 // Serve static files from public directory
 app.use("/static", express.static(path.join(__dirname, "../public")));
