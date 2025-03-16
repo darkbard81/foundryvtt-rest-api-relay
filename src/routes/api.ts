@@ -1405,14 +1405,6 @@ export const apiRoutes = (app: express.Application): void => {
       return;
     }
     
-    if (!encounterId) {
-      safeResponse(res, 400, { 
-        error: "Encounter ID is required",
-        howToUse: "Add ?encounter=encounterID to your request or include it in the request body"
-      });
-      return;
-    }
-    
     const client = await ClientManager.getClient(clientId);
     if (!client) {
       safeResponse(res, 404, { error: "Invalid client ID" });
@@ -1432,7 +1424,7 @@ export const apiRoutes = (app: express.Application): void => {
       
       const sent = client.send({
         type: "end-encounter",
-        encounterId,
+        encounterId: encounterId || null,
         requestId
       });
 
@@ -1865,9 +1857,10 @@ export const apiRoutes = (app: express.Application): void => {
           description: "Ends a specific encounter",
           requiredParameters: [
             { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+          ],
+          optionalParameters: [
             { name: "encounter", type: "string", description: "ID of the encounter to end", location: "query" }
           ],
-          optionalParameters: [],
           requestHeaders: [
             { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
           ]
