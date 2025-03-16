@@ -2,14 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { log } from '../middleware/logger';
 import { ClientManager } from '../core/ClientManager';
 import fetch from 'node-fetch';
-import dns from 'dns';
-import { promisify } from 'util';
 
 const INSTANCE_ID = process.env.FLY_ALLOC_ID || 'local';
 const FLY_INTERNAL_PORT = process.env.PORT || '3010';
-
-// Convert DNS lookup to promise
-const lookup6 = promisify(dns.resolve6);
+const APP_NAME = process.env.FLY_APP_NAME || 'foundryvtt-rest-api-relay';
 
 export async function requestForwarderMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   // Skip health checks and static assets
@@ -48,10 +44,11 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
   log.info(`Forwarding request for API key ${apiKey} to instance ${instanceId}`);
   
   try {
-    // Try the standard DNS format first
-    let targetUrl = `http://${instanceId}.vm.fly-local.internal:${FLY_INTERNAL_PORT}${req.originalUrl}`;
+    // Use Fly.io's built-in proxy service - most reliable method
+    // This accesses Fly's internal proxy on port 4280
+    const targetUrl = `http://localhost:4280/proxy/${instanceId}${req.originalUrl}`;
     
-    log.debug(`Attempting to forward to: ${targetUrl}`);
+    log.debug(`Forwarding to: ${targetUrl}`);
     
     // Create safe headers object, removing host to avoid conflicts
     const headers: Record<string, string> = {};
@@ -90,17 +87,6 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     
   } catch (error) {
     log.error(`Error in request forwarder: ${error}`);
-    
-    // Try with a fallback approach using direct 6PN addresses if available
-    try {
-      // Fallback to direct addressing if needed
-      log.info(`Attempting fallback forwarding for instance ${instanceId}`);
-      
-      // Fall back to local handling if forwarding fails
-      next();
-    } catch (fallbackError) {
-      log.error(`Fallback forwarding also failed: ${fallbackError}`);
-      next();
-    }
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
