@@ -1130,6 +1130,7 @@ export const apiRoutes = (app: express.Application): void => {
           optionalParameters: [
             { name: "flavor", type: "string", description: "Text to display with the roll", location: "body" },
             { name: "createChatMessage", type: "boolean", description: "Whether to create a chat message", location: "body" },
+            { name: "speaker", type: "string", description: "Speaker token UUID for the chat message", location: "body" },
             { name: "whisper", type: "array", description: "Array of user IDs to whisper the roll to", location: "body" }
           ],
           requestHeaders: [
