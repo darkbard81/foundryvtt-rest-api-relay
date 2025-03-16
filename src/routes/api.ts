@@ -12,6 +12,9 @@ import { requestForwarderMiddleware } from '../middleware/requestForwarder';
 import * as bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { healthCheck } from '../routes/health';
+import { getRedisClient } from '../config/redis';
+
+const INSTANCE_ID = process.env.INSTANCE_ID || 'default';
 
 // Add this helper function at the top of your file
 function safeResponse(res: Response, statusCode: number, data: any): void {
@@ -93,14 +96,73 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get all connected clients
-  router.get("/clients", requestForwarderMiddleware, authMiddleware, async (req: Request, res: Response) => {
-    const apiKey = req.header('x-api-key') || '';
-    const clients = await ClientManager.getConnectedClients(apiKey);
-    
-    safeResponse(res, 200, {
-      total: clients.length,
-      clients
-    });
+  router.get("/clients", authMiddleware, async (req: Request, res: Response) => {
+    try {
+      const apiKey = req.header('x-api-key') || '';
+      const redis = getRedisClient();
+      
+      // Array to store all client details
+      let allClients: any[] = [];
+      
+      if (redis) {
+        // Step 1: Get all client IDs from Redis for this API key
+        const clientIds = await redis.smembers(`apikey:${apiKey}:clients`);
+        
+        if (clientIds.length > 0) {
+          // Step 2: For each client ID, get details from Redis
+          const clientDetailsPromises = clientIds.map(async (clientId) => {
+            try {
+              // Get the instance this client is connected to
+              const instanceId = await redis.get(`client:${clientId}:instance`);
+              
+              if (!instanceId) return null;
+              
+              // Get the last seen timestamp if stored
+              const lastSeen = await redis.get(`client:${clientId}:lastSeen`) || Date.now();
+              const connectedSince = await redis.get(`client:${clientId}:connectedSince`) || lastSeen;
+              
+              // Return client details including its instance
+              return {
+                id: clientId,
+                instanceId,
+                lastSeen: parseInt(lastSeen.toString()),
+                connectedSince: parseInt(connectedSince.toString())
+              };
+            } catch (err) {
+              log.error(`Error getting details for client ${clientId}: ${err}`);
+              return null;
+            }
+          });
+          
+          // Resolve all promises and filter out nulls
+          const clientDetails = (await Promise.all(clientDetailsPromises)).filter(client => client !== null);
+          allClients = clientDetails;
+        }
+      } else {
+        // Fallback to local clients if Redis isn't available
+        const localClientIds = await ClientManager.getConnectedClients(apiKey);
+        
+        // Use Promise.all to wait for all getClient calls to complete
+        allClients = await Promise.all(localClientIds.map(async (id) => {
+          const client = await ClientManager.getClient(id);
+          return {
+            id,
+            instanceId: INSTANCE_ID,
+            lastSeen: client?.getLastSeen() || Date.now(),
+            connectedSince: client?.getLastSeen() || Date.now()
+          };
+        }));
+      }
+      
+      // Send combined response
+      safeResponse(res, 200, {
+        total: allClients.length,
+        clients: allClients
+      });
+    } catch (error) {
+      log.error(`Error aggregating clients: ${error}`);
+      safeResponse(res, 500, { error: "Failed to retrieve clients" });
+    }
   });
   
   // Search endpoint that relays to Foundry's Quick Insert
