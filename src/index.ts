@@ -77,11 +77,16 @@ sequelize.sync().then(async () => {
   httpServer.listen(port, "0.0.0.0", () => {
     log.info(`Server running on public interface on port ${port}`);
     
-    // Then bind to the private 6PN interface for VM-to-VM communication
-    const privateServer = createServer(app);
-    privateServer.listen(port, "fly-local-6pn", () => {
-      log.info(`Server running on private 6PN interface (fly-local-6pn) on port ${port}`);
-    });
+    // Only attempt to bind to private network in Fly.io environment
+    if (process.env.FLY_ALLOC_ID) {
+      // Then bind to the private 6PN interface for VM-to-VM communication
+      const privateServer = createServer(app);
+      privateServer.listen(port, "fly-local-6pn", () => {
+        log.info(`Server running on private 6PN interface (fly-local-6pn) on port ${port}`);
+      });
+    } else {
+      log.info(`Skipping private network binding when running locally`);
+    }
   });
 });
 

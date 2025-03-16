@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { stripe, SUBSCRIPTION_PRICES } from '../config/stripe';
+import { stripe, SUBSCRIPTION_PRICES, isStripeDisabled } from '../config/stripe';
 import { User } from '../models/user';
 import { authMiddleware } from '../middleware/auth';
 import { log } from '../middleware/logger';
@@ -9,6 +9,15 @@ const router = express.Router();
 
 // Get subscription status
 router.get('/status', authMiddleware, async (req: Request, res: Response) => {
+  // If Stripe is disabled, return free tier status
+  if (isStripeDisabled) {
+    res.json({
+      subscriptionStatus: 'free',
+      subscriptionEndsAt: null
+    });
+    return;
+  }
+  
   try {
     const apiKey = req.headers['x-api-key'] as string;
     const user = await User.findOne({ where: { apiKey } });

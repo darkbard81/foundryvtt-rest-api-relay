@@ -9,6 +9,7 @@ type MessageHandler = (client: Client, message: any) => void;
 
 const INSTANCE_ID = process.env.FLY_ALLOC_ID || 'local';
 const CLIENT_EXPIRY = 60 * 60 * 2; // 2 hours expiry for Redis keys
+const isMemoryStore = process.env.DB_TYPE === 'memory';
 
 export class ClientManager {
   private static clients = new Map<string, Client>();

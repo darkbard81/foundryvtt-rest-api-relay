@@ -926,6 +926,139 @@ export const apiRoutes = (app: express.Application): void => {
       return;
     }
   });
+
+  // Get macros
+  router.get("/macros", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { 
+        error: "Invalid client ID"
+      });
+      return;
+    }
+
+    try {
+      // Generate a unique requestId
+      const requestId = `macros_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'macros',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "get-macros",
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { 
+          error: "Failed to send macros request to Foundry client"
+        });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { 
+            error: "Request timed out", 
+            tip: "The Foundry client might be busy or the macro retrieval took too long."
+          });
+        }
+      }, 10000); // Longer timeout for macros that might take time to retrieve
+    } catch (error) {
+      log.error(`Error processing macros request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process macros request" });
+      return;
+    }
+  });
+
+  // Execute a macro by UUID
+  router.post("/macro/:uuid/execute", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const uuid = req.params.uuid;
+    const clientId = req.query.clientId as string;
+    const args = req.body || {};
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    if (!uuid) {
+      safeResponse(res, 400, { 
+        error: "UUID parameter is required",
+        example: "/macro/Macro.abcdef12345/execute"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { 
+        error: "Invalid client ID"
+      });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `macro_exec_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'macro-execute',
+        clientId,
+        uuid,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "execute-macro",
+        uuid,
+        args,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { 
+          error: "Failed to send macro execution request to Foundry client"
+        });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { 
+            error: "Request timed out", 
+            tip: "The Foundry client might be busy or the macro execution took too long."
+          });
+        }
+      }, 15000); // Longer timeout for macros that might take time to execute
+    } catch (error) {
+      log.error(`Error processing macro execution request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process macro execution request" });
+      return;
+    }
+  });
   
   // Add this route before mounting the router
   router.get('/proxy-asset/:path(*)', requestForwarderMiddleware, async (req: Request, res: Response) => {
@@ -1221,6 +1354,31 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "GET",
+          path: "/macros",
+          description: "Returns all macros available in Foundry",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/macro/:uuid/execute",
+          description: "Executes a macro by UUID",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [],
+          requestPayload: "JSON object containing the arguments to pass to the macro",
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "GET",
           path: "/api/status",
           description: "Returns the API status and version",
           requiredParameters: [],
@@ -1259,7 +1417,7 @@ export const apiRoutes = (app: express.Application): void => {
 // Track pending requests
 interface PendingRequest {
   res: express.Response;
-  type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 'rolls' | 'lastroll' | 'roll' | 'actor-sheet';
+  type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 'rolls' | 'lastroll' | 'roll' | 'actor-sheet' | 'macro-execute' | 'macros';
   clientId?: string;
   uuid?: string;
   path?: string;
@@ -2105,6 +2263,68 @@ function setupMessageHandlers() {
       });
     }
   });
+
+  // Handler for macros list response
+  ClientManager.onMessageType("macros-list", (client: Client, data: any) => {
+    log.info(`Received macros list for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'macros') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            clientId: client.getId(),
+            error: data.error,
+            message: "Failed to retrieve macros"
+          });
+        } else {
+          // Send response with metadata
+          safeResponse(pending.res, 200, {
+            clientId: client.getId(),
+            total: data.macros?.length || 0,
+            macros: data.macros || []
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+        return;
+      }
+    }
+  });
+  
+  // Handler for macro execution result
+  ClientManager.onMessageType("macro-execution-result", (client: Client, data: any) => {
+    log.info(`Received macro execution result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'macro-execute' && pending.uuid === data.uuid) {
+        if (!data.success) {
+          safeResponse(pending.res, 400, {
+            clientId: client.getId(),
+            uuid: data.uuid,
+            error: data.error || "Failed to execute macro"
+          });
+        } else {
+          // Send response with execution result
+          safeResponse(pending.res, 200, {
+            clientId: client.getId(),
+            uuid: data.uuid,
+            success: true,
+            result: data.result
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+        return;
+      }
+    }
+  });
+
 
   // Clean up old pending requests periodically
   setInterval(() => {
