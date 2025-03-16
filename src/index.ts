@@ -19,6 +19,10 @@ config();
 // Create Express server
 const app = express();
 const httpServer = createServer(app);
+// Disable timeouts to keep WebSocket connections open may want to sent a long timeout in the future instead
+httpServer.setTimeout(0);
+httpServer.keepAliveTimeout = 0;
+httpServer.headersTimeout = 0;
 
 // Setup CORS
 app.use(corsMiddleware());

@@ -45,7 +45,7 @@ export const wsRoutes = (wss: WebSocketServer): void => {
   // Set up periodic cleanup
   setInterval(() => {
     ClientManager.cleanupInactiveClients();
-  }, 30000);
+  }, 15000);
 };
 
 // Export the ClientManager for usage in API routes
