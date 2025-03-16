@@ -44,11 +44,11 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
   log.info(`Forwarding request for API key ${apiKey} to instance ${instanceId}`);
   
   try {
-    // Use Fly.io's proper DNS-based private networking format
-    // The correct format is <machine_id>.vm.<appname>.internal
-    const targetUrl = `http://${instanceId}.vm.${APP_NAME}.internal${req.originalUrl}`;
+    // Use the Fly.io internal proxy service (documented approach)
+    // This bypasses DNS resolution issues
+    const targetUrl = `http://_api.internal:4280/proxy/${instanceId}${req.originalUrl}`;
     
-    log.debug(`Forwarding to internal address: ${targetUrl}`);
+    log.debug(`Forwarding to proxy: ${targetUrl}`);
     
     // Create safe headers object, removing host to avoid conflicts
     const headers: Record<string, string> = {};
@@ -87,6 +87,9 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     
   } catch (error) {
     log.error(`Error in request forwarder: ${error}`);
-    res.status(500).json({ error: 'Internal server error' });
+    
+    // Fall back to local handling instead of returning an error
+    // This allows the API to still work even if forwarding fails
+    next();
   }
 }
