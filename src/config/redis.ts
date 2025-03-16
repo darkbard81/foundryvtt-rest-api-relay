@@ -14,6 +14,8 @@ function fixRedisUrl(url: string): string {
 const FLY_INTERNAL_REDIS = process.env.REDIS_URL || 'redis://localhost:6379';
 export const REDIS_URL = fixRedisUrl(FLY_INTERNAL_REDIS);
 
+// Increase the expiry time for better handling of autoscaling events
+export const CLIENT_EXPIRY = 60 * 60 * 2; // 2 hours expiry for Redis keys
 const ENABLE_REDIS = process.env.ENABLE_REDIS !== 'false';
 
 // Create Redis client singleton
@@ -35,20 +37,21 @@ export function getRedisClient(): Redis | null {
     connectionAttempted = true;
     
     try {
-      // Key changes for Upstash Redis in Fly.io:
+      // Improved Redis options for Fly.io environment
       const options: RedisOptions = {
         connectTimeout: 10000,
-        maxRetriesPerRequest: 2,
+        maxRetriesPerRequest: 3,
         retryStrategy: (times) => {
-          if (times > 3) {
+          if (times > 5) {
             redisEnabled = false;
             return null; // Stop retrying
           }
-          return Math.min(times * 500, 2000); // Progressive backoff
+          return Math.min(times * 500, 3000); // Progressive backoff with longer maximum
         },
-        // Force IPv4 for better compatibility with various Redis providers
-        family: 4,
-        // For TLS connections - don't use this flag since we're handling it in the URL
+        // Try both IPv4 and IPv6 for better compatibility
+        family: 0, // This means "try both IPv4 and IPv6"
+        enableOfflineQueue: true,
+        // For TLS connections
         tls: REDIS_URL.startsWith('rediss://') ? {
           rejectUnauthorized: false
         } : undefined
