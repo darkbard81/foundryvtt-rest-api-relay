@@ -8,7 +8,7 @@ const FLY_INTERNAL_PORT = process.env.PORT || '3010';
 
 export async function requestForwarderMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
   // Skip for non-API requests
-  if (!req.path.startsWith('/api/') && 
+  if (!req.path.startsWith('/clients') && 
       !req.path.startsWith('/get/') && 
       !req.path.startsWith('/search') && 
       !req.path.startsWith('/entity/') && 
@@ -39,7 +39,7 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     }
     
     // If client is not on this instance, check Redis for the correct instance
-    const instanceId = await ClientManager.getInstanceForToken(apiKey);
+    const instanceId = await ClientManager.getInstanceForApiKey(apiKey);
     
     if (!instanceId || instanceId === INSTANCE_ID) {
       // If this is the correct instance or no instance found, proceed normally
@@ -47,7 +47,7 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     }
     
     // This request needs to be forwarded to another instance
-    log.info(`Forwarding request for client ${clientId} to instance ${instanceId}`);
+    log.info(`Forwarding request for API key ${apiKey} to instance ${instanceId}`);
     
     // Build the internal Fly.io address
     const targetUrl = `http://${instanceId}.vm.fly-local.internal:${FLY_INTERNAL_PORT}${req.originalUrl}`;

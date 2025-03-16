@@ -14,7 +14,8 @@ primary_region = 'ord'
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 2  # Ensure we always have 2 machines
+  max_machines_running = 5  # Allow scaling up to 5 machines
   force_instance_key = true
   
   # Add restart_machine_strategy for more graceful handling
@@ -43,3 +44,5 @@ primary_region = 'ord'
   
 [env]
   ENABLE_REDIS = "true"
+  # Set a longer Redis expiry
+  REDIS_CLIENT_EXPIRY = "14400"  # 4 hours in seconds

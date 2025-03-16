@@ -8,12 +8,12 @@ import { getRedisClient } from "../config/redis";
 type MessageHandler = (client: Client, message: any) => void;
 
 const INSTANCE_ID = process.env.FLY_ALLOC_ID || 'local';
-const CLIENT_EXPIRY = 60 * 60; // 1 hour expiry for Redis keys
+const CLIENT_EXPIRY = 60 * 60 * 2; // 2 hours expiry for Redis keys
 
 export class ClientManager {
-  private static clients: Map<string, Client> = new Map();
-  private static tokenGroups: Map<string, Set<string>> = new Map();
-  private static messageHandlers: Map<string, MessageHandler> = new Map();
+  private static clients = new Map<string, Client>();
+  private static tokenGroups = new Map<string, Set<string>>();
+  private static messageHandlers = new Map<string, MessageHandler>();
 
   /**
    * Add a new client to the manager
@@ -36,23 +36,23 @@ export class ClientManager {
     }
     this.tokenGroups.get(token)?.add(id);
     
-    // Store clientId->instanceId mapping in Redis
+    // Store clientId->instanceId and apiKey->clientId mappings in Redis
     try {
       const redis = getRedisClient();
       
       if (redis) {
-        // Store the client's API key -> instance ID mapping
-        await redis.set(`client:${token}:instance`, INSTANCE_ID, 'EX', CLIENT_EXPIRY);
+        // Store the mapping between API key (token) and this instance
+        await redis.set(`apikey:${token}:instance`, INSTANCE_ID, 'EX', CLIENT_EXPIRY);
         
-        // Also store the client ID -> instance ID mapping
+        // Store the client ID -> instance ID mapping
         await redis.set(`client:id:${id}:instance`, INSTANCE_ID, 'EX', CLIENT_EXPIRY);
         
         // Store client ID -> API key mapping for lookup
-        await redis.set(`client:id:${id}:token`, token, 'EX', CLIENT_EXPIRY);
+        await redis.set(`client:id:${id}:apikey`, token, 'EX', CLIENT_EXPIRY);
         
-        // Add client ID to the list of clients for this token
-        await redis.sadd(`token:${token}:clients`, id);
-        await redis.expire(`token:${token}:clients`, CLIENT_EXPIRY);
+        // Add client ID to the list of clients for this token/API key
+        await redis.sadd(`apikey:${token}:clients`, id);
+        await redis.expire(`apikey:${token}:clients`, CLIENT_EXPIRY);
         
         log.info(`Client ${id} registered in Redis with token ${token}`);
       }
@@ -163,6 +163,23 @@ export class ClientManager {
       }
     } catch (error) {
       log.error(`Error getting instance for token from Redis: ${error}`);
+      return null;
+    }
+  }
+
+  /**
+   * Get the instance ID for an API key
+   */
+  static async getInstanceForApiKey(apiKey: string): Promise<string | null> {
+    try {
+      const redis = getRedisClient();
+      if (redis) {
+        // Directly look up the instance for this API key
+        return await redis.get(`apikey:${apiKey}:instance`);
+      }
+      return null;
+    } catch (error) {
+      log.error(`Error getting instance for API key from Redis: ${error}`);
       return null;
     }
   }
