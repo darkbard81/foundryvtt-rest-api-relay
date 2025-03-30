@@ -1675,10 +1675,10 @@ export const apiRoutes = (app: express.Application): void => {
   // Decrease attribute
   router.post("/decrease", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
-    const uuid = req.query.uuid as string || req.body.uuid;
+    const uuid = req.query.uuid as string;
     const selected = req.query.selected === 'true';
-    const attribute = req.query.attribute as string || req.body.attribute;
-    const amount = typeof req.body.amount === 'number' ? req.body.amount : parseFloat(req.query.amount as string);
+    const attribute = req.body.attribute as string;
+    const amount =req.body.amount as number;
     
     if (!clientId) {
       safeResponse(res, 400, { 
@@ -1743,10 +1743,10 @@ export const apiRoutes = (app: express.Application): void => {
   // Increase attribute
   router.post("/increase", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
-    const uuid = req.query.uuid as string || req.body.uuid;
+    const uuid = req.query.uuid as string;
     const selected = req.query.selected === 'true';
-    const attribute = req.query.attribute as string || req.body.attribute;
-    const amount = typeof req.body.amount === 'number' ? req.body.amount : parseFloat(req.query.amount as string);
+    const attribute = req.body.attribute as string;
+    const amount =req.body.amount as number;
     
     if (!clientId) {
       safeResponse(res, 400, { 
@@ -2367,8 +2367,8 @@ export const apiRoutes = (app: express.Application): void => {
           description: "Decrease an attribute value on an entity",
           requiredParameters: [
             { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "attribute", type: "string", description: "Attribute path (e.g. 'system.attributes.hp.value')", location: "query" },
-            { name: "amount", type: "number", description: "Amount to decrease", location: "query" }
+            { name: "attribute", type: "string", description: "Attribute path (e.g. 'system.attributes.hp.value')", location: "body" },
+            { name: "amount", type: "number", description: "Amount to decrease", location: "body" }
           ],
           optionalParameters: [
             { name: "uuid", type: "string", description: "UUID of the entity", location: "query" },
@@ -2388,8 +2388,8 @@ export const apiRoutes = (app: express.Application): void => {
             { name: "amount", type: "number", description: "Amount to increase", location: "body" }
           ],
           optionalParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity", location: "body" },
-            { name: "selected", type: "string", description: "If 'true' increase all selected tokens", location: "body" }
+            { name: "uuid", type: "string", description: "UUID of the entity", location: "query" },
+            { name: "selected", type: "string", description: "If 'true' increase all selected tokens", location: "query" }
           ],
           requestHeaders: [
             { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
