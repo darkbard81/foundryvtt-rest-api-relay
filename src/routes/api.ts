@@ -248,14 +248,15 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
-  // Get entity by UUID
-  router.get("/get/:uuid", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
-    const uuid = req.params.uuid;
+  // Get entities
+  router.get("/get", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+    const uuid = req.query.uuid as string;
+    const selected = req.query.selected === 'true';
+    const actor = req.query.actor === 'true';
     const clientId = req.query.clientId as string;
-    const noCache = req.query.noCache === 'true';
     
-    if (!uuid) {
-      safeResponse(res, 400, { error: "UUID parameter is required" });
+    if (!uuid && !selected) {
+      safeResponse(res, 400, { error: "UUID or selected parameter is required" });
       return;
     }
     
@@ -286,7 +287,7 @@ export const apiRoutes = (app: express.Application): void => {
       pendingRequests.set(requestId, { 
         res,
         type: 'entity',
-        uuid,
+        clientId,
         timestamp: Date.now() 
       });
       
@@ -294,6 +295,8 @@ export const apiRoutes = (app: express.Application): void => {
       const sent = client.send({
         type: "get-entity",
         uuid,
+        selected,
+        actor,
         requestId
       });
 
@@ -446,7 +449,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Create a new entity
-  router.post("/entity", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+  router.post("/create", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const { type, folder, data } = req.body;
     
@@ -514,9 +517,11 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
-  // Update an entity by UUID
-  router.put("/entity/:uuid", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
-    const uuid = req.params.uuid;
+  // Update an entities
+  router.put("/update", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const uuid = req.query.uuid as string;
+    const selected = req.query.selected === 'true';
+    const actor = req.query.actor === 'true';
     const clientId = req.query.clientId as string;
     const updateData = req.body;
     
@@ -528,8 +533,8 @@ export const apiRoutes = (app: express.Application): void => {
 			return;
     }
     
-    if (!uuid) {
-      safeResponse(res, 400, { error: "UUID parameter is required" });
+    if (!uuid && !selected) {
+      safeResponse(res, 400, { error: "UUID or selected parameter is required" });
       return;
     }
     
@@ -561,6 +566,8 @@ export const apiRoutes = (app: express.Application): void => {
       const sent = client.send({
         type: "update-entity",
         uuid,
+        selected,
+        actor,
         updateData,
         requestId
       });
@@ -586,9 +593,10 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
-  // Delete an entity by UUID
-  router.delete("/entity/:uuid", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
-    const uuid = req.params.uuid;
+  // Delete entities
+  router.delete("/delete", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+    const uuid = req.query.uuid as string;
+    const selected = req.query.selected === 'true';
     const clientId = req.query.clientId as string;
     
     if (!clientId) {
@@ -599,8 +607,8 @@ export const apiRoutes = (app: express.Application): void => {
 			return;
     }
     
-    if (!uuid) {
-      safeResponse(res, 400, { error: "UUID parameter is required" });
+    if (!uuid && !selected) {
+      safeResponse(res, 400, { error: "UUID or selected parameter is required" });
       return;
     }
     
@@ -627,6 +635,7 @@ export const apiRoutes = (app: express.Application): void => {
       const sent = client.send({
         type: "delete-entity",
         uuid,
+        selected,
         requestId
       });
 
@@ -862,8 +871,10 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Get actor sheet HTML
-  router.get("/sheet/:uuid", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
-    const uuid = req.params.uuid;
+  router.get("/sheet", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+    const uuid = req.query.uuid as string;
+    const selected = req.query.selected === 'true';
+    const actor = req.query.actor === 'true';
     const clientId = req.query.clientId as string;
     const format = req.query.format as string || 'html';
     const initialScale = parseFloat(req.query.scale as string) || null;
@@ -875,6 +886,11 @@ export const apiRoutes = (app: express.Application): void => {
         error: "Client ID is required to identify the Foundry instance"
       });
 			return;
+    }
+
+    if (!uuid && !selected) {
+      safeResponse(res, 400, { error: "UUID or selected parameter is required" });
+      return;
     }
     
     // Find a connected client with this ID
@@ -907,6 +923,8 @@ export const apiRoutes = (app: express.Application): void => {
       const sent = client.send({
         type: "get-sheet-html",
         uuid,
+        selected,
+        actor,
         requestId,
         initialScale,
         activeTab,
@@ -1458,8 +1476,409 @@ export const apiRoutes = (app: express.Application): void => {
       safeResponse(res, 500, { error: "Failed to process end encounter request" });
     }
   });
+
+  // Add to encounter
+  router.post("/add-to-encounter", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const encounterId = req.query.encounter as string || req.body.encounter;
+    const selected = req.body.selected === true;
+    const uuids = Array.isArray(req.body.uuids) ? req.body.uuids : [];
+    const rollInitiative = req.body.rollInitiative === true;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    if (!uuids.length && !selected) {
+      safeResponse(res, 400, {
+        error: "Either uuids array or selected=true is required"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `add_encounter_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'add-to-encounter',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "add-to-encounter",
+        encounterId,
+        selected,
+        uuids,
+        rollInitiative,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send add-to-encounter request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing add-to-encounter request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process add-to-encounter request" });
+    }
+  });
+
+  // Remove from encounter
+  router.post("/remove-from-encounter", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const encounterId = req.query.encounter as string || req.body.encounter;
+    const selected = req.body.selected === true;
+    const uuids = Array.isArray(req.body.uuids) ? req.body.uuids : [];
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    if (!uuids.length && !selected) {
+      safeResponse(res, 400, {
+        error: "Either uuids array or selected=true is required"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `remove_encounter_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'remove-from-encounter',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "remove-from-encounter",
+        encounterId,
+        selected,
+        uuids,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send remove-from-encounter request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing remove-from-encounter request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process remove-from-encounter request" });
+    }
+  });
+
+  // Kill (mark as defeated)
+  router.post("/kill", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const uuid = req.query.uuid as string;
+    const selected = req.query.selected === 'true';
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    if (!uuid && !selected) {
+      safeResponse(res, 400, {
+        error: "UUID or selected is required"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `kill_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'kill',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "kill-entity",
+        uuid,
+        selected,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send kill request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing kill request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process kill request" });
+    }
+  });
+
+  // Decrease attribute
+  router.post("/decrease", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const uuid = req.query.uuid as string || req.body.uuid;
+    const selected = req.query.selected === 'true';
+    const attribute = req.query.attribute as string || req.body.attribute;
+    const amount = typeof req.body.amount === 'number' ? req.body.amount : parseFloat(req.query.amount as string);
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    if ((!uuid && !selected) || !attribute || isNaN(amount)) {
+      safeResponse(res, 400, {
+        error: "UUID or selected, attribute path, and amount are required",
+        howToUse: "Provide uuid or selected, attribute, and amount parameters"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `decrease_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'decrease',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "decrease-attribute",
+        uuid,
+        selected,
+        attribute,
+        amount,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send decrease request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing decrease request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process decrease request" });
+    }
+  });
+
+  // Increase attribute
+  router.post("/increase", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const uuid = req.query.uuid as string || req.body.uuid;
+    const selected = req.query.selected === 'true';
+    const attribute = req.query.attribute as string || req.body.attribute;
+    const amount = typeof req.body.amount === 'number' ? req.body.amount : parseFloat(req.query.amount as string);
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    if ((!uuid && !selected) || !attribute || isNaN(amount)) {
+      safeResponse(res, 400, {
+        error: "UUID or selected, attribute path, and amount are required",
+        howToUse: "Provide uuid or selected, attribute, and amount parameters"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `increase_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'increase',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "increase-attribute",
+        uuid,
+        selected,
+        attribute,
+        amount,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send increase request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing increase request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process increase request" });
+    }
+  });
+
+  // Add this to the router after the other endpoints
+  router.post("/give", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const fromUuid = req.body.fromUuid as string;
+    const toUuid = req.body.toUuid as string;
+    const selected = req.body.selected;
+    const itemUuid = req.body.itemUuid as string;
+    const quantity = req.body.quantity as number || 1;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    if ((!toUuid && !selected) || !itemUuid) {
+      safeResponse(res, 400, {
+        error: "toUuid or selected, and itemUuid are required",
+        howToUse: "Provide toUuid (target actor) or selected = true, and itemUuid parameters"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `give_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'give',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "give-item",
+        fromUuid,
+        selected,
+        toUuid,
+        itemUuid,
+        quantity,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send give item request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing give item request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process give item request" });
+    }
+  });
   
-  // Add this route before mounting the router
+  // Proxy asset requests to Foundry
   router.get('/proxy-asset/:path(*)', requestForwarderMiddleware, async (req: Request, res: Response) => {
     try {
       // Get the Foundry URL from the client metadata or use default
@@ -1576,12 +1995,12 @@ export const apiRoutes = (app: express.Application): void => {
             total: 2,
             clients: [
               {
-                id: "foundry-LZw0ywlj1iYpkUSR",
+                id: "foundry-id-1",
                 lastSeen: 1741132430381,
                 connectedSince: 1741132430381
               },
               {
-                id: "foundry-rQLkX9c1U2Tzkyh8",
+                id: "foundry-id-2",
                 lastSeen: 1741132381381,
                 connectedSince: 1741132381381
               }
@@ -1605,14 +2024,15 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "GET",
-          path: "/get/:uuid",
+          path: "/get",
           description: "Returns JSON data for the specified entity",
           requiredParameters: [
-            { name: "uuid", type: "string", description: "The UUID of the entity to retrieve", location: "path" },
             { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
           ],
           optionalParameters: [
-            { name: "noCache", type: "boolean", description: "If true, forces a fresh fetch of the entity", location: "query" }
+            { name: "uuid", type: "string", description: "The UUID of the entity to retrieve", location: "query" },
+            { name: "selected", type: "string", description: "If 'true', returns all selected entities", location: "query" },
+            { name: "actor", type: "string", description: "If 'true' and selected is 'true', returns the currently selected actors", location: "query" },
           ],
           requestHeaders: [
             { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
@@ -1645,7 +2065,7 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "POST",
-          path: "/entity",
+          path: "/create",
           description: "Creates a new entity in Foundry with the given JSON",
           requiredParameters: [
             { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
@@ -1662,13 +2082,17 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "PUT",
-          path: "/entity/:uuid",
+          path: "/update",
           description: "Updates an entity with the given JSON props",
           requiredParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity to update", location: "path" },
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "data", type: "object", description: "Entity data", location: "body" }
           ],
-          optionalParameters: [],
+          optionalParameters: [
+            { name: "uuid", type: "string", description: "UUID of the entity to update", location: "query" },
+            { name: "selected", type: "string", description: "If 'true', updates all selected entities", location: "query" },
+            { name: "actor", type: "string", description: "If 'true' and selected is 'true', updates the currently selected actors", location: "query" }
+          ],
           requestPayload: "JSON object containing the properties to update",
           requestHeaders: [
             { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
@@ -1677,13 +2101,15 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "DELETE",
-          path: "/entity/:uuid",
+          path: "/delete",
           description: "Deletes the specified entity",
           requiredParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity to delete", location: "path" },
             { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
           ],
-          optionalParameters: [],
+          optionalParameters: [
+            { name: "uuid", type: "string", description: "UUID of the entity to delete", location: "query" },
+            { name: "selected", type: "string", description: "If 'true', deletes all selected entities", location: "query" }
+          ],
           requestHeaders: [
             { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
           ]
@@ -1737,13 +2163,15 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "GET",
-          path: "/sheet/:uuid",
+          path: "/sheet",
           description: "Returns raw HTML (or a string in a JSON response) for an entity",
           requiredParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity to get the sheet for", location: "path" },
             { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
           ],
           optionalParameters: [
+            { name: "uuid", type: "string", description: "UUID of the entity to get the sheet for", location: "query" },
+            { name: "selected", type: "string", description: "If 'true', returns the sheet for all selected entity", location: "query" },
+            { name: "actor", type: "string", description: "If 'true' and selected is 'true', returns the sheet for the currently selected actor", location: "query" },
             { name: "format", type: "string", description: "Response format, 'html' or 'json'", location: "query" },
             { name: "scale", type: "number", description: "Scale factor for the sheet", location: "query" },
             { name: "tab", type: "number", description: "Index of the tab to activate", location: "query" },
@@ -1770,9 +2198,12 @@ export const apiRoutes = (app: express.Application): void => {
           path: "/macro/:uuid/execute",
           description: "Executes a macro by UUID",
           requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "uuid", type: "string", description: "UUID of the macro to execute", location: "path" }
           ],
-          optionalParameters: [],
+          optionalParameters: [
+            { name: "args", type: "object", description: "Arguments to pass to the macro", location: "body" }
+          ],
           requestPayload: "JSON object containing the arguments to pass to the macro",
           requestHeaders: [
             { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
@@ -1881,18 +2312,112 @@ export const apiRoutes = (app: express.Application): void => {
           ]
         },
         {
-          method: "GET",
-          path: "/api/status",
-          description: "Returns the API status and version",
-          requiredParameters: [],
-          optionalParameters: [],
-          requestHeaders: [],
-          authentication: false
+          method: "POST",
+          path: "/add-to-encounter",
+          description: "Add entities to an encounter",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "encounter", type: "string", description: "ID of the encounter to add to", location: "query" },
+            { name: "uuids", type: "array", description: "Array of entity UUIDs to add", location: "body" },
+            { name: "selected", type: "boolean", description: "Whether to add selected tokens", location: "body" },
+            { name: "rollInitiative", type: "boolean", description: "Whether to roll initiative for all entities", location: "body" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/remove-from-encounter",
+          description: "Remove entities from an encounter",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "encounter", type: "string", description: "ID of the encounter to remove from", location: "query" },
+            { name: "uuids", type: "array", description: "Array of entity UUIDs to remove", location: "body" },
+            { name: "selected", type: "boolean", description: "Whether to remove selected tokens", location: "body" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/kill",
+          description: "Mark an entity as defeated",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "uuid", type: "string", description: "UUID of the entity to mark as defeated", location: "query" },
+            { name: "selected", type: "string", description: "If 'true' mark all selected tokens as defeated", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/decrease",
+          description: "Decrease an attribute value on an entity",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "attribute", type: "string", description: "Attribute path (e.g. 'system.attributes.hp.value')", location: "query" },
+            { name: "amount", type: "number", description: "Amount to decrease", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "uuid", type: "string", description: "UUID of the entity", location: "query" },
+            { name: "selected", type: "string", description: "If 'true' decrease all selected tokens", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/increase",
+          description: "Increase an attribute value on an entity",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "attribute", type: "string", description: "Attribute path (e.g. 'system.attributes.hp.value')", location: "body" },
+            { name: "amount", type: "number", description: "Amount to increase", location: "body" }
+          ],
+          optionalParameters: [
+            { name: "uuid", type: "string", description: "UUID of the entity", location: "body" },
+            { name: "selected", type: "string", description: "If 'true' increase all selected tokens", location: "body" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/give",
+          description: "Transfer an item from one actor to another",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "itemUuid", type: "string", description: "UUID of the item to transfer", location: "body" }
+          ],
+          optionalParameters: [
+            { name: "fromUuid", type: "string", description: "UUID of the source actor", location: "body" },
+            { name: "toUuid", type: "string", description: "UUID of the target actor", location: "body" },
+            { name: "selected", type: "boolean", description: "If true, transfer to selected actor", location: "body" },
+            { name: "quantity", type: "number", description: "Amount of the item to transfer", location: "body" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
         },
         {
           method: "GET",
-          path: "/health",
-          description: "Health check endpoint for the API",
+          path: "/api/status",
+          description: "Returns the API status and version",
           requiredParameters: [],
           optionalParameters: [],
           requestHeaders: [],
@@ -1922,7 +2447,8 @@ interface PendingRequest {
   res: express.Response;
   type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 
          'rolls' | 'lastroll' | 'roll' | 'actor-sheet' | 'macro-execute' | 'macros' | 
-         'encounters' | 'start-encounter' | 'next-turn' | 'next-round' | 'last-turn' | 'last-round' | 'end-encounter';
+         'encounters' | 'start-encounter' | 'next-turn' | 'next-round' | 'last-turn' | 'last-round' | 
+         'end-encounter' | 'add-to-encounter' | 'remove-from-encounter' | 'kill' | 'decrease' | 'increase' | 'give';
   clientId?: string;
   uuid?: string;
   path?: string;
@@ -2089,7 +2615,7 @@ function setupMessageHandlers() {
             requestId: data.requestId,
             clientId: pending.clientId,
             uuid: data.uuid,
-            entity: data.entity
+            entities: data.entity
           });
         }
         
@@ -2122,7 +2648,7 @@ function setupMessageHandlers() {
             requestId: data.requestId,
             clientId: pending.clientId,
             uuid: data.uuid,
-            message: "Entity successfully deleted"
+            message: "Successfully deleted"
           });
         }
         
@@ -2527,6 +3053,169 @@ function setupMessageHandlers() {
         // Remove pending request
         pendingRequests.delete(data.requestId);
         return;
+      }
+    }
+  });
+
+  // Handler for add-to-encounter result
+  ClientManager.onMessageType("add-to-encounter-result", (client: Client, data: any) => {
+    log.info(`Received add-to-encounter result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'add-to-encounter') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            error: data.error,
+            message: "Failed to add to encounter"
+          });
+        } else {
+          safeResponse(pending.res, 200, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            encounterId: data.encounterId,
+            added: data.added || [],
+            failed: data.failed || []
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  // Handler for remove-from-encounter result
+  ClientManager.onMessageType("remove-from-encounter-result", (client: Client, data: any) => {
+    log.info(`Received remove-from-encounter result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'remove-from-encounter') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            error: data.error,
+            message: "Failed to remove from encounter"
+          });
+        } else {
+          safeResponse(pending.res, 200, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            encounterId: data.encounterId,
+            removed: data.removed || [],
+            failed: data.failed || []
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  // Handler for kill entity result
+  ClientManager.onMessageType("kill-entity-result", (client: Client, data: any) => {
+    log.info(`Received kill-entity result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'kill') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            error: data.error,
+            uuid: data.uuid || "",
+            success: false
+          });
+        } else {
+          safeResponse(pending.res, 200, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            uuid: data.uuid,
+            success: data.success,
+            message: data.message || "Entity marked as defeated"
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  // Handler for modify attribute (increase/decrease) results
+  ClientManager.onMessageType("modify-attribute-result", (client: Client, data: any) => {
+    log.info(`Received modify-attribute result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'increase' || pending.type === 'decrease') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            error: data.error,
+            uuid: data.uuid || "",
+            attribute: data.attribute || "",
+            success: false
+          });
+        } else {
+          safeResponse(pending.res, 200, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            uuid: data.uuid,
+            attribute: data.attribute,
+            success: data.success,
+            newValue: data.newValue,
+            oldValue: data.oldValue
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  // Handler for give item result
+  ClientManager.onMessageType("give-item-result", (client: Client, data: any) => {
+    log.info(`Received give-item result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'give') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            error: data.error,
+            success: false
+          });
+        } else {
+          safeResponse(pending.res, 200, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            fromUuid: data.fromUuid,
+            toUuid: data.toUuid,
+            itemUuid: data.itemUuid,
+            newItemUuid: data.newItemUuid,
+            success: data.success,
+            message: data.message || "Item successfully transferred"
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
       }
     }
   });

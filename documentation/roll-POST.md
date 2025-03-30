@@ -26,13 +26,14 @@ $baseUrl/roll?clientId=$clientId
 
 ```json
 {
-  "formula": "2d20kl+2d8",
+  "formula": "10d20kl",
+  "itemUuid": "uuid",
   "flavor": "Attack Roll",
   "createChatMessage": true,
-  "speaker": "Token.9pfmuUogOYKDsC9C",
+  "target": "uuid",
+  "speaker": "uuid",
   "whisper": [
-    "userId1",
-    "userId2"
+    "uuid"
   ]
 }
 ```

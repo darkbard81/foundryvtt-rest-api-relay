@@ -1,4 +1,4 @@
-## **POST** /entity
+## **POST** /create
 
 ## Creates a new entity in Foundry with the given JSON
 
@@ -7,7 +7,7 @@
 #### Request URL
 
 ```
-$baseUrl/entity?clientId=$clientId
+$baseUrl/create?clientId=$clientId
 ```
 
 #### Request Headers
@@ -34,9 +34,9 @@ $baseUrl/entity?clientId=$clientId
 
 ```json
 {
-  "requestId": "create_1741128372606_a65hfz2",
-  "clientId": "foundry-rQLkX9c1U2Tzkyh8",
-  "uuid": "Actor.bGTFSQJZCIYycF7W",
+  "requestId": "create_1743294104569_l9mq108",
+  "clientId": "foundry-DKL4ZKK80lUZFgSJ",
+  "uuid": "Actor.MoqzrjLjj5mlMARQ",
   "entity": {
     "name": "Ape",
     "type": "npc",
@@ -1040,15 +1040,15 @@ $baseUrl/entity?clientId=$clientId
       "coreVersion": "12.331",
       "systemId": "dnd5e",
       "systemVersion": "3.3.1",
-      "createdTime": 1741128372651,
-      "modifiedTime": 1741128372651,
-      "lastModifiedBy": "rQLkX9c1U2Tzkyh8"
+      "createdTime": 1743294103864,
+      "modifiedTime": 1743294103864,
+      "lastModifiedBy": "DKL4ZKK80lUZFgSJ"
     },
-    "_id": "bGTFSQJZCIYycF7W",
+    "_id": "MoqzrjLjj5mlMARQ",
     "sort": 0,
     "ownership": {
       "default": 0,
-      "rQLkX9c1U2Tzkyh8": 3
+      "DKL4ZKK80lUZFgSJ": 3
     }
   }
 }

@@ -1,4 +1,6 @@
 # Foundry REST API
+Join the [discord](https://discord.gg/U634xNGRAC) server for updates, questions, and discussions
+
 This project consists of two main components:
 
 - [Relay Server](https://github.com/ThreeHats/foundryvtt-rest-api-relay): A WebSocket server that facilitates communication between Foundry VTT and external applications.

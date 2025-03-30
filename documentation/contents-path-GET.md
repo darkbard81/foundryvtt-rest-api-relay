@@ -28,8 +28,8 @@ $baseUrl/contents/:path?clientId=$clientId
 
 ```json
 {
-  "requestId": "contents_1741128245165_ozvdn0b",
-  "clientId": "foundry-rQLkX9c1U2Tzkyh8",
+  "requestId": "contents_1743293841599_k2ycv9z",
+  "clientId": "foundry-DKL4ZKK80lUZFgSJ",
   "path": "Compendium.dnd5e.items",
   "entities": [
     {

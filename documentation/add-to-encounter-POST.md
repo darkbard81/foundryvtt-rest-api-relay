@@ -1,13 +1,13 @@
-## **DELETE** /entity
+## **POST** /add-to-encounter
 
-## Deletes an entity from Foundry
+## Add to encounter
 
 ### Request
 
 #### Request URL
 
 ```
-$baseUrl/entity/:uuid?clientId=$clientId
+$baseUrl/add-to-encounter?clientId=$clientId
 ```
 
 #### Request Headers
@@ -21,11 +21,18 @@ $baseUrl/entity/:uuid?clientId=$clientId
 | Parameter Type | Key | Value | Description |
 | -------------- | --- | ----- | ----------- |
 | Query String Parameter | clientId | \{\{clientId\}\} | Auth token to connect to specific Foundry world |
+| Query String Parameter | encounter | encounterId |   |
 
 #### Request Payload
 
 ```json
-{}
+{
+  "selected": true,
+  "rollInitiative": true,
+  "uuids": [
+    "uuid"
+  ]
+}
 ```
 
 ### Response
@@ -34,10 +41,13 @@ $baseUrl/entity/:uuid?clientId=$clientId
 
 ```json
 {
-  "requestId": "delete_1741128863204_waoz8h8",
-  "clientId": "foundry-rQLkX9c1U2Tzkyh8",
-  "uuid": "Actor.bGTFSQJZCIYycF7W",
-  "message": "Entity successfully deleted"
+  "requestId": "add_encounter_1743294669123_2kuhqa4",
+  "clientId": "foundry-DKL4ZKK80lUZFgSJ",
+  "encounterId": "DS63gdIoWNFgslNg",
+  "added": [
+    "Scene.3XgC4FuTLW9nUMfR.Token.WlzltpZlMQhFPwuL"
+  ],
+  "failed": []
 }
 ```
 

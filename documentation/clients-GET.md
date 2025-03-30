@@ -22,17 +22,13 @@ $baseUrl/clients
 
 ```json
 {
-  "total": 2,
+  "total": 1,
   "clients": [
     {
-      "id": "foundry-LZw0ywlj1iYpkUSR",
-      "lastSeen": 1741132430381,
-      "connectedSince": 1741132430381
-    },
-    {
-      "id": "foundry-rQLkX9c1U2Tzkyh8",
-      "lastSeen": 1741132381381,
-      "connectedSince": 1741132381381
+      "id": "foundry-DKL4ZKK80lUZFgSJ",
+      "instanceId": "0801e45b10dd68",
+      "lastSeen": 1743293759503,
+      "connectedSince": 1743293759503
     }
   ]
 }
