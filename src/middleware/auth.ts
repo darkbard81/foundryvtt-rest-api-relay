@@ -57,9 +57,19 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     }
     
     if (clientId && client?.getApiKey() !== apiKey) {
-      log.warn(`Client ID ${clientId} does not match API key ${apiKey}`);
-      res.status(404).json({ error: 'Invalid client ID' });
-      return;
+      // try to refresh the client data from Redis
+      const clientData = await ClientManager.getClient(clientId);
+      if (!clientData) {
+        res.status(404).json({ error: 'Invalid client ID' });
+        return;
+      }
+      // Check if the client ID matches the API key
+      if (clientData.getApiKey() !== apiKey) {
+        log.warn(`Client ID ${clientId} not found in Redis`);
+        log.warn(`Client ID ${clientId} does not match API key ${apiKey}`);
+        res.status(401).json({ error: 'Invalid API key for this client ID' });
+        return;
+      }
     }
     
     const user = users[0];
