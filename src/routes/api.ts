@@ -20,6 +20,20 @@ export const browserSessions = new Map<string, puppeteer.Browser>();
 export const apiKeyToSession = new Map<string, { sessionId: string, clientId: string, lastActivity: number }>();
 const pendingHeadlessSessionsRequests = new Map<string, string>();
 
+// Store temporary handshake tokens
+interface PendingHandshake {
+  apiKey: string;
+  foundryUrl: string;
+  worldName?: string;
+  username: string;
+  publicKey: string;    // To send to client
+  privateKey: string;   // To keep on server for decryption
+  nonce: string;
+  expires: number;
+}
+
+const pendingHandshakes = new Map<string, PendingHandshake>();
+
 const INSTANCE_ID = process.env.INSTANCE_ID || 'default';
 
 const HEADLESS_SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -2004,15 +2018,136 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
+  // Step 1: Client requests a handshake token
+  router.post('/foundry-handshake', authMiddleware, async (req: Request, res: Response) => {
+    try {
+      const apiKey = req.header('x-api-key') as string;
+      const foundryUrl = req.header('x-foundry-url') as string;
+      const worldName = req.header('x-world-name') as string;
+      const username = req.header('x-username') as string;
+      
+      if (!foundryUrl || !username) {
+        res.status(400).json({ error: "Missing required parameters" });
+        return;
+      }
+
+      // Generate an RSA key pair for this handshake
+      const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: {
+          type: 'spki',
+          format: 'pem'
+        },
+        privateKeyEncoding: {
+          type: 'pkcs8',
+          format: 'pem'
+        }
+      });
+      
+      // Generate a random handshake token that will be valid for 5 minutes
+      const handshakeToken = crypto.randomBytes(32).toString('hex');
+      const expires = Date.now() + (5 * 60 * 1000); // 5 minutes
+      
+      const nonce = crypto.randomBytes(16).toString('hex');
+      // Store pending handshake information
+      pendingHandshakes.set(handshakeToken, {
+        apiKey,
+        foundryUrl,
+        worldName,
+        username,
+        publicKey,
+        privateKey,
+        nonce,
+        expires
+      });
+      
+      // Set cleanup timeout
+      setTimeout(() => {
+        pendingHandshakes.delete(handshakeToken);
+        log.debug(`Handshake token ${handshakeToken.substring(0, 8)}... expired and removed`);
+      }, 5 * 60 * 1000);
+      
+      log.info(`Created handshake token ${handshakeToken.substring(0, 8)}... for ${foundryUrl}`);
+
+      
+      // Return the token and public key to the client
+      res.status(200).json({
+        token: handshakeToken,
+        publicKey: publicKey,
+        nonce,
+        expires
+      });
+      return;
+    } catch (error) {
+      log.error(`Error creating handshake: ${error}`);
+      res.status(500).json({ error: 'Failed to create handshake' });
+      return;
+    }
+  });
+
   // Start headless Foundry session
   router.post("/start-headless-foundry", authMiddleware, express.json(), async (req: Request, res: Response) => {
     try {
-      // Extract credentials from headers
-      const foundryUrl = req.headers['x-foundry-url'] as string;
-      const worldName = req.headers['x-world-name'] as string;
-      const username = req.headers['x-username'] as string;
-      const password = req.headers['x-password'] as string;
+      const { handshakeToken, encryptedPassword } = req.body;
       const apiKey = req.header('x-api-key') as string;
+      
+      // Verify handshake token exists
+      if (!pendingHandshakes.has(handshakeToken)) {
+        res.status(401).json({ error: 'Invalid or expired handshake token' });
+        return;
+      }
+      
+      const handshake = pendingHandshakes.get(handshakeToken)!;
+      
+      // Verify API key matches
+      if (handshake.apiKey !== apiKey) {
+        pendingHandshakes.delete(handshakeToken);
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      
+      // Verify token is not expired
+      if (handshake.expires < Date.now()) {
+        pendingHandshakes.delete(handshakeToken);
+        res.status(401).json({ error: 'Handshake token expired' });
+        return;
+      }
+      
+      // Decrypt the password and nonce using the handshake's private key
+      let password;
+      let nonce;
+      try {
+        const buffer = Buffer.from(encryptedPassword, 'base64');
+        const decryptedData = crypto.privateDecrypt(
+          {
+        key: handshake.privateKey,
+        padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
+          },
+          buffer
+        ).toString('utf8');
+
+        // Parse the decrypted data as JSON which should contain password and nonce
+        const parsedData = JSON.parse(decryptedData);
+        password = parsedData.password;
+        nonce = parsedData.nonce;
+        
+        // Verify the nonce matches
+        if (!nonce || nonce !== handshake.nonce) {
+          pendingHandshakes.delete(handshakeToken);
+          res.status(401).json({ error: 'Invalid nonce' });
+          return;
+        }
+      } catch (error) {
+        log.error(`Failed to decrypt data: ${error}`);
+        pendingHandshakes.delete(handshakeToken);
+        res.status(400).json({ error: 'Invalid encrypted data' });
+        return;
+      }
+      
+      // Remove the handshake token immediately after use
+      const { foundryUrl, worldName, username } = handshake;
+      // Remove the handshake token from pending handshakes
+      pendingHandshakes.delete(handshakeToken);
 
       // Check if this API key already has a pending session
       if (pendingHeadlessSessionsRequests.has(apiKey)) {
