@@ -17,6 +17,8 @@ import { returnHtmlTemplate } from "../config/htmlResponseTemplate";
 import * as puppeteer from 'puppeteer';
 
 export const browserSessions = new Map<string, puppeteer.Browser>();
+const apiKeyToSession = new Map<string, { sessionId: string, clientId: string }>();
+const pendingHeadlessSessionsRequests = new Map<string, string>();
 
 const INSTANCE_ID = process.env.INSTANCE_ID || 'default';
 
@@ -1981,13 +1983,60 @@ export const apiRoutes = (app: express.Application): void => {
       const worldName = req.headers['x-world-name'] as string;
       const username = req.headers['x-username'] as string;
       const password = req.headers['x-password'] as string;
+      const apiKey = req.header('x-api-key') as string;
+
+      // Check if this API key already has a pending session
+      if (pendingHeadlessSessionsRequests.has(apiKey)) {
+        return safeResponse(res, 429, { error: "A session is already in progress for this API key" });
+      }
+
+      // Check if this Foundry URL is already being used by another session
+      for (const [existingKey, existingUrl] of pendingHeadlessSessionsRequests.entries()) {
+        if (existingUrl === foundryUrl) {
+          return safeResponse(res, 429, { error: "A session is already in progress for this Foundry URL" });
+        }
+      }
+
+      pendingHeadlessSessionsRequests.set(apiKey, foundryUrl);
 
       if (!foundryUrl) {
+        pendingHeadlessSessionsRequests.delete(apiKey);
         return safeResponse(res, 400, { error: "Missing Foundry URL" });
       }
 
       if (!username) {
+        pendingHeadlessSessionsRequests.delete(apiKey);
         return safeResponse(res, 400, { error: "Missing login credentials" });
+      }
+      
+      // Check if a client with this API key is already connected
+      const existingSession = apiKeyToSession.get(apiKey);
+      if (existingSession) {
+        // Verify the client is still connected
+        const client = await ClientManager.getClient(existingSession.clientId);
+        if (client) {
+          log.info(`Using existing headless session for API key: ${apiKey.substring(0, 8)}...`);
+          pendingHeadlessSessionsRequests.delete(apiKey);
+          return safeResponse(res, 200, {
+            success: true,
+            message: "Using existing Foundry session",
+            sessionId: existingSession.sessionId,
+            clientId: existingSession.clientId
+          });
+        } else {
+          // Client no longer connected, clean up session mapping
+          apiKeyToSession.delete(apiKey);
+          // Also clean up the browser session if it still exists
+          if (browserSessions.has(existingSession.sessionId)) {
+            try {
+              const browser = browserSessions.get(existingSession.sessionId);
+              await browser?.close();
+              browserSessions.delete(existingSession.sessionId);
+            } catch (error) {
+              log.error(`Error closing stale browser session: ${error}`);
+            }
+          }
+        }
       }
 
       log.info(`Starting headless Foundry session for URL: ${foundryUrl}`);
@@ -2152,11 +2201,12 @@ export const apiRoutes = (app: express.Application): void => {
         } catch (error) {
           await browser.close();
           const errorMessage = error instanceof Error ? error.message : String(error);
+          pendingHeadlessSessionsRequests.delete(apiKey);
           return safeResponse(res, 404, { error: `Failed to find or launch world: ${worldName}`, details: errorMessage });
         }
       }
 
-      // Now handle the login process
+      // Handle the login process
       try {
         log.debug('Attempting to log in...');
         
@@ -2164,6 +2214,8 @@ export const apiRoutes = (app: express.Application): void => {
         const hasUserSelect = await page.$('select[name="userid"]')
           .then(element => !!element)
           .catch(() => false);
+        
+        let userId = "";
         
         if (hasUserSelect) {
           log.debug('Found username dropdown, selecting user');
@@ -2180,12 +2232,26 @@ export const apiRoutes = (app: express.Application): void => {
             throw new Error(`Username "${username}" not found in dropdown. Available: ${options.map(o => o.text).join(', ')}`);
           }
           
+          // Set the userId to the value from the dropdown
+          userId = matchingOption.value;
+
+          // Check if there is an existing connection with this userId
+          const existingClient = await ClientManager.getClient(`foundry-${userId}`);
+          if (existingClient) {
+            log.debug(`User ${username} is already connected with ID: foundry-${userId}`);
+            await browser.close();
+            pendingHeadlessSessionsRequests.delete(apiKey);
+            return safeResponse(res, 409, { error: "User already connected", clientId: existingClient.getId() });
+          }
+          
           // Select the user
-          await page.select('select[name="userid"]', matchingOption.value);
-          log.debug(`Selected user ${username} with value ${matchingOption.value}`);
+          await page.select('select[name="userid"]', userId);
+          log.debug(`Selected user ${username} with value ${userId}`);
         } else {
           log.debug('Using username input field');
           await page.type('input[name="userid"]', username);
+          // In this case, userId would be the input value
+          userId = username;
         }
         
         // Enter password
@@ -2213,14 +2279,96 @@ export const apiRoutes = (app: express.Application): void => {
         const sessionId = crypto.randomUUID();
         browserSessions.set(sessionId, browser);
         
-        return safeResponse(res, 200, {
-          success: true,
-          message: "Foundry session started successfully",
-          sessionId
+        // The expected client ID will be in format "foundry-{userId}"
+        const expectedClientId = `foundry-${userId}`;
+        log.info(`Waiting for Foundry client connection with ID: ${expectedClientId}`);
+        
+        // Create a promise that resolves when the client connects or rejects on timeout
+        const clientConnectionPromise = new Promise<string>((resolve, reject) => {
+          // Initial check for existing client
+          const checkExistingClient = async () => {
+            const client = await ClientManager.getClient(expectedClientId);
+            if (client && client.getApiKey() === apiKey) {
+              return expectedClientId;
+            } else if (client) {
+              // If the client ID matches but the API key doesn't, log a warning
+              log.warn(`Client ID ${expectedClientId} found but API key mismatch`);
+              return 'invalid';
+            }
+            return null;
+          };
+          
+          // Set up polling for client connection with reduced verbosity
+          let logCounter = 0;
+          const checkInterval = setInterval(async () => {
+            try {
+              const clientId = await checkExistingClient();
+              if (clientId) {
+                // Only log the connection once
+                if (clientId === 'invalid') {
+                  // close the browser session
+                  await browser.close();
+                  browserSessions.delete(sessionId);
+                  clearInterval(checkInterval);
+                  clearTimeout(timeoutId);
+                  reject(new Error(`Unauthorized client connection attempt`));
+                  return;
+                }
+                log.info(`Client connected successfully: ${clientId}`);
+                clearInterval(checkInterval);
+                clearTimeout(timeoutId);
+                resolve(clientId);
+              } else {
+                // Log less frequently to reduce noise
+                if (++logCounter % 10 === 0) {
+                  log.debug(`Waiting for client connection: ${expectedClientId} (${logCounter} checks)`);
+                }
+              }
+            } catch (error) {
+              log.error(`Error checking for client: ${error}`);
+            }
+          }, 2000);
+          
+          // Set timeout for client connection
+          const timeoutId = setTimeout(() => {
+            clearInterval(checkInterval);
+            reject(new Error(`Timeout waiting for client connection: ${expectedClientId}`));
+          }, 120000); // Wait up to 2 minutes for the client to connect
         });
+        
+        try {
+          // Wait for client connection
+          const connectedClientId = await clientConnectionPromise;
+          
+          // Store the session in our API key mapping
+          apiKeyToSession.set(apiKey, { sessionId, clientId: connectedClientId });
+          
+          // Return success with the session ID and client ID
+          pendingHeadlessSessionsRequests.delete(apiKey);
+          return safeResponse(res, 200, {
+            success: true,
+            message: "Foundry session started successfully",
+            sessionId,
+            clientId: connectedClientId
+          });
+        } catch (error) {
+          // Close the browser if client connection times out
+          await browser.close();
+          browserSessions.delete(sessionId);
+          
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          pendingHeadlessSessionsRequests.delete(apiKey);
+          return safeResponse(res, 408, { 
+            error: "Client connection timeout", 
+            details: errorMessage,
+            message: "Foundry client failed to connect to the API within the timeout period"
+          });
+        }
+        
       } catch (error) {
         await browser.close();
         const errorMessage = error instanceof Error ? error.message : String(error);
+        pendingHeadlessSessionsRequests.delete(apiKey);
         return safeResponse(res, 401, { error: "Failed to log in", details: errorMessage });
       }
     } catch (error) {
@@ -2233,12 +2381,27 @@ export const apiRoutes = (app: express.Application): void => {
   // Stop headless Foundry session
   router.delete("/headless-foundry/:sessionId", authMiddleware, async (req: Request, res: Response) => {
     const sessionId = req.params.sessionId;
+    const apiKey = req.header('x-api-key') as string;
+    
+    // Check if this session belongs to this API key
+    let matchingApiKey: string | undefined;
+    for (const [key, session] of apiKeyToSession.entries()) {
+      if (session.sessionId === sessionId) {
+        matchingApiKey = key;
+        break;
+      }
+    }
+    
+    if (matchingApiKey !== apiKey) {
+      return safeResponse(res, 403, { error: "Not authorized to terminate this session" });
+    }
     
     if (browserSessions.has(sessionId)) {
       try {
         const browser = browserSessions.get(sessionId);
         await browser?.close();
         browserSessions.delete(sessionId);
+        apiKeyToSession.delete(apiKey);
         safeResponse(res, 200, { success: true, message: "Foundry session terminated" });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -2251,8 +2414,14 @@ export const apiRoutes = (app: express.Application): void => {
   
   // Get all active headless Foundry sessions
   router.get("/headless-foundry", authMiddleware, async (req: Request, res: Response) => {
+    const apiKey = req.header('x-api-key') as string;
+    const userSession = apiKeyToSession.get(apiKey);
+    
+    // Only return the user's own session
+    const sessions = userSession ? [userSession.sessionId] : [];
+    
     safeResponse(res, 200, { 
-      activeSessions: Array.from(browserSessions.keys()) 
+      activeSessions: sessions
     });
   });
 
