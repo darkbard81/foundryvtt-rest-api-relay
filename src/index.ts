@@ -4,7 +4,7 @@ import { WebSocketServer } from "ws";
 import { corsMiddleware } from "./middleware/cors";
 import { log } from "./middleware/logger";
 import { wsRoutes } from "./routes/websocket";
-import { apiRoutes } from "./routes/api";
+import { apiRoutes, browserSessions } from "./routes/api";
 import authRoutes from "./routes/auth";
 import { config } from "dotenv";
 import * as path from "path";
@@ -100,6 +100,15 @@ const shutdown = async (): Promise<void> => {
   
   // Close Redis connections
   await closeRedis();
+  
+  // Close all browser sessions
+  for (const browser of browserSessions.values()) {
+    try {
+      await browser.close();
+    } catch (error) {
+      log.error(`Error closing browser: ${error}`);
+    }
+  }
   
   httpServer.close(() => {
     log.info("Server closed successfully");

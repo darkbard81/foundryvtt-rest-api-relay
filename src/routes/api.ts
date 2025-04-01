@@ -14,6 +14,9 @@ import crypto from 'crypto';
 import { healthCheck } from '../routes/health';
 import { getRedisClient } from '../config/redis';
 import { returnHtmlTemplate } from "../config/htmlResponseTemplate";
+import * as puppeteer from 'puppeteer';
+
+export const browserSessions = new Map<string, puppeteer.Browser>();
 
 const INSTANCE_ID = process.env.INSTANCE_ID || 'default';
 
@@ -1970,6 +1973,187 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
+  // Start headless Foundry session
+  router.post("/start-headless-foundry", authMiddleware, express.json(), async (req: Request, res: Response) => {
+    try {
+      // Extract credentials from headers
+      const foundryUrl = req.headers['x-foundry-url'] as string;
+      const worldName = req.headers['x-world-name'] as string;
+      const username = req.headers['x-username'] as string;
+      const password = req.headers['x-password'] as string;
+  
+      if (!foundryUrl) {
+        return safeResponse(res, 400, { error: "Missing Foundry URL" });
+      }
+  
+      if (!username) {
+        return safeResponse(res, 400, { error: "Missing login credentials" });
+      }
+  
+      log.info(`Starting headless Foundry session for URL: ${foundryUrl}`);
+  
+      // Launch headless browser
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
+  
+      const page = await browser.newPage();
+      await page.goto(foundryUrl, { waitUntil: 'networkidle0' });
+  
+      // Check if we need to select a world or are already on login page
+      if (worldName) {
+        log.info(`Looking for world: ${worldName}`);
+        try {
+          // Wait for the page to be fully loaded
+          await page.waitForSelector('body', { timeout: 15000 });
+          log.debug("Body element found, waiting additional 2 seconds for JS to initialize");
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // First try direct approach - the most reliable approach
+          try {
+            // Try to find by data-package-id attribute - this is the most reliable method
+            log.debug(`Looking for world with data-package-id="${worldName}"`);
+            const worldElement = await page.$(`li.package.world[data-package-id="${worldName}"]`);
+            
+            if (worldElement) {
+              log.debug(`Found world by data-package-id`);
+              // Find the play button within this element
+              const playButton = await worldElement.$('a.control.play');
+              if (playButton) {
+                log.debug('Found play button, clicking it');
+                await playButton.click();
+                log.debug('Play button clicked');
+              } else {
+                throw new Error('Play button not found within world element');
+              }
+            } else {
+              // Try alternate approach - look by name
+              log.debug(`World not found by ID, trying by name text`);
+              
+              // Take a screenshot for debugging
+              await page.screenshot({ path: 'world-selection-debug.png' });
+              
+              // Get all worlds and manually find the one matching our name
+              const worldElements = await page.$$('li.package.world');
+              log.debug(`Found ${worldElements.length} world elements`);
+              
+              let worldFound = false;
+              for (const element of worldElements) {
+                const titleElement = await element.$('h3.package-title');
+                if (titleElement) {
+                  const titleText = await page.evaluate(el => el.textContent?.trim(), titleElement);
+                  log.debug(`Found world with title: ${titleText}`);
+                  
+                  if (titleText === worldName) {
+                    log.debug('Found matching world by title, clicking its play button');
+                    const playButton = await element.$('a.control.play');
+                    if (playButton) {
+                      await playButton.click();
+                      worldFound = true;
+                      break;
+                    }
+                  }
+                }
+              }
+              
+              if (!worldFound) {
+                throw new Error(`World "${worldName}" not found by name or ID`);
+              }
+            }
+          } catch (clickError) {
+            const errorMessage = clickError instanceof Error ? clickError.message : String(clickError);
+            log.debug(`Direct click approach failed: ${errorMessage}`);
+            
+            // Last resort: try redirect approach
+            try {
+              log.debug('Attempting direct navigation to game URL');
+              // Some Foundry versions allow direct navigation to game/worldname 
+              await page.goto(`${foundryUrl}/game/${worldName}`, { waitUntil: 'networkidle0' });
+            } catch (navError) {
+              throw new Error(`Failed to access world "${worldName}" by all available methods`);
+            }
+          }
+          
+          // Wait for the login screen to appear
+          log.debug('Waiting for login screen to appear');
+          await page.waitForSelector('select[name="userid"]', { timeout: 10000 });
+          log.debug('Login screen loaded successfully');
+          
+        } catch (error) {
+          await browser.close();
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return safeResponse(res, 404, { error: `Failed to find or launch world: ${worldName}`, details: errorMessage });
+        }
+      }
+  
+      // Now we should be on the login screen
+      try {
+        // Wait for the username dropdown to appear
+        await page.waitForSelector('select[name="userid"]', { timeout: 5000 });
+      
+        // Find the value of the option with the desired inner HTML (e.g., the username passed in the request)
+        const userIdValue = await page.evaluate((username) => {
+          const options = Array.from(document.querySelectorAll('select[name="userid"] option')) as HTMLOptionElement[];
+          const targetOption = options.find(option => option.textContent?.trim() === username);
+          return targetOption?.value || null;
+        }, username);
+      
+        if (!userIdValue) {
+          throw new Error(`Failed to find the username "${username}" in the dropdown`);
+        }
+      
+        // Select the username from the dropdown
+        await page.select('select[name="userid"]', userIdValue);
+      
+        // Type the password
+        await page.type('input[name="password"]', password);
+      
+        // Submit the form
+        await page.click('button[type="submit"]');
+      
+        // Wait for the game to load
+        await page.waitForSelector('#ui-left', { timeout: 15000 });
+      
+        log.info('Successfully logged into Foundry');
+      } catch (error) {
+        await browser.close();
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return safeResponse(res, 401, { error: "Failed to log in", details: errorMessage });
+      }
+    } catch (error) {
+      log.error(`Error starting headless Foundry session: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return safeResponse(res, 500, { error: "Failed to start headless Foundry session", details: errorMessage });
+    }
+  });
+
+  // Stop headless Foundry session
+  router.delete("/headless-foundry/:sessionId", authMiddleware, async (req: Request, res: Response) => {
+    const sessionId = req.params.sessionId;
+    
+    if (browserSessions.has(sessionId)) {
+      try {
+        const browser = browserSessions.get(sessionId);
+        await browser?.close();
+        browserSessions.delete(sessionId);
+        safeResponse(res, 200, { success: true, message: "Foundry session terminated" });
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        safeResponse(res, 500, { error: "Failed to terminate session", details: errorMessage });
+      }
+    } else {
+      safeResponse(res, 404, { error: "Session not found" });
+    }
+  });
+  
+  // Get all active headless Foundry sessions
+  router.get("/headless-foundry", authMiddleware, async (req: Request, res: Response) => {
+    safeResponse(res, 200, { 
+      activeSessions: Array.from(browserSessions.keys()) 
+    });
+  });
+
   // API Documentation endpoint - returns all available endpoints with their documentation
   router.get("/api/docs", async (req: Request, res: Response) => {
     // Build comprehensive documentation object with all endpoints
@@ -2412,6 +2596,43 @@ export const apiRoutes = (app: express.Application): void => {
           requestHeaders: [
             { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
             { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/start-headless-foundry",
+          description: "Starts a headless Foundry VTT session and logs in",
+          requiredParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
+            { key: "x-foundry-url", value: "https://your-foundry-server.com", description: "URL to the Foundry VTT server" },
+            { key: "x-username", value: "username", description: "Username to log in with" },
+            { key: "x-password", value: "password", description: "Password to log in with" }
+          ],
+          optionalParameters: [
+            { key: "x-world-name", value: "World Name", description: "Name of the world to join (if URL doesn't go directly to login)" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/headless-foundry",
+          description: "Lists all active headless Foundry sessions",
+          requiredParameters: [],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ]
+        },
+        {
+          method: "DELETE",
+          path: "/headless-foundry/:sessionId",
+          description: "Terminates a headless Foundry session",
+          requiredParameters: [
+            { name: "sessionId", type: "string", description: "ID of the session to terminate", location: "path" }
+          ],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
           ]
         },
         {

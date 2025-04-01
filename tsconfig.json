@@ -14,7 +14,8 @@
     "forceConsistentCasingInFileNames": true,
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "node_modules/puppeteer-tsd/src/index.d.ts"
   ],
   "exclude": [
     "node_modules",
