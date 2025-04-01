@@ -102,18 +102,28 @@ const shutdown = async (): Promise<void> => {
   await closeRedis();
   
   // Close all browser sessions
+  log.info(`Closing ${browserSessions.size} headless browser sessions...`);
+  let closedCount = 0;
   for (const browser of browserSessions.values()) {
     try {
       await browser.close();
+      closedCount++;
     } catch (error) {
       log.error(`Error closing browser: ${error}`);
     }
   }
+  log.info(`Successfully closed ${closedCount} browser sessions.`);
   
   httpServer.close(() => {
     log.info("Server closed successfully");
     process.exit(0);
   });
+  
+  // Force exit after 5 seconds if server doesn't close gracefully
+  setTimeout(() => {
+    log.warn("Forcing server shutdown after timeout");
+    process.exit(1);
+  }, 5000);
 };
 
 process.on("SIGINT", shutdown);

@@ -17,10 +17,39 @@ import { returnHtmlTemplate } from "../config/htmlResponseTemplate";
 import * as puppeteer from 'puppeteer';
 
 export const browserSessions = new Map<string, puppeteer.Browser>();
-const apiKeyToSession = new Map<string, { sessionId: string, clientId: string }>();
+export const apiKeyToSession = new Map<string, { sessionId: string, clientId: string, lastActivity: number }>();
 const pendingHeadlessSessionsRequests = new Map<string, string>();
 
 const INSTANCE_ID = process.env.INSTANCE_ID || 'default';
+
+const HEADLESS_SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+function cleanupInactiveSessions() {
+  const now = Date.now();
+  
+  for (const [apiKey, session] of apiKeyToSession.entries()) {
+    if (now - session.lastActivity > HEADLESS_SESSION_TIMEOUT) {
+      log.info(`Closing inactive headless session ${session.sessionId} for API key ${apiKey.substring(0, 8)}... (inactive for ${Math.round((now - session.lastActivity) / 60000)} minutes)`);
+      
+      try {
+        // Close the browser if it exists
+        if (browserSessions.has(session.sessionId)) {
+          const browser = browserSessions.get(session.sessionId);
+          browser?.close().catch(err => log.error(`Error closing browser: ${err}`));
+          browserSessions.delete(session.sessionId);
+        }
+        
+        // Clean up the session mapping
+        apiKeyToSession.delete(apiKey);
+      } catch (error) {
+        log.error(`Error during inactive session cleanup: ${error}`);
+      }
+    }
+  }
+}
+
+// Start the session cleanup interval when the module is loaded
+setInterval(cleanupInactiveSessions, 60000); // Check every minute
 
 // Add this helper function at the top of your file
 function safeResponse(res: Response, statusCode: number, data: any): void {
@@ -2341,7 +2370,11 @@ export const apiRoutes = (app: express.Application): void => {
           const connectedClientId = await clientConnectionPromise;
           
           // Store the session in our API key mapping
-          apiKeyToSession.set(apiKey, { sessionId, clientId: connectedClientId });
+          apiKeyToSession.set(apiKey, { 
+            sessionId, 
+            clientId: connectedClientId,
+            lastActivity: Date.now()
+          });
           
           // Return success with the session ID and client ID
           pendingHeadlessSessionsRequests.delete(apiKey);
@@ -2417,8 +2450,13 @@ export const apiRoutes = (app: express.Application): void => {
     const apiKey = req.header('x-api-key') as string;
     const userSession = apiKeyToSession.get(apiKey);
     
-    // Only return the user's own session
-    const sessions = userSession ? [userSession.sessionId] : [];
+    // Only return the user's own session with activity data
+    const sessions = userSession ? [{
+      id: userSession.sessionId,
+      clientId: userSession.clientId,
+      lastActivity: userSession.lastActivity,
+      idleMinutes: Math.round((Date.now() - userSession.lastActivity) / 60000)
+    }] : [];
     
     safeResponse(res, 200, { 
       activeSessions: sessions

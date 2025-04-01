@@ -3,6 +3,15 @@ import { User } from '../models/user';
 import { ClientManager } from '../core/ClientManager';
 import { sequelize } from '../sequelize';
 import { log } from './logger';
+import { apiKeyToSession } from '../routes/api';
+
+// Helper function to update session activity timestamp
+function updateSessionActivity(apiKey: string) {
+  const session = apiKeyToSession.get(apiKey);
+  if (session) {
+    session.lastActivity = Date.now();
+  }
+}
 
 // Flag to check if we're using memory store
 const isMemoryStore = process.env.DB_TYPE === 'memory';
@@ -112,9 +121,12 @@ export const trackApiUsage = async (req: Request, res: Response, next: NextFunct
           if ('save' in user && typeof user.save === 'function') {
             await user.save();
           }
+
+          updateSessionActivity(apiKey);
         } else if ('requestsThisMonth' in user) {
           // Fallback for memory store
           user.requestsThisMonth += 1;
+          updateSessionActivity(apiKey);
         }
         // Uncomment for free tier limit enforcement
         // Enforce limits only for free tier
@@ -149,6 +161,7 @@ export const trackApiUsage = async (req: Request, res: Response, next: NextFunct
     }
   } catch (error) {
     log.error(`Error tracking API usage: ${error}`);
-    next(); // Continue even if tracking fails
+    res.status(500).json({ error: 'Internal server error' });
+    return;
   }
 };
