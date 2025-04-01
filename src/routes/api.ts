@@ -2019,7 +2019,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Step 1: Client requests a handshake token
-  router.post('/foundry-handshake', authMiddleware, async (req: Request, res: Response) => {
+  router.post('/session-handshake', authMiddleware, async (req: Request, res: Response) => {
     try {
       const apiKey = req.header('x-api-key') as string;
       const foundryUrl = req.header('x-foundry-url') as string;
@@ -2086,7 +2086,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Start headless Foundry session
-  router.post("/start-headless-foundry", authMiddleware, express.json(), async (req: Request, res: Response) => {
+  router.post("/start-session", authMiddleware, express.json(), async (req: Request, res: Response) => {
     try {
       const { handshakeToken, encryptedPassword } = req.body;
       const apiKey = req.header('x-api-key') as string;
@@ -2337,7 +2337,7 @@ export const apiRoutes = (app: express.Application): void => {
           
           // Wait and check if we have navigated to a login page
           log.debug('Waiting to see if we reached the login page...');
-          await new Promise(resolve => setTimeout(resolve, 5000));
+          await new Promise(resolve => setTimeout(resolve, 6000));
           
           // Debug: Log current URL again
           log.debug(`Current URL after world selection: ${page.url()}`);
@@ -2547,8 +2547,8 @@ export const apiRoutes = (app: express.Application): void => {
   });
 
   // Stop headless Foundry session
-  router.delete("/headless-foundry/:sessionId", authMiddleware, async (req: Request, res: Response) => {
-    const sessionId = req.params.sessionId;
+  router.delete("/end-session", authMiddleware, async (req: Request, res: Response) => {
+    const sessionId = req.query.sessionId as string;
     const apiKey = req.header('x-api-key') as string;
     
     // Check if this session belongs to this API key
@@ -2581,7 +2581,7 @@ export const apiRoutes = (app: express.Application): void => {
   });
   
   // Get all active headless Foundry sessions
-  router.get("/headless-foundry", authMiddleware, async (req: Request, res: Response) => {
+  router.get("/session", authMiddleware, async (req: Request, res: Response) => {
     const apiKey = req.header('x-api-key') as string;
     const userSession = apiKeyToSession.get(apiKey);
     

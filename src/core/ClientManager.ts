@@ -55,14 +55,16 @@ export class ClientManager {
         await redis.sadd(`apikey:${token}:clients`, id);
         await redis.expire(`apikey:${token}:clients`, CLIENT_EXPIRY);
         
-        log.info(`Client ${id} registered in Redis with token ${token}`);
+        const tokenTrunicated = `${token.substring(0, 8)}...`;
+        log.info(`Client ${id} registered in Redis with token ${tokenTrunicated}`);
       }
     } catch (error) {
       log.error(`Failed to register client in Redis: ${error}`);
       // Continue even if Redis fails - local operation will still work
     }
 
-    log.info(`Client ${id} connected with token ${token}`);
+    const tokenTrunicated = `${token.substring(0, 8)}...`;
+    log.info(`Client ${id} connected with token ${tokenTrunicated}`);
     return client;
   }
 
