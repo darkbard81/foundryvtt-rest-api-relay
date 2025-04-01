@@ -38,9 +38,9 @@ primary_region = 'ord'
   enable_6pn = true  # Enable private networking for VM-to-VM communication
 
 [[vm]]
-  memory = '1gb'
-  cpu_kind = 'shared'
-  cpus = 1
+  memory = '16gb'
+  cpu_kind = 'performance'
+  cpus = 4
 
 [[vm.mounts]]
   source = "myapp_data"

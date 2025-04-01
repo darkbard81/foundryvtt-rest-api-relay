@@ -2,8 +2,8 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { log } from "../middleware/logger";
 import { ClientManager } from "../core/ClientManager";
+import { validateHeadlessSession } from "../workers/headlessSessions";
 
-// Add better error handling to the WebSocket routes
 export const wsRoutes = (wss: WebSocketServer): void => {
   wss.on("connection", async (ws, req) => {
     try {
@@ -18,6 +18,14 @@ export const wsRoutes = (wss: WebSocketServer): void => {
         return;
       }
 
+      // Validate headless session before accepting the connection
+      const isValid = await validateHeadlessSession(id, token);
+      if (!isValid) {
+        log.warn(`Rejecting invalid headless client: ${id}`);
+        ws.close(1008, "Invalid headless session");
+        return;
+      }
+
       // Register client
       const client = await ClientManager.addClient(ws, id, token);
       if (!client) return; // Connection already rejected
@@ -25,7 +33,7 @@ export const wsRoutes = (wss: WebSocketServer): void => {
       // Add protocol-level ping/pong to keep the TCP connection active
       const pingInterval = setInterval(() => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.ping(Buffer.from('keepalive'));
+          ws.ping(Buffer.from("keepalive"));
           log.debug(`Sent WebSocket protocol ping to ${id}`);
         }
       }, 20000); // Every 20 seconds
@@ -49,11 +57,11 @@ export const wsRoutes = (wss: WebSocketServer): void => {
         ClientManager.removeClient(id);
       });
     } catch (error) {
-      log.error(`Error handling WebSocket connection: ${error}`);
+      log.error(`WebSocket connection error: ${error}`);
       try {
-        ws.close(1011, "Internal Server Error");
-      } catch (closeError) {
-        // Ignore close errors
+        ws.close(1011, "Server error");
+      } catch (e) {
+        // Ignore errors closing socket
       }
     }
   });

@@ -13,6 +13,7 @@ import stripeRouter from './routes/stripe';
 import webhookRouter from './routes/webhook';
 import { closeRedis } from './config/redis';
 import { initRedis } from './config/redis';
+import { scheduleHeadlessSessionsCheck } from './workers/headlessSessions';
 
 config();
 
@@ -76,6 +77,9 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
 sequelize.sync().then(async () => {
   // Initialize Redis before starting the server
   await initRedis();
+
+  // Schedule the headless sessions worker
+  scheduleHeadlessSessionsCheck();
   
   // First bind to the public interface
   httpServer.listen(port, "0.0.0.0", () => {

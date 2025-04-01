@@ -1724,17 +1724,14 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/delete?clientId=clientId&selected=true",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/delete?clientId={{clientId}}&selected=true",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"delete"
@@ -1742,7 +1739,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId"
+									"value": "{{clientId}}"
 								},
 								{
 									"key": "uuid",
@@ -1906,17 +1903,14 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/sheet?clientId=clientId&selected=true&actor=true&scale=0.5",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/sheet?clientId={{clientId}}&selected=true&actor=true&scale=0.5",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"sheet"
@@ -1924,7 +1918,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -2465,17 +2459,14 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/encounters?clientId=clientId",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/encounters?clientId={{clientId}}",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"encounters"
@@ -2483,7 +2474,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								}
 							]
@@ -2617,7 +2608,7 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
@@ -2631,12 +2622,9 @@
 							}
 						},
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/start-encounter?clientId=clientId",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/start-encounter?clientId={{clientId}}",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"start-encounter"
@@ -2644,7 +2632,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								}
 							]
@@ -2770,17 +2758,14 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/next-turn?clientId=clientId",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/next-turn?clientId={{clientId}}",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"next-turn"
@@ -2788,7 +2773,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -2919,17 +2904,14 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/next-round?clientId=clientId",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/next-round?clientId={{clientId}}",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"next-round"
@@ -2937,7 +2919,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -3068,17 +3050,14 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/last-turn?clientId=clientId",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/last-turn?clientId={{clientId}}",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"last-turn"
@@ -3086,7 +3065,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -4470,6 +4449,603 @@
 					"body": "{\n    \"requestId\": \"give_1743294793448_bap7feb\",\n    \"clientId\": \"foundry-DKL4ZKK80lUZFgSJ\",\n    \"toUuid\": \"Actor.GShFabyjOXQ4XOdi\",\n    \"itemUuid\": \"Compendium.dnd5e.items.Item.6OIw31CDF6mAwFnd\",\n    \"success\": true,\n    \"message\": \"Item successfully transferred\"\n}"
 				}
 			]
+		},
+		{
+			"name": "/session-handshake",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"// Save the handshake response\r",
+							"const response = pm.response.json();\r",
+							"pm.environment.set('handshakeToken', response.token);\r",
+							"pm.environment.set('publicKey', response.publicKey);\r",
+							"pm.environment.set('nonce', response.nonce);\r",
+							"pm.environment.set('expires', response.expires);\r",
+							"\r",
+							"console.log(`✅ Handshake successful, token expires in ${Math.round((response.expires - Date.now())/1000)} seconds`);\r",
+							"console.log(`Token: ${response.token.substring(0, 8)}...`);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					},
+					{
+						"key": "x-foundry-url",
+						"value": "http://localhost:30000",
+						"description": "The url to your foundry game",
+						"type": "text"
+					},
+					{
+						"key": "x-username",
+						"value": "Gamemaster",
+						"description": "The username to log in with (eg. \"Gamemaster\")",
+						"type": "text"
+					},
+					{
+						"key": "x-password",
+						"value": "{{password}}",
+						"description": "The password to log in with",
+						"type": "text"
+					},
+					{
+						"key": "x-world-name",
+						"value": "worldName",
+						"description": "(Optional) The name of the world as it appears in foundry if the world is not already loaded.",
+						"type": "text",
+						"disabled": true
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/session-handshake",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"session-handshake"
+					]
+				},
+				"description": "Creates a temporary, one-time-use, token that can be used to create a headless Foundry session."
+			},
+			"response": [
+				{
+					"name": "Successful Response",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							},
+							{
+								"key": "x-foundry-url",
+								"value": "http://localhost:30000",
+								"description": "The url to your foundry game",
+								"type": "text"
+							},
+							{
+								"key": "x-username",
+								"value": "Gamemaster",
+								"description": "The username to log in with (eg. \"Gamemaster\")",
+								"type": "text"
+							},
+							{
+								"key": "x-password",
+								"value": "password",
+								"description": "The password to log in with",
+								"type": "text"
+							},
+							{
+								"key": "x-world-name",
+								"value": "worldName",
+								"description": "(Optional) The name of the world as it appears in foundry if the world is not already loaded.",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/session-handshake",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"session-handshake"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "618"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"26a-NTH/UMYqfpdf2uasaC3xCc/qYsg\""
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 01 Apr 2025 16:56:24 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"token\": \"702763fa83528be2d7b6dd89e0725d782bb80e178c656e774ea2768ba5b979f3\",\n    \"publicKey\": \"-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAia2cR7h3zZzv6hqU5cB3\\nxvj7SfxZ8OgF8b5Tlaybb0dmbGLcefAZ/QlSUQIHSeRwNQL8Feexur6ivMyq21dY\\npYVe1Up9pnE5vW/9+yTn1TPcKfHZTSc+Ixuh0CFuFgkdcAv3J0lIb0J0I0GipEgA\\nwQsvsOKENbKn0/Gpz+ER2cyPTRwX9TjytyxXiHXRpWxOSTVK469sMM7043Pof6/g\\nzFJ0y4Oy3315+luOB4j7sPOQ88rVorOs6ZZiiQF1suJOPqIEG/70rzjXU7Y4Hj9W\\nsxeG28IXzm9OrpfApN0y05Kd3L8mkJob41TzeMhSn6lyradix+G5rQEzUw76idwq\\nGwIDAQAB\\n-----END PUBLIC KEY-----\\n\",\n    \"nonce\": \"57af2e6b47b7d1b9d1122576e33490d3\",\n    \"expires\": 1743526884659\n}"
+				}
+			]
+		},
+		{
+			"name": "/start-session",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"(async () => {\r",
+							"    try {\r",
+							"        console.clear();\r",
+							"\r",
+							"        const getVar = (name) => pm.environment.get(name) || \r",
+							"                                 pm.collectionVariables.get(name) || \r",
+							"                                 pm.globals.get(name);\r",
+							"\r",
+							"        const publicKeyPem = getVar('publicKey');\r",
+							"        const nonce = getVar('nonce');\r",
+							"        const password = getVar('password');\r",
+							"\r",
+							"        if (!publicKeyPem || !nonce || !password) {\r",
+							"            console.error(\"Missing required variables:\");\r",
+							"            if (!publicKeyPem) console.error(\"- publicKey missing\");\r",
+							"            if (!nonce) console.error(\"- nonce missing\");\r",
+							"            if (!password) console.error(\"- password missing\");\r",
+							"            return;\r",
+							"        }\r",
+							"\r",
+							"        console.log(\"Encrypting with Web Crypto API...\");\r",
+							"\r",
+							"        // Convert PEM to ArrayBuffer\r",
+							"        const pemToArrayBuffer = (pem) => {\r",
+							"            const base64 = pem.replace(/-----BEGIN PUBLIC KEY-----/, \"\")\r",
+							"                              .replace(/-----END PUBLIC KEY-----/, \"\")\r",
+							"                              .replace(/\\n/g, \"\");\r",
+							"            return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0)).buffer;\r",
+							"        };\r",
+							"\r",
+							"        const publicKeyArrayBuffer = pemToArrayBuffer(publicKeyPem);\r",
+							"\r",
+							"        // Import Public Key\r",
+							"        const publicKey = await crypto.subtle.importKey(\r",
+							"            \"spki\",\r",
+							"            publicKeyArrayBuffer,\r",
+							"            { name: \"RSA-OAEP\", hash: \"SHA-1\" },\r",
+							"            false,\r",
+							"            [\"encrypt\"]\r",
+							"        );\r",
+							"\r",
+							"        // Encrypt Data\r",
+							"        const dataToEncrypt = JSON.stringify({ password, nonce });\r",
+							"        const encodedData = new TextEncoder().encode(dataToEncrypt);\r",
+							"\r",
+							"        const encryptedBuffer = await crypto.subtle.encrypt(\r",
+							"            { name: \"RSA-OAEP\" },\r",
+							"            publicKey,\r",
+							"            encodedData\r",
+							"        );\r",
+							"\r",
+							"        // Convert to Base64\r",
+							"        const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));\r",
+							"\r",
+							"        pm.environment.set(\"encryptedPassword\", encryptedBase64);\r",
+							"\r",
+							"        console.log(\"✅ Encryption successful!\");\r",
+							"    } catch (error) {\r",
+							"        console.error(\"❌ Encryption error:\", error.message);\r",
+							"    }\r",
+							"})();\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"handshakeToken\": \"{{handshakeToken}}\",\r\n  \"encryptedPassword\": \"{{encryptedPassword}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/start-session",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"start-session"
+					]
+				},
+				"description": "Starts a headless Foundry session. Must provide a handshake token and the encrypted password."
+			},
+			"response": [
+				{
+					"name": "Successful Response",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							},
+							{
+								"key": "x-foundry-url",
+								"value": "http://localhost:30000",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "x-username",
+								"value": "Gamemaster",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "x-password",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							},
+							{
+								"key": "x-world-name",
+								"value": "5e-bundle-test",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"handshakeToken\": \"\",\r\n  \"encryptedPassword\": \"\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/start-session",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"start-session"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "154"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"9a-0/s6jEjc2PAqd/3VJoJMhEbhkiU\""
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 01 Apr 2025 16:56:36 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"message\": \"Foundry session started successfully\",\n    \"sessionId\": \"b536aee8-67f3-42d0-9917-f56e6d71bd03\",\n    \"clientId\": \"foundry-DKL4ZKK80lUZFgSJ\"\n}"
+				}
+			]
+		},
+		{
+			"name": "/end-session",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/end-session?sessionId=id",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"end-session"
+					],
+					"query": [
+						{
+							"key": "sessionId",
+							"value": "id",
+							"description": "The session to end"
+						}
+					]
+				},
+				"description": "Ends a headless Foundry session."
+			},
+			"response": [
+				{
+					"name": "Successful Response",
+					"originalRequest": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/end-session?sessionId=id",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"end-session"
+							],
+							"query": [
+								{
+									"key": "sessionId",
+									"value": "id",
+									"description": "The session to end"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "55"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"37-GCXxs3rjiuMomGa4WTuXdAIm2Yw\""
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 01 Apr 2025 15:28:11 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"success\": true,\n    \"message\": \"Foundry session terminated\"\n}"
+				}
+			]
+		},
+		{
+			"name": "/session",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseUrl}}/session",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"session"
+					]
+				},
+				"description": "Gets the currently active headless Foundry session."
+			},
+			"response": [
+				{
+					"name": "Successful Response",
+					"originalRequest": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/session",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"session"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "149"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"95-kPCqfFGq8P5EZkM8wdvJepS+KzU\""
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 01 Apr 2025 15:27:55 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"activeSessions\": [\n        {\n            \"id\": \"baec8e88-567d-45ec-9ab5-88107dd6ceb4\",\n            \"clientId\": \"foundry-DKL4ZKK80lUZFgSJ\",\n            \"lastActivity\": 1743521258626,\n            \"idleMinutes\": 0\n        }\n    ]\n}"
+				}
+			]
 		}
 	],
 	"event": [
@@ -4505,6 +5081,11 @@
 		{
 			"key": "clientId",
 			"value": "clientId",
+			"type": "string"
+		},
+		{
+			"key": "password",
+			"value": "password",
 			"type": "string"
 		}
 	]

@@ -197,7 +197,8 @@ def gen_resource_section(name, group):
                        .replace("|", "-")
         file_name = safe_name + "-" + str(item["request"]["method"]) + ".md"
         output_path = os.path.join(working_dir, output_dir, file_name)
-        with open(output_path, 'w') as output_file:
+        # Specify UTF-8 encoding when writing the file
+        with open(output_path, 'w', encoding='utf-8') as output_file:
             output_file.write(resource_section)
         serial_num = serial_num + 1
         resource_sections += resource_section
@@ -205,7 +206,7 @@ def gen_resource_section(name, group):
 
 
 # Read in the input as JSON
-with open(input_file) as json_data:
+with open(input_file, encoding="utf-8") as json_data:  # Specify UTF-8 encoding
     input_data = json.load(json_data)
     # Extract all variables and print them out as a table
     v = gen_variables_section(input_data["variable"])
