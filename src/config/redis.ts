@@ -1,133 +1,163 @@
-import Redis, { RedisOptions } from 'ioredis';
+import { createClient, RedisClientType } from 'redis';
 import { log } from '../middleware/logger';
 
-// Fix Redis URL protocol if needed
-function fixRedisUrl(url: string): string {
-  // If it's an Upstash URL but doesn't use rediss://, fix it
-  if (url.includes('upstash.io') && !url.startsWith('rediss://')) {
-    return url.replace(/^redis:\/\//, 'rediss://');
+// Global Redis client
+let redisClient: RedisClientType | null = null;
+let redisConnected = false;
+let redisReconnecting = false;
+let lastRedisError: Error | null = null;
+
+// Redis connection details from environment
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_ENABLED = process.env.REDIS_ENABLED !== 'false';
+
+// Initialize Redis client
+export async function initRedis(): Promise<boolean> {
+  if (!REDIS_ENABLED) {
+    log.info('Redis is disabled by configuration');
+    return false;
   }
-  return url;
+
+  try {
+    // Hide credentials when logging
+    const sanitizedUrl = REDIS_URL.replace(/redis:\/\/.*@/, 'redis://***@');
+    log.info(`Initializing Redis client at ${sanitizedUrl}`);
+    
+    // Upstash requires TLS to be enabled
+    const url = new URL(REDIS_URL);
+    const isUpstash = url.hostname.includes('upstash.io');
+    
+    redisClient = createClient({
+      url: REDIS_URL,
+      socket: {
+        tls: isUpstash, // Enable TLS for Upstash connections
+        rejectUnauthorized: false, // For self-signed certificates
+        connectTimeout: 15000, // Increase connect timeout to 15s
+        reconnectStrategy: (retries) => {
+          redisReconnecting = true;
+          const maxRetries = 20; // Increased max retries
+          
+          if (retries >= maxRetries) {
+            log.error(`Maximum Redis reconnection attempts (${maxRetries}) reached`);
+            return false; // Stop retrying
+          }
+          
+          const delay = Math.min(retries * 500, 10000);
+          log.warn(`Redis reconnect attempt ${retries}, next attempt in ${delay}ms`);
+          return delay;
+        }
+      },
+      readonly: false,
+      legacyMode: false,
+      disableOfflineQueue: false
+      // Connection retry behavior is handled by socket.reconnectStrategy above
+    });
+
+    // Set up event listeners for logging and state management
+    redisClient.on('connect', () => {
+      log.info('Redis client connected');
+    });
+
+    redisClient.on('ready', () => {
+      redisConnected = true;
+      redisReconnecting = false;
+      lastRedisError = null;
+      log.info('Redis client ready');
+    });
+
+    redisClient.on('error', (err) => {
+      redisConnected = false;
+      lastRedisError = err;
+      log.error(`Redis client error: ${err.message}`);
+    });
+
+    redisClient.on('end', () => {
+      redisConnected = false;
+      log.warn('Redis client connection closed');
+    });
+
+    redisClient.on('reconnecting', () => {
+      redisReconnecting = true;
+      log.warn('Redis client reconnecting...');
+    });
+
+    // Connect to Redis
+    await redisClient.connect();
+    log.info('Redis client connected successfully');
+    
+    // Verify connection with a simple ping
+    const pingResult = await redisClient.ping();
+    log.info(`Redis ping result: ${pingResult}`);
+    
+    redisConnected = true;
+    return true;
+  } catch (error) {
+    redisConnected = false;
+    lastRedisError = error as Error;
+    log.error(`Failed to initialize Redis: ${error}`);
+    return false;
+  }
 }
 
-// Use direct URL approach to avoid DNS resolution issues
-const FLY_INTERNAL_REDIS = process.env.REDIS_URL || 'redis://localhost:6379';
-export const REDIS_URL = fixRedisUrl(FLY_INTERNAL_REDIS);
-
-// Increase the expiry time for better handling of autoscaling events
-export const CLIENT_EXPIRY = 60 * 60 * 2; // 2 hours expiry for Redis keys
-const ENABLE_REDIS = process.env.ENABLE_REDIS !== 'false';
-
-// Create Redis client singleton
-let redisClient: Redis | null = null;
-let redisEnabled = ENABLE_REDIS;
-let connectionAttempted = false;
-
-// Define a Redis error interface to include the code property
-interface RedisError extends Error {
-  code?: string;
-}
-
-export function getRedisClient(): Redis | null {
-  if (!redisEnabled || (connectionAttempted && !redisClient)) {
+// Get Redis client with safety checks
+export function getRedisClient(): RedisClientType | null {
+  if (!REDIS_ENABLED) {
     return null;
   }
   
-  if (!redisClient) {
-    connectionAttempted = true;
-    
-    try {
-      // Improved Redis options for Fly.io environment
-      const options: RedisOptions = {
-        connectTimeout: 10000,
-        maxRetriesPerRequest: 3,
-        retryStrategy: (times) => {
-          if (times > 5) {
-            redisEnabled = false;
-            return null; // Stop retrying
-          }
-          return Math.min(times * 500, 3000); // Progressive backoff with longer maximum
-        },
-        // Try both IPv4 and IPv6 for better compatibility
-        family: 0, // This means "try both IPv4 and IPv6"
-        enableOfflineQueue: true,
-        // For TLS connections
-        tls: REDIS_URL.startsWith('rediss://') ? {
-          rejectUnauthorized: false
-        } : undefined
-      };
-
-      log.info(`Attempting Redis connection to ${REDIS_URL.replace(/rediss?:\/\/.*?@/, 'redis://[hidden]@')}...`);
-      redisClient = new Redis(REDIS_URL, options);
-      
-      redisClient.on('connect', () => {
-        log.info('Redis client connected successfully');
-      });
-      
-      redisClient.on('error', (err: RedisError) => {
-        if (redisClient) {
-          if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
-            log.error(`Redis connection issue: ${err.message}. Disabling Redis for this session.`);
-            redisEnabled = false;
-            
-            try {
-              redisClient.disconnect(false);
-            } catch (e) {
-              // Ignore disconnect errors
-            }
-            redisClient = null;
-          } else {
-            log.error(`Redis error: ${err}`);
-          }
-        }
-      });
-    } catch (error) {
-      log.error(`Failed to connect to Redis: ${error}`);
-      redisEnabled = false;
-      redisClient = null;
-    }
+  if (!redisConnected && !redisReconnecting && redisClient) {
+    // Try to reconnect if client exists but is disconnected
+    log.warn('Redis disconnected, attempting to reconnect...');
+    redisClient.connect().catch(err => {
+      log.error(`Failed to reconnect to Redis: ${err}`);
+    });
   }
   
   return redisClient;
 }
 
-// Add this function to explicitly initialize Redis
-export async function initRedis(): Promise<boolean> {
+// Check Redis health
+export function checkRedisHealth(): { healthy: boolean, error?: string } {
+  if (!REDIS_ENABLED) {
+    return { healthy: true, error: 'Redis is disabled by configuration' };
+  }
+  
+  if (!redisClient) {
+    return { healthy: false, error: 'Redis client not initialized' };
+  }
+  
+  if (!redisConnected) {
+    return { 
+      healthy: false, 
+      error: lastRedisError ? `Redis disconnected: ${lastRedisError.message}` : 'Redis disconnected' 
+    };
+  }
+  
+  return { healthy: true };
+}
+
+// Safely execute Redis operations with error handling
+export async function safeRedisOperation<T>(operation: () => Promise<T>, fallback: T): Promise<T> {
+  if (!REDIS_ENABLED || !redisClient || !redisConnected) {
+    return fallback;
+  }
+  
   try {
-    const client = getRedisClient();
-    if (client) {
-      await client.ping();
-      log.info('Redis initialized successfully');
-      return true;
-    }
-    return false;
+    return await operation();
   } catch (error) {
-    log.error(`Redis initialization failed: ${error}`);
-    return false;
+    log.error(`Redis operation failed: ${error}`);
+    return fallback;
   }
 }
 
-export function isRedisEnabled(): boolean {
-  return redisEnabled && redisClient !== null;
-}
-
-// Close Redis connection on app shutdown with better error handling
-export function closeRedis(): Promise<void> {
+// Close Redis connection
+export async function closeRedis(): Promise<void> {
   if (redisClient) {
-    try {
-      return redisClient.quit().then(() => {
-        log.info('Redis connection closed properly');
-        redisClient = null;
-      }).catch((err) => {
-        log.error(`Error during Redis quit: ${err}`);
-        redisClient = null;
-        return Promise.resolve();
-      });
-    } catch (err) {
-      log.error(`Error attempting to close Redis: ${err}`);
-      redisClient = null;
-      return Promise.resolve();
-    }
+    log.info('Closing Redis connection');
+    await redisClient.quit().catch(err => {
+      log.error(`Error closing Redis connection: ${err}`);
+    });
+    redisConnected = false;
+    redisClient = null;
   }
-  return Promise.resolve();
 }

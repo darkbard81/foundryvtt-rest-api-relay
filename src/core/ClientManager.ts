@@ -43,16 +43,16 @@ export class ClientManager {
       
       if (redis) {
         // Store the mapping between API key (token) and this instance
-        await redis.set(`apikey:${token}:instance`, INSTANCE_ID, 'EX', CLIENT_EXPIRY);
+        await redis.set(`apikey:${token}:instance`, INSTANCE_ID, { EX: CLIENT_EXPIRY });
         
         // Store the client ID -> instance ID mapping
-        await redis.set(`client:${id}:instance`, INSTANCE_ID, 'EX', CLIENT_EXPIRY);
+        await redis.set(`client:${id}:instance`, INSTANCE_ID, { EX: CLIENT_EXPIRY });
         
         // Store client ID -> API key mapping for lookup
-        await redis.set(`client:${id}:apikey`, token, 'EX', CLIENT_EXPIRY);
+        await redis.set(`client:${id}:apikey`, token, { EX: CLIENT_EXPIRY });
         
         // Add client ID to the list of clients for this token/API key
-        await redis.sadd(`apikey:${token}:clients`, id);
+        await redis.sAdd(`apikey:${token}:clients`, id);
         await redis.expire(`apikey:${token}:clients`, CLIENT_EXPIRY);
         
         const tokenTrunicated = `${token.substring(0, 8)}...`;
@@ -90,10 +90,10 @@ export class ClientManager {
           // FIXED: Consistent key naming
           await redis.del(`client:${id}:instance`);
           await redis.del(`client:${id}:apikey`);
-          await redis.srem(`apikey:${token}:clients`, id);
+          await redis.sRem(`apikey:${token}:clients`, id);
           
           // If this was the last client for this token, remove instance mapping
-          const remainingClients = await redis.scard(`apikey:${token}:clients`);
+          const remainingClients = await redis.sCard(`apikey:${token}:clients`);
           if (remainingClients === 0) {
             await redis.del(`apikey:${token}:instance`);
             await redis.del(`apikey:${token}:clients`);

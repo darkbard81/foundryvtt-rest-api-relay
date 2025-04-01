@@ -11,9 +11,10 @@ import * as path from "path";
 import { sequelize } from "./sequelize";
 import stripeRouter from './routes/stripe';
 import webhookRouter from './routes/webhook';
-import { closeRedis } from './config/redis';
-import { initRedis } from './config/redis';
+import { initRedis, closeRedis } from './config/redis';
 import { scheduleHeadlessSessionsCheck } from './workers/headlessSessions';
+import { redisSessionMiddleware } from './middleware/redisSession';
+import { startHealthMonitoring, logSystemHealth, getSystemHealth } from './utils/healthCheck';
 
 config();
 
@@ -32,6 +33,9 @@ app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 
 // Parse JSON bodies
 app.use(express.json());
+
+// Add Redis session middleware
+app.use(redisSessionMiddleware);
 
 // Add global error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
@@ -71,64 +75,60 @@ app.get("/default-token.png", (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, "../public/default-token.png"));
 });
 
-const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
-
-// Sync database and start HTTP server
-sequelize.sync().then(async () => {
-  // Initialize Redis before starting the server
-  await initRedis();
-
-  // Schedule the headless sessions worker
-  scheduleHeadlessSessionsCheck();
-  
-  // First bind to the public interface
-  httpServer.listen(port, "0.0.0.0", () => {
-    log.info(`Server running on public interface on port ${port}`);
-    
-    // Only attempt to bind to private network in Fly.io environment
-    if (process.env.FLY_ALLOC_ID) {
-      // Then bind to the private 6PN interface for VM-to-VM communication
-      const privateServer = createServer(app);
-      privateServer.listen(port, "fly-local-6pn", () => {
-        log.info(`Server running on private 6PN interface (fly-local-6pn) on port ${port}`);
-      });
-    } else {
-      log.info(`Skipping private network binding when running locally`);
-    }
-  });
+// Add health endpoint
+app.get('/api/health', (req, res) => {
+  const health = getSystemHealth();
+  res.status(health.healthy ? 200 : 503).json(health);
 });
 
-// Handle graceful shutdown
-const shutdown = async (): Promise<void> => {
-  log.info("Shutting down server...");
-  
-  // Close Redis connections
-  await closeRedis();
-  
-  // Close all browser sessions
-  log.info(`Closing ${browserSessions.size} headless browser sessions...`);
-  let closedCount = 0;
-  for (const browser of browserSessions.values()) {
-    try {
-      await browser.close();
-      closedCount++;
-    } catch (error) {
-      log.error(`Error closing browser: ${error}`);
-    }
-  }
-  log.info(`Successfully closed ${closedCount} browser sessions.`);
-  
-  httpServer.close(() => {
-    log.info("Server closed successfully");
-    process.exit(0);
-  });
-  
-  // Force exit after 5 seconds if server doesn't close gracefully
-  setTimeout(() => {
-    log.warn("Forcing server shutdown after timeout");
-    process.exit(1);
-  }, 5000);
-};
+const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+// Initialize services sequentially
+async function initializeServices() {
+  try {
+    // First initialize database
+    await sequelize.sync();
+    
+    // Then initialize Redis
+    const redisInitialized = await initRedis();
+    if (!redisInitialized) {
+      log.warn('Redis initialization failed - continuing with local storage only');
+    }
+    
+    // Start health monitoring
+    logSystemHealth(); // Log initial health
+    startHealthMonitoring(60000); // Check every minute
+    
+    // Start the server
+    httpServer.listen(port, () => {
+      log.info(`Server running at http://localhost:${port}`);
+      log.info(`WebSocket server ready at ws://localhost:${port}/relay`);
+    });
+    
+  } catch (error) {
+    log.error(`Error initializing services: ${error}`);
+    process.exit(1);
+  }
+}
+
+// Schedule the headless sessions worker
+scheduleHeadlessSessionsCheck();
+
+// Handle graceful shutdown
+process.on('SIGTERM', async () => {
+  log.info('SIGTERM received, shutting down gracefully');
+  await closeRedis();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  log.info('SIGINT received, shutting down gracefully');
+  await closeRedis();
+  process.exit(0);
+});
+
+// Initialize services and start server
+initializeServices().catch(err => {
+  log.error(`Failed to initialize services: ${err}`);
+  process.exit(1);
+});

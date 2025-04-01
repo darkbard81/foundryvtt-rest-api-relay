@@ -156,7 +156,7 @@ export const apiRoutes = (app: express.Application): void => {
       
       if (redis) {
         // Step 1: Get all client IDs from Redis for this API key
-        const clientIds = await redis.smembers(`apikey:${apiKey}:clients`);
+        const clientIds = await redis.sMembers(`apikey:${apiKey}:clients`);
         
         if (clientIds.length > 0) {
           // Step 2: For each client ID, get details from Redis
@@ -1958,7 +1958,24 @@ export const apiRoutes = (app: express.Application): void => {
         const cdnUrl = `https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/${filename}`;
         log.debug(`Redirecting Font Awesome asset to CDN: ${cdnUrl}`);
         res.redirect(cdnUrl);
-			  return;
+        return;
+      }
+      
+      // Handle The Forge specific assets
+      if (assetPath.includes('forgevtt-module.css') || assetPath.includes('forge-vtt.com')) {
+        log.debug(`Skipping The Forge asset: ${assetPath}`);
+        // Return an empty CSS file for Forge assets to prevent errors
+        if (assetPath.endsWith('.css')) {
+          res.type('text/css').send('/* Placeholder for The Forge CSS */');
+          return;
+        } else if (assetPath.endsWith('.js')) {
+          res.type('application/javascript').send('// Placeholder for The Forge JS');
+          return;
+        } else {
+          // Return a transparent 1x1 pixel for images
+          res.type('image/png').send(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64'));
+          return;
+        }
       }
       
       // Check for texture files - use GitHub raw content as fallback
@@ -1966,26 +1983,20 @@ export const apiRoutes = (app: express.Application): void => {
           assetPath.includes('parchment.jpg')) {
         log.debug(`Serving texture file from GitHub fallback`);
         res.redirect('https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/parchment.jpg');
-			  return;
+        return;
       }
       
-      if (assetPath.includes('ac-badge')) {
-        res.redirect('https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/ac-badge.webp');
-			  return;
-      }
+      // Additional asset fallbacks...
       
-      if (assetPath.includes('cr-badge')) {
-        res.redirect('https://raw.githubusercontent.com/foundryvtt/dnd5e/master/ui/cr-badge.webp');
-			  return;
-      }
-      
-      // Try to make the request to Foundry
+      // Try to make the request to Foundry with better error handling
       try {
         const response = await axios({
           method: 'get',
           url: assetUrl,
           responseType: 'stream',
-          timeout: 5000
+          timeout: 10000, // Increased timeout to 10s
+          maxRedirects: 5,
+          validateStatus: (status) => status < 500 // Only treat 500+ errors as errors
         });
         
         // Copy headers
@@ -1999,18 +2010,16 @@ export const apiRoutes = (app: express.Application): void => {
         // Stream the response
         response.data.pipe(res);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        log.warn(`Failed to proxy asset from ${assetUrl}: ${errorMessage}`);
+        log.error(`Request failed: ${assetUrl}`);
         
-        // For image files, try to provide a fallback
-        const ext = assetPath.split('.').pop()?.toLowerCase();
-        if (['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'].includes(ext || '')) {
-          // For images, send a transparent 1x1 pixel as fallback
-          log.debug(`Sending fallback transparent image for: ${assetPath}`);
-          res.setHeader('Content-Type', 'image/png');
-          res.send(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64'));
+        // For CSS files, return an empty CSS file
+        if (assetPath.endsWith('.css')) {
+          res.type('text/css').send('/* CSS not available */');
+        } else if (assetPath.endsWith('.js')) {
+          res.type('application/javascript').send('// JavaScript not available');
         } else {
-          res.status(404).send('Asset not found');
+          // Return a transparent 1x1 pixel for images and other files
+          res.type('image/png').send(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64'));
         }
       }
     } catch (error) {
@@ -2056,7 +2065,7 @@ export const apiRoutes = (app: express.Application): void => {
       const redis = getRedisClient();
       if (redis) {
         // Store all handshake data in Redis with an expiry
-        await redis.hset(`handshake:${handshakeToken}`, {
+        await redis.hSet(`handshake:${handshakeToken}`, {
           apiKey,
           foundryUrl,
           worldName: worldName || '',
@@ -2125,7 +2134,7 @@ export const apiRoutes = (app: express.Application): void => {
         const handshakeExists = await redis.exists(`handshake:${handshakeToken}`);
         
         if (handshakeExists) {
-          const handshakeData = await redis.hgetall(`handshake:${handshakeToken}`);
+          const handshakeData = await redis.hGetAll(`handshake:${handshakeToken}`);
           
           // Check if this instance should handle the request
           const handshakeInstanceId = handshakeData.instanceId;
@@ -2136,7 +2145,7 @@ export const apiRoutes = (app: express.Application): void => {
             log.info(`Handshake ${handshakeToken.substring(0, 8)}... belongs to instance ${handshakeInstanceId}, current instance is ${currentInstanceId}`);
             
             // Store the client's request in Redis for the correct instance to pick up
-            await redis.hset(`pending_session:${handshakeToken}`, {
+            await redis.hSet(`pending_session:${handshakeToken}`, {
               apiKey,
               encryptedPassword: encryptedPassword,
               timestamp: Date.now().toString()
@@ -2149,7 +2158,7 @@ export const apiRoutes = (app: express.Application): void => {
             log.info(`Waiting for instance ${handshakeInstanceId} to process headless session request`);
             
             // Set a timeout for waiting
-            const maxWaitTime = 60000; // 1 minute timeout
+            const maxWaitTime = 600000; // 10 minute timeout
             const startTime = Date.now();
             
             // Poll Redis for the result
@@ -2286,9 +2295,36 @@ export const apiRoutes = (app: express.Application): void => {
       const browser = await puppeteer.launch({
         headless: true,
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        defaultViewport: null
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-extensions',
+            '--disable-web-security',
+            '--disable-features=site-per-process,IsolateOrigins,site-isolation-trials',
+            '--disable-background-networking',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-sync',
+            '--disable-breakpad',
+            '--disable-component-extensions-with-background-pages',
+            '--disable-default-apps',
+            '--disable-infobars',
+            '--disable-popup-blocking',
+            '--disable-translate',
+            '--metrics-recording-only',
+            '--mute-audio',
+            '--log-level=0',
+            '--js-flags="--max_old_space_size=4096"',
+        ],
+        defaultViewport: { width: 1280, height: 720 }
       });
+    
 
       const page = await browser.newPage();
       
@@ -2638,7 +2674,7 @@ export const apiRoutes = (app: express.Application): void => {
         const redis = getRedisClient();
         if (redis) {
           // Get session data to find associated client
-          const sessionData = await redis.hgetall(`headless_session:${sessionId}`);
+          const sessionData = await redis.hGetAll(`headless_session:${sessionId}`);
           
           if (sessionData && sessionData.apiKey === apiKey) {
             // Delete all session-related keys
@@ -2687,7 +2723,7 @@ export const apiRoutes = (app: express.Application): void => {
         
         if (sessionId) {
           // Get full session details
-          const sessionData = await redis.hgetall(`headless_session:${sessionId}`);
+          const sessionData = await redis.hGetAll(`headless_session:${sessionId}`);
           
           if (sessionData) {
             // Parse timestamps

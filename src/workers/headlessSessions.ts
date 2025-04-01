@@ -25,7 +25,7 @@ export async function registerHeadlessSession(sessionId: string, userId: string,
   
   try {
     // Store the session mapping
-    await redis.hset(`headless_session:${sessionId}`, {
+    await redis.hSet(`headless_session:${sessionId}`, {
       clientId,
       apiKey,
       instanceId,
@@ -39,9 +39,13 @@ export async function registerHeadlessSession(sessionId: string, userId: string,
     await redis.set(`headless_client:${clientId}`, sessionId);
     await redis.expire(`headless_client:${clientId}`, 10800);
     
-    // Store apiKey to sessionId mapping
-    await redis.set(`headless_apikey:${apiKey}`, sessionId);
-    await redis.expire(`headless_apikey:${apiKey}`, 10800);
+    // Store apiKey to instanceId mapping - CRITICAL FOR REQUEST FORWARDING
+    await redis.set(`apikey:${apiKey}:instance`, instanceId);
+    await redis.expire(`apikey:${apiKey}:instance`, 10800);
+    
+    // Also store client to instance mapping for socket lookups
+    await redis.set(`client:${clientId}:instance`, instanceId);  
+    await redis.expire(`client:${clientId}:instance`, 10800);
     
     log.info(`Registered headless session ${sessionId} for client ${clientId} on instance ${instanceId}`);
   } catch (error) {
@@ -49,13 +53,10 @@ export async function registerHeadlessSession(sessionId: string, userId: string,
   }
 }
 
-// Validate client connections
+// Validate client connections - MODIFIED TO HANDLE INSTANCE MIGRATIONS
 export async function validateHeadlessSession(clientId: string, token: string): Promise<boolean> {
-  log.info(`Validating headless session for client ${clientId}`);
-  
   // Skip non-headless clients
   if (!isHeadlessClient(clientId)) {
-    log.debug(`Client ${clientId} is not a headless client`);
     return true;
   }
   
@@ -71,8 +72,8 @@ export async function validateHeadlessSession(clientId: string, token: string): 
     }
     
     // Get session data
-    const sessionData = await redis.hgetall(`headless_session:${sessionId}`);
-    if (!sessionData) {
+    const sessionData = await redis.hGetAll(`headless_session:${sessionId}`);
+    if (!sessionData || !sessionData.apiKey) {
       log.warn(`Session data not found for session ${sessionId}`);
       return true;
     }
@@ -85,15 +86,17 @@ export async function validateHeadlessSession(clientId: string, token: string): 
     
     // Update the instance ID in case client connects to a different instance
     const currentInstanceId = process.env.FLY_ALLOC_ID || 'local';
-    if (sessionData.instanceId !== currentInstanceId) {
-      log.info(`Headless client ${clientId} connected to instance ${currentInstanceId} (originally from ${sessionData.instanceId})`);
-      await redis.hset(`headless_session:${sessionId}`, "instanceId", currentInstanceId);
-    }
+    
+    // Always update the instance location when validating a session
+    await redis.hSet(`headless_session:${sessionId}`, "instanceId", currentInstanceId);
+    await redis.set(`client:${clientId}:instance`, currentInstanceId);
+    await redis.set(`apikey:${sessionData.apiKey}:instance`, currentInstanceId);
     
     // Touch all keys to refresh TTL
     await redis.expire(`headless_session:${sessionId}`, 10800);
     await redis.expire(`headless_client:${clientId}`, 10800);
-    await redis.expire(`headless_apikey:${sessionData.apiKey}`, 10800);
+    await redis.expire(`apikey:${sessionData.apiKey}:instance`, 10800);
+    await redis.expire(`client:${clientId}:instance`, 10800);
     
     log.info(`Headless client ${clientId} validated successfully`);
     return true;
@@ -128,7 +131,7 @@ export async function checkPendingHeadlessSessions() {
     const handshakeKeys = await redis.keys('handshake:*');
     
     for (const key of handshakeKeys) {
-      const handshakeData = await redis.hgetall(key);
+      const handshakeData = await redis.hGetAll(key);
       
       if (handshakeData.instanceId === instanceId) {
         const handshakeToken = key.split(':')[1];
@@ -138,7 +141,7 @@ export async function checkPendingHeadlessSessions() {
         const pendingSessionExists = await redis.exists(pendingSessionKey);
         
         if (pendingSessionExists) {
-          const sessionData = await redis.hgetall(pendingSessionKey);
+          const sessionData = await redis.hGetAll(pendingSessionKey);
           
           log.info(`Processing pending session request for handshake ${handshakeToken.substring(0, 8)}...`);
           

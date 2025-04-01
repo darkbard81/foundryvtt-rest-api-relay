@@ -40,7 +40,7 @@ primary_region = 'ord'
 [[vm]]
   memory = '16gb'
   cpu_kind = 'performance'
-  cpus = 4
+  cpus = 8
 
 [[vm.mounts]]
   source = "myapp_data"
