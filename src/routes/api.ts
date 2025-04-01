@@ -1981,104 +1981,173 @@ export const apiRoutes = (app: express.Application): void => {
       const worldName = req.headers['x-world-name'] as string;
       const username = req.headers['x-username'] as string;
       const password = req.headers['x-password'] as string;
-  
+
       if (!foundryUrl) {
         return safeResponse(res, 400, { error: "Missing Foundry URL" });
       }
-  
+
       if (!username) {
         return safeResponse(res, 400, { error: "Missing login credentials" });
       }
-  
+
       log.info(`Starting headless Foundry session for URL: ${foundryUrl}`);
-  
-      // Launch headless browser
+
+      // Launch headless browser with additional debug options
       const browser = await puppeteer.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        defaultViewport: null // Use default viewport size
       });
-  
+
       const page = await browser.newPage();
-      await page.goto(foundryUrl, { waitUntil: 'networkidle0' });
-  
-      // Check if we need to select a world or are already on login page
+      
+      // Enable better logging
+      page.on('console', msg => log.debug(`Browser console: ${msg.text()}`));
+      page.on('pageerror', error => log.error(`Browser page error: ${error.message}`));
+      page.on('requestfailed', request => log.error(`Request failed: ${request.url()}`));
+
+      // Navigate to Foundry
+      log.debug(`Navigating to Foundry URL: ${foundryUrl}`);
+      await page.goto(foundryUrl, { waitUntil: 'networkidle0', timeout: 60000 });
+      
+      // Debug: Log current URL
+      log.debug(`Current page URL: ${page.url()}`);
+
+      // First, check if there are any overlays or tours to dismiss
+      log.debug("Checking for overlays or tours to dismiss");
+      try {
+        // Look for various types of overlays and dismiss them
+        const selectors = [
+          '.tour-overlay', '.tour', '.tour-fadeout',
+          'a.step-button[data-action="exit"]', 'button.tour-exit'
+        ];
+        
+        for (const selector of selectors) {
+          const elements = await page.$$(selector);
+          if (elements.length > 0) {
+            log.debug(`Found ${elements.length} ${selector} elements, attempting to dismiss`);
+            await page.click(selector).catch(e => log.debug(`Couldn't click ${selector}: ${e.message}`));
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for a second
+          }
+        }
+      } catch (e) {
+        log.debug(`Overlay handling: ${(e as Error).message}`);
+      }
+
+      // Handle world selection
       if (worldName) {
         log.info(`Looking for world: ${worldName}`);
+        
         try {
-          // Wait for the page to be fully loaded
-          await page.waitForSelector('body', { timeout: 15000 });
-          log.debug("Body element found, waiting additional 2 seconds for JS to initialize");
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Wait for world list to load
+          await page.waitForSelector('li.package.world', { timeout: 10000 })
+            .catch(() => {
+              log.debug('Could not find world list, checking page content');
+              return page.content().then(html => {
+                log.debug(`Page HTML preview: ${html.substring(0, 1000)}...`);
+              });
+            });
           
-          // First try direct approach - the most reliable approach
-          try {
-            // Try to find by data-package-id attribute - this is the most reliable method
-            log.debug(`Looking for world with data-package-id="${worldName}"`);
-            const worldElement = await page.$(`li.package.world[data-package-id="${worldName}"]`);
+          // Try to find and click on the world using multiple strategies
+          log.debug('Attempting to find and launch the world');
+          
+          // Strategy 1: Try to find the play button directly associated with the world name
+          const worldLaunched = await page.evaluate((worldName) => {
+            console.log(`Looking for world: ${worldName}`);
+            // Find all world titles
+            const titles = Array.from(document.querySelectorAll('h3.package-title'));
+            console.log(`Found ${titles.length} world titles`);
             
-            if (worldElement) {
-              log.debug(`Found world by data-package-id`);
-              // Find the play button within this element
-              const playButton = await worldElement.$('a.control.play');
-              if (playButton) {
-                log.debug('Found play button, clicking it');
-                await playButton.click();
-                log.debug('Play button clicked');
-              } else {
-                throw new Error('Play button not found within world element');
+            for (const title of titles) {
+              if (title.textContent && title.textContent.trim() === worldName) {
+                console.log(`Found matching world: ${worldName}`);
+                // Find the parent li element
+                const worldLi = title.closest('li.package.world');
+                if (worldLi) {
+                  console.log('Found parent li element');
+                  // Find and click the play button
+                  const playButton = worldLi.querySelector('a.control.play');
+                  if (playButton) {
+                    console.log('Found play button, clicking');
+                    (playButton as HTMLElement).click();
+                    return true;
+                  } else {
+                    console.log('Play button not found');
+                  }
+                }
               }
-            } else {
-              // Try alternate approach - look by name
-              log.debug(`World not found by ID, trying by name text`);
+            }
+            return false;
+          }, worldName);
+
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Give time for action to complete
+          
+          if (worldLaunched) {
+            log.debug('World launch button clicked successfully');
+          } else {
+            log.debug('Failed to find/click world launch button');
+            
+            // Strategy 2: Try using a more direct selector
+            try {
+              log.debug('Trying alternative launch approach');
               
-              // Take a screenshot for debugging
-              await page.screenshot({ path: 'world-selection-debug.png' });
+              // Look for all world elements and try to find a match by text content
+              const worlds = await page.$$('li.package.world');
+              log.debug(`Found ${worlds.length} world elements`);
               
-              // Get all worlds and manually find the one matching our name
-              const worldElements = await page.$$('li.package.world');
-              log.debug(`Found ${worldElements.length} world elements`);
-              
-              let worldFound = false;
-              for (const element of worldElements) {
-                const titleElement = await element.$('h3.package-title');
-                if (titleElement) {
-                  const titleText = await page.evaluate(el => el.textContent?.trim(), titleElement);
-                  log.debug(`Found world with title: ${titleText}`);
+              let launched = false;
+              for (const worldElement of worlds) {
+                const title = await worldElement.$eval('h3.package-title', el => el.textContent?.trim())
+                  .catch(() => null);
                   
-                  if (titleText === worldName) {
-                    log.debug('Found matching world by title, clicking its play button');
-                    const playButton = await element.$('a.control.play');
-                    if (playButton) {
-                      await playButton.click();
-                      worldFound = true;
-                      break;
-                    }
+                log.debug(`Found world with title: ${title}`);
+                
+                if (title === worldName) {
+                  log.debug('Found matching world, looking for play button');
+                  const playButton = await worldElement.$('a.control.play');
+                  if (playButton) {
+                    log.debug('Clicking play button');
+                    await playButton.click();
+                    launched = true;
+                    break;
                   }
                 }
               }
               
-              if (!worldFound) {
-                throw new Error(`World "${worldName}" not found by name or ID`);
+              if (!launched) {
+                log.debug('Failed to launch world using alternative approach');
               }
-            }
-          } catch (clickError) {
-            const errorMessage = clickError instanceof Error ? clickError.message : String(clickError);
-            log.debug(`Direct click approach failed: ${errorMessage}`);
-            
-            // Last resort: try redirect approach
-            try {
-              log.debug('Attempting direct navigation to game URL');
-              // Some Foundry versions allow direct navigation to game/worldname 
-              await page.goto(`${foundryUrl}/game/${worldName}`, { waitUntil: 'networkidle0' });
-            } catch (navError) {
-              throw new Error(`Failed to access world "${worldName}" by all available methods`);
+            } catch (error) {
+              log.debug(`Error in alternative launch approach: ${(error as Error).message}`);
             }
           }
           
-          // Wait for the login screen to appear
-          log.debug('Waiting for login screen to appear');
-          await page.waitForSelector('select[name="userid"]', { timeout: 10000 });
-          log.debug('Login screen loaded successfully');
+          // Wait and check if we have navigated to a login page
+          log.debug('Waiting to see if we reached the login page...');
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+          // Debug: Log current URL again
+          log.debug(`Current URL after world selection: ${page.url()}`);
+          
+          // Check if we're on a login page by looking for various login elements
+          const loginElements = ['select[name="userid"]', 'input[name="userid"]', 'input[name="password"]'];
+          let loginFormFound = false;
+          
+          for (const selector of loginElements) {
+            const element = await page.$(selector);
+            if (element) {
+              log.debug(`Found login element: ${selector}`);
+              loginFormFound = true;
+              break;
+            }
+          }
+          
+          if (!loginFormFound) {
+            // If we don't see login elements, check the HTML to see what page we're on
+            const html = await page.content();
+            log.debug(`Page HTML after world selection (preview): ${html.substring(0, 500)}...`);
+            throw new Error('Login form not found after world selection');
+          }
           
         } catch (error) {
           await browser.close();
@@ -2086,36 +2155,69 @@ export const apiRoutes = (app: express.Application): void => {
           return safeResponse(res, 404, { error: `Failed to find or launch world: ${worldName}`, details: errorMessage });
         }
       }
-  
-      // Now we should be on the login screen
+
+      // Now handle the login process
       try {
-        // Wait for the username dropdown to appear
-        await page.waitForSelector('select[name="userid"]', { timeout: 5000 });
-      
-        // Find the value of the option with the desired inner HTML (e.g., the username passed in the request)
-        const userIdValue = await page.evaluate((username) => {
-          const options = Array.from(document.querySelectorAll('select[name="userid"] option')) as HTMLOptionElement[];
-          const targetOption = options.find(option => option.textContent?.trim() === username);
-          return targetOption?.value || null;
-        }, username);
-      
-        if (!userIdValue) {
-          throw new Error(`Failed to find the username "${username}" in the dropdown`);
+        log.debug('Attempting to log in...');
+        
+        // Handle username input (could be select or input)
+        const hasUserSelect = await page.$('select[name="userid"]')
+          .then(element => !!element)
+          .catch(() => false);
+        
+        if (hasUserSelect) {
+          log.debug('Found username dropdown, selecting user');
+          // Get dropdown options
+          const options = await page.$$eval('select[name="userid"] option', options => 
+            options.map(opt => ({ value: opt.value, text: opt.textContent?.trim() }))
+          );
+          
+          log.debug(`Available users: ${JSON.stringify(options)}`);
+          
+          // Find the option with matching text
+          const matchingOption = options.find(opt => opt.text === username);
+          if (!matchingOption) {
+            throw new Error(`Username "${username}" not found in dropdown. Available: ${options.map(o => o.text).join(', ')}`);
+          }
+          
+          // Select the user
+          await page.select('select[name="userid"]', matchingOption.value);
+          log.debug(`Selected user ${username} with value ${matchingOption.value}`);
+        } else {
+          log.debug('Using username input field');
+          await page.type('input[name="userid"]', username);
         }
-      
-        // Select the username from the dropdown
-        await page.select('select[name="userid"]', userIdValue);
-      
-        // Type the password
+        
+        // Enter password
         await page.type('input[name="password"]', password);
-      
+        
         // Submit the form
-        await page.click('button[type="submit"]');
-      
+        log.debug('Submitting login form');
+        
+        // Try clicking the submit button
+        await page.click('button[type="submit"]')
+          .catch(async () => {
+            log.debug('Submit button not found, trying form submission');
+            await page.$eval('form', form => (form as HTMLFormElement).submit());
+          });
+        
         // Wait for the game to load
-        await page.waitForSelector('#ui-left', { timeout: 15000 });
-      
-        log.info('Successfully logged into Foundry');
+        log.debug('Waiting for game to load...');
+        await page.waitForSelector('#ui-left, #sidebar, .vtt, #game', { timeout: 30000 })
+          .catch(async (error) => {
+            log.debug(`Error waiting for game selectors: ${error.message}`);
+            throw error;
+          });
+        
+        // Store the browser instance with a unique ID
+        const sessionId = crypto.randomUUID();
+        browserSessions.set(sessionId, browser);
+        
+        return safeResponse(res, 200, {
+          success: true,
+          message: "Foundry session started successfully",
+          sessionId
+        });
       } catch (error) {
         await browser.close();
         const errorMessage = error instanceof Error ? error.message : String(error);
