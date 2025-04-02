@@ -2298,9 +2298,9 @@ export const apiRoutes = (app: express.Application): void => {
         args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
-            '--disable-gpu',
+            '--enable-gpu-rasterization', 
+            '--enable-oop-rasterization',
             '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
             '--no-first-run',
             '--no-zygote',
             '--disable-extensions',
@@ -2327,12 +2327,11 @@ export const apiRoutes = (app: express.Application): void => {
     
 
       const page = await browser.newPage();
-      
-      // Enable better logging
-      page.on('console', msg => log.debug(`Browser console: ${msg.text()}`));
+
+      // Enable logging
       page.on('pageerror', error => log.error(`Browser page error: ${error.message}`));
       page.on('requestfailed', request => log.error(`Request failed: ${request.url()}`));
-
+      
       // Navigate to Foundry
       log.debug(`Navigating to Foundry URL: ${foundryUrl}`);
       await page.goto(foundryUrl, { waitUntil: 'networkidle0', timeout: 180000 });
