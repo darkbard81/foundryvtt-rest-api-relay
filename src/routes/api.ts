@@ -1994,7 +1994,7 @@ export const apiRoutes = (app: express.Application): void => {
           method: 'get',
           url: assetUrl,
           responseType: 'stream',
-          timeout: 10000, // Increased timeout to 10s
+          timeout: 30000, // Increased timeout to 30s
           maxRedirects: 5,
           validateStatus: (status) => status < 500 // Only treat 500+ errors as errors
         });
@@ -2486,36 +2486,59 @@ export const apiRoutes = (app: express.Application): void => {
 
       // Handle the login process
       log.debug('Attempting to log in...');
-      
       // Handle username input (could be select or input)
       let userId = username; // Default
-      const hasUserSelect = await page.$('select[name="userid"]')
-        .then(element => !!element)
-        .catch(() => false);
+      let userSelectFound = false;
+      let retries = 0;
+      const maxRetries = 10;
+      const retryInterval = 10000; // 10 seconds between retries
       
-      if (hasUserSelect) {
-        log.debug('Found username dropdown, selecting user');
+      while (!userSelectFound && retries < maxRetries) {
+        const hasUserSelect = await page.$('select[name="userid"]')
+          .then(element => !!element)
+          .catch(() => false);
         
-        // Get all available users from dropdown
-        const options = await page.$$eval('select[name="userid"] option', options => 
-          options.map(opt => ({ value: opt.value, text: opt.textContent?.trim() }))
-        );
-        
-        log.debug(`Available users: ${JSON.stringify(options)}`);
-        
-        // Find matching username
-        const matchingOption = options.find(opt => opt.text === username);
-        if (matchingOption) {
-          log.info(`Selected user ${username} with value ${matchingOption.value}`);
-          await page.select('select[name="userid"]', matchingOption.value);
-          userId = matchingOption.value; // Use the value attribute as userId
+        if (hasUserSelect) {
+          log.debug('Found username dropdown, selecting user');
+          userSelectFound = true;
+          
+          // Get all available users from dropdown
+          const options = await page.$$eval('select[name="userid"] option', options => 
+        options.map(opt => ({ value: opt.value, text: opt.textContent?.trim() }))
+          );
+          
+          log.debug(`Available users: ${JSON.stringify(options)}`);
+          
+          // Find matching username
+          const matchingOption = options.find(opt => opt.text === username);
+          if (matchingOption) {
+        log.info(`Selected user ${username} with value ${matchingOption.value}`);
+        await page.select('select[name="userid"]', matchingOption.value);
+        userId = matchingOption.value; // Use the value attribute as userId
+          } else {
+        throw new Error(`Username "${username}" not found in dropdown`);
+          }
         } else {
-          throw new Error(`Username "${username}" not found in dropdown`);
+          retries++;
+          log.info(`No username dropdown found yet. Attempt ${retries}/${maxRetries}, checking again in ${retryInterval / 1000} seconds...`);
+          
+          if (retries < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, retryInterval));
+          } else {
+        log.info('Max retries reached. Assuming direct username input is required.');
+        // Try to input username directly if there's an input field
+        const hasUserInput = await page.$('input[name="userid"]')
+          .then(element => !!element)
+          .catch(() => false);
+          
+        if (hasUserInput) {
+          log.info(`Found username input field, entering username: ${username}`);
+          await page.type('input[name="userid"]', username);
+        } else {
+          log.warn('No username input field found after retries');
         }
-      } else {
-        // Use text input for username
-        log.debug('Using username input field');
-        await page.type('input[name="userid"]', username);
+          }
+        }
       }
       
       // Enter password

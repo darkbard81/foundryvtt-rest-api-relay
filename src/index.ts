@@ -89,10 +89,12 @@ async function initializeServices() {
     // First initialize database
     await sequelize.sync();
     
-    // Then initialize Redis
-    const redisInitialized = await initRedis();
-    if (!redisInitialized) {
-      log.warn('Redis initialization failed - continuing with local storage only');
+    if (process.env.REDIS_URL && process.env.REDIS_URL.length > 0) {
+      // Then initialize Redis
+      const redisInitialized = await initRedis();
+      if (!redisInitialized) {
+        log.warn('Redis initialization failed - continuing with local storage only');
+      }
     }
     
     // Start health monitoring

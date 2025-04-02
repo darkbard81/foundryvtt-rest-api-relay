@@ -297,12 +297,11 @@ export class ClientManager {
    * Clean up inactive clients
    */
   static async cleanupInactiveClients(): Promise<void> {
-    const now = Date.now();
     const toRemove: string[] = [];
     
-    // Check all clients
+    // Check all clients - only use isAlive() which now incorporates the grace period
     for (const [id, client] of this.clients.entries()) {
-      if (!client.isAlive() || now - client.getLastSeen() > 60000) {
+      if (!client.isAlive()) {
         toRemove.push(id);
       }
     }

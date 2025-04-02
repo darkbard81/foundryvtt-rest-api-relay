@@ -8,12 +8,12 @@ let redisReconnecting = false;
 let lastRedisError: Error | null = null;
 
 // Redis connection details from environment
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_URL = process.env.REDIS_URL || '';
 const REDIS_ENABLED = process.env.REDIS_ENABLED !== 'false';
 
 // Initialize Redis client
 export async function initRedis(): Promise<boolean> {
-  if (!REDIS_ENABLED) {
+  if (!REDIS_ENABLED || !REDIS_URL) {
     log.info('Redis is disabled by configuration');
     return false;
   }
