@@ -2320,7 +2320,7 @@ export const apiRoutes = (app: express.Application): void => {
             '--metrics-recording-only',
             '--mute-audio',
             '--log-level=0',
-            '--js-flags="--max_old_space_size=4096"',
+            '--js-flags="--max_old_space_size=8192"',
         ],
         defaultViewport: { width: 1280, height: 720 }
       });
@@ -2718,8 +2718,8 @@ export const apiRoutes = (app: express.Application): void => {
       
       // Try to get session data from Redis first
       if (redis) {
-        // Check if this API key has a headless session in Redis
-        const sessionId = await redis.get(`headless_session:${apiKey}`);
+        // Check if this API key has a headless session in Redis - FIX: Use correct key pattern
+        const sessionId = await redis.get(`headless_apikey:${apiKey}:session`);
         
         if (sessionId) {
           // Get full session details
@@ -2738,8 +2738,10 @@ export const apiRoutes = (app: express.Application): void => {
             });
           }
         }
-      } else {
-        // Fall back to local storage if Redis is not available
+      }
+      
+      // Fall back to local storage if no Redis session found
+      if (sessions.length === 0) {
         const userSession = apiKeyToSession.get(apiKey);
         
         if (userSession) {
@@ -2752,7 +2754,7 @@ export const apiRoutes = (app: express.Application): void => {
           });
         }
       }
-      
+        
       safeResponse(res, 200, { 
         activeSessions: sessions
       });

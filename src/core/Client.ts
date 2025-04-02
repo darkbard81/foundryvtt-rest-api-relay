@@ -7,6 +7,7 @@ export class Client {
   private id: string;
   private apiKey: string;
   private lastSeen: number;
+  private connectedSince: number; // Add this
   private connected: boolean;
 
   constructor(ws: WebSocket, id: string, apiKey: string) {
@@ -14,6 +15,7 @@ export class Client {
     this.id = id;
     this.apiKey = apiKey;
     this.lastSeen = Date.now();
+    this.connectedSince = Date.now(); // Add this
     this.connected = true;
     this.setupHandlers();
   }
@@ -33,6 +35,17 @@ export class Client {
       this.connected = false;
       this.handleClose();
     });
+  }
+
+  private ping(): void {
+    if (this.isAlive()) {
+      try {
+        this.ws.send(JSON.stringify({ type: "ping" }));
+      } catch (err) {
+        // Connection might be dead
+        this.connected = false;
+      }
+    }
   }
 
   private handleMessage(data: Buffer): void {
@@ -97,9 +110,13 @@ export class Client {
   }
 
   public isAlive(): boolean {
-    return this.connected && 
-           this.ws.readyState === WebSocket.OPEN && 
-           Date.now() - this.lastSeen < 60000;
+    // Give new connections at least 6 minutes before cleanup
+    const newConnectionGracePeriod = 360000;
+    const isNewConnection = Date.now() - this.connectedSince < newConnectionGracePeriod;
+    
+    return (this.connected && 
+            this.ws.readyState === WebSocket.OPEN && 
+            (isNewConnection || Date.now() - this.lastSeen < 60000));
   }
 
   public disconnect(): void {
