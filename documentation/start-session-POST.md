@@ -3,7 +3,7 @@
 Starts a headless Foundry session. Must provide a handshake token and the encrypted password.
 The postman file includes scripts that automate this.
 
-This is for interacting with Foundry without opening a separate browser. The connection is slower using a headless browser, and /sheet is not currently supperted in headless mode. Intented for cases when there is no user actively loggind in to Foundry when sending API requests. 
+This is for interacting with Foundry without opening a separate browser. The connection is slower using a headless browser, and /sheet is not currently supported in headless mode.  Intended for cases when there is no user actively logged in to Foundry when sending API requests.
 
 The API key in the Foundry REST API Module in that world *must* be the same one used to create the headless session.
 
@@ -48,6 +48,8 @@ $baseUrl/start-session
 ```
 
 ## Examples
+
+***DO NOT USE EXAMPLES IN PRODUCTION CODE. NEVER HARD CODE SENSITIVE DATA LIKE API KEYS OR PASSWORDS***
 
 ### Node.js
 ```js
