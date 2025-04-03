@@ -3,6 +3,14 @@
 Starts a headless Foundry session. Must provide a handshake token and the encrypted password.
 The postman file includes scripts that automate this.
 
+This is for interacting with Foundry without opening a separate browser. The connection is slower using a headless browser, and /sheet is not currently supperted in headless mode. Intented for cases when there is no user actively loggind in to Foundry when sending API requests. 
+
+The API key in the Foundry REST API Module in that world *must* be the same one used to create the headless session.
+
+Each API key is limited to one running headless session at a time.
+
+After 10 minutes of inactivity a headless session will be closed.
+
 ### Request
 
 #### Request URL
