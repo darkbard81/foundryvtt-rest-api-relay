@@ -21,13 +21,33 @@ import fs from "fs/promises";
 
 const upload = multer({ dest: "uploads/" });
 
+// Define a safe directory for uploads
+const SAFE_UPLOAD_DIR = path.resolve("uploads");
+
 // Middleware to handle `application/javascript` content type
 async function handleJavaScriptFile(req: Request, res: Response, next: NextFunction) {
   if (req.is("application/javascript")) {
     try {
-      const tempFilePath = path.join("uploads", `script_${Date.now()}.js`);
-      const chunks: Buffer[] = [];
+      // Generate a safe file path
+      const tempFileName = `script_${Date.now()}.js`;
+      const tempFilePath = path.join(SAFE_UPLOAD_DIR, tempFileName);
 
+      // Ensure the resolved path is within the safe directory
+      if (!tempFilePath.startsWith(SAFE_UPLOAD_DIR)) {
+        throw new Error("Invalid file path");
+      }
+
+      function validateFileExtension(filePath: string): boolean {
+        const allowedExtensions = [".js"];
+        const ext = path.extname(filePath).toLowerCase();
+        return allowedExtensions.includes(ext);
+      }
+
+      if (!validateFileExtension(tempFilePath)) {
+        throw new Error("Invalid file extension");
+      }
+
+      const chunks: Buffer[] = [];
       req.on("data", (chunk) => chunks.push(chunk));
       req.on("end", async () => {
         const fileBuffer = Buffer.concat(chunks);
@@ -53,6 +73,30 @@ async function handleJavaScriptFile(req: Request, res: Response, next: NextFunct
   } else {
     next();
   }
+}
+
+function validateScript(script: string): boolean {
+  // Disallow dangerous patterns
+  const forbiddenPatterns = [
+    /localStorage/,
+    /sessionStorage/,
+    /document\.cookie/,
+    /eval\(/,
+    /new Worker\(/,
+    /new SharedWorker\(/,
+    /__proto__/,
+    /atob\(/,
+    /btoa\(/,
+    /crypto\./,
+    /Intl\./,
+    /postMessage\(/,
+    /XMLHttpRequest/,
+    /importScripts\(/,
+    /apiKey/,
+    /privateKey/,
+    /password/,
+  ];
+  return !forbiddenPatterns.some((pattern) => pattern.test(script));
 }
 
 export const browserSessions = new Map<string, puppeteer.Browser>();
@@ -104,8 +148,43 @@ function cleanupInactiveSessions() {
 // Start the session cleanup interval when the module is loaded
 setInterval(cleanupInactiveSessions, 60000); // Check every minute
 
+// Sanitize the response to prevent sensitive data leakage
+function sanitizeResponse(response: any): any {
+  const sensitiveKeys = ['apiKey', 'privateKey', 'password']; // Add keys to remove here
+  let removedKeysCount = 0; // Counter for removed sensitive keys
+
+  if (Array.isArray(response)) {
+    return response.map(item => sanitizeResponse(item));
+  } else if (typeof response === 'object' && response !== null) {
+    const sanitized = { ...response };
+    function removeSensitiveKeys(obj: any): any {
+      if (Array.isArray(obj)) {
+        return obj.map(removeSensitiveKeys);
+      } else if (typeof obj === 'object' && obj !== null) {
+        const sanitizedObj: any = {};
+        for (const key in obj) {
+          if (!sensitiveKeys.includes(key)) {
+            sanitizedObj[key] = removeSensitiveKeys(obj[key]);
+          } else {
+            sanitizedObj[key] = "***REMOVED***"; // Replace sensitive value with a placeholder
+            removedKeysCount++; // Increment counter for each removed key
+          }
+        }
+        return sanitizedObj;
+      }
+      return obj;
+    }
+    const result = removeSensitiveKeys(sanitized);
+    log.info(`SanitizeResponse: Removed ${removedKeysCount} sensitive keys.`);
+    return result;
+  }
+  return response;
+}
+
 // Add this helper function at the top of your file
 function safeResponse(res: Response, statusCode: number, data: any): void {
+  // Sanitize the response data to prevent API key leakage
+  data = sanitizeResponse(data);
   if (!res.headersSent) {
     res.status(statusCode).json(data);
   } else {
@@ -555,6 +634,17 @@ export const apiRoutes = (app: express.Application): void => {
       });
 			return;
     }
+
+    if (type === "Macro") {
+      if (!validateScript(data.command)) {
+        log.warn(`Request for ${clientId} contains forbidden patterns in script`);
+        safeResponse(res, 400, { 
+          error: "Script contains forbidden patterns",
+          suggestion: "Ensure the script does not access localStorage, sessionStorage, or eval()"
+        });
+        return;
+      }
+    }
     
     const client = await ClientManager.getClient(clientId);
     if (!client) {
@@ -628,6 +718,17 @@ export const apiRoutes = (app: express.Application): void => {
     if (!updateData || Object.keys(updateData).length === 0) {
       safeResponse(res, 400, { error: "Update data is required in request body" });
       return;
+    }
+
+    if (updateData.type === "script") {
+      if (!validateScript(updateData.command)) {
+        log.warn(`Request for ${clientId} contains forbidden patterns in script`);
+        safeResponse(res, 400, { 
+          error: "Script contains forbidden patterns",
+          suggestion: "Ensure the script does not access localStorage, sessionStorage, or eval()"
+        });
+        return;
+      }
     }
     
     const client = await ClientManager.getClient(clientId);
@@ -2858,6 +2959,14 @@ export const apiRoutes = (app: express.Application): void => {
         });
         return;
       }
+      
+      // Example usage
+      if (!validateScript(script)) {
+        log.warn(`Reqquest for ${clientId} contains forbidden patterns`);
+        safeResponse(res, 400, {
+          error: "Script contains forbidden patterns",
+        });
+      }
 
       // Generate a unique requestId
       const requestId = `execute_js_${Date.now()}_${Math.random()
@@ -3346,8 +3455,23 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "POST",
-          path: "/start-headless-foundry",
-          description: "Starts a headless Foundry VTT session and logs in",
+          path: "/execute-js",
+          description: "Executes JavaScript in Foundry VTT",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "script", type: "string", description: "JavaScript code to execute. Excape quotes and backslashes. No comments.", location: "body" },
+            { name: "scriptFile", type: "file", description: "JavaScript file to execute", location: "body" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
+          ]
+        },
+        {
+          method: "POST",
+          path: "/session-handshake",
+          description: "Creates an ecryption key and returns a handshake token for use in starting a headless session",
           requiredParameters: [],
           requestHeaders: [
             { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
@@ -3356,12 +3480,25 @@ export const apiRoutes = (app: express.Application): void => {
             { key: "x-password", value: "password", description: "Password to log in with" }
           ],
           optionalParameters: [
-            { key: "x-world-name", value: "World Name", description: "Name of the world to join (if URL doesn't go directly to login)" }
+            { key: "x-world-name", value: "World Name", description: "Name of the world to join (if URL doesn't go directly to login)", location: "header" }
           ]
         },
         {
+          method: "POST",
+          path: "/start-session",
+          description: "Starts a headless Foundry VTT session and logs in",
+          requiredParameters: [
+            { name: "handshakeToken", type: "string", description: "Token received from the session-handshake endpoint", location: "body" },
+            { name: "encryptedPassword", type: "string", description: "Encrypted data for the Foundry login", location: "body" },
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
+          ],
+          optionalParameters: []
+        },
+        {
           method: "GET",
-          path: "/headless-foundry",
+          path: "/session",
           description: "Lists all active headless Foundry sessions",
           requiredParameters: [],
           optionalParameters: [],
@@ -3371,10 +3508,10 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "DELETE",
-          path: "/headless-foundry/:sessionId",
+          path: "/end-session",
           description: "Terminates a headless Foundry session",
           requiredParameters: [
-            { name: "sessionId", type: "string", description: "ID of the session to terminate", location: "path" }
+            { name: "sessionId", type: "string", description: "ID of the session to terminate", location: "query" }
           ],
           optionalParameters: [],
           requestHeaders: [
@@ -4166,6 +4303,9 @@ function setupMessageHandlers() {
             requestId: data.requestId,
             clientId: pending.clientId,
             error: data.error,
+            fromUuid: data.fromUuid || "",
+            toUuid: data.toUuid || "",
+            itemUuid: data.itemUuid || "",
             success: false
           });
         } else {
@@ -4177,7 +4317,7 @@ function setupMessageHandlers() {
             itemUuid: data.itemUuid,
             newItemUuid: data.newItemUuid,
             success: data.success,
-            message: data.message || "Item successfully transferred"
+            result: data.result || "Item successfully transferred"
           });
         }
         
@@ -4192,13 +4332,27 @@ function setupMessageHandlers() {
     log.info(`Received execute-js result for requestId: ${data.requestId}`);
   
     if (data.requestId && pendingRequests.has(data.requestId)) {
-      const { res } = pendingRequests.get(data.requestId)!;
-      pendingRequests.delete(data.requestId);
-  
-      if (data.success) {
-        safeResponse(res, 200, { result: data.result });
-      } else {
-        safeResponse(res, 500, { error: data.error });
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'execute-js') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            success: false,
+            error: data.error
+          });
+        } else {
+          safeResponse(pending.res, 200, {
+            requestId: data.requestId,
+            clientId: pending.clientId,
+            success: data.success,
+            result: data.result
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
       }
     }
   });

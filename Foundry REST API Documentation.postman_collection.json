@@ -1724,14 +1724,17 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "{{apiKey}}",
+								"value": "apiKey",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/delete?clientId={{clientId}}&selected=true",
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/delete?clientId=clientId&selected=true",
+							"protocol": "https",
 							"host": [
-								"{{baseUrl}}"
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
 							],
 							"path": [
 								"delete"
@@ -1739,7 +1742,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "{{clientId}}"
+									"value": "clientId"
 								},
 								{
 									"key": "uuid",
@@ -1903,14 +1906,17 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "{{apiKey}}",
+								"value": "apiKey",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/sheet?clientId={{clientId}}&selected=true&actor=true&scale=0.5",
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/sheet?clientId=clientId&selected=true&actor=true&scale=0.5",
+							"protocol": "https",
 							"host": [
-								"{{baseUrl}}"
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
 							],
 							"path": [
 								"sheet"
@@ -1918,7 +1924,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "{{clientId}}",
+									"value": "clientId",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -3196,17 +3202,14 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/last-round?clientId=clientId",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/last-round?clientId={{clientId}}",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"last-round"
@@ -3214,7 +3217,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -3345,17 +3348,14 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/end-encounter?clientId=clientId",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/end-encounter?clientId={{clientId}}",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"end-encounter"
@@ -3363,7 +3363,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -3503,7 +3503,7 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
@@ -3517,12 +3517,9 @@
 							}
 						},
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/add-to-encounter?clientId=clientId",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/add-to-encounter?clientId={{clientId}}",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"add-to-encounter"
@@ -3530,7 +3527,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -3674,7 +3671,7 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
@@ -3688,12 +3685,9 @@
 							}
 						},
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/remove-from-encounter?clientId=clientId",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/remove-from-encounter?clientId={{clientId}}",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"remove-from-encounter"
@@ -3701,7 +3695,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -3836,17 +3830,14 @@
 						"header": [
 							{
 								"key": "x-api-key",
-								"value": "apiKey",
+								"value": "{{apiKey}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "https://foundryvtt-rest-api-relay.fly.dev/kill?clientId=clientId&selected=true",
-							"protocol": "https",
+							"raw": "{{baseUrl}}/kill?clientId={{clientId}}&selected=true",
 							"host": [
-								"foundryvtt-rest-api-relay",
-								"fly",
-								"dev"
+								"{{baseUrl}}"
 							],
 							"path": [
 								"kill"
@@ -3854,7 +3845,7 @@
 							"query": [
 								{
 									"key": "clientId",
-									"value": "clientId",
+									"value": "{{clientId}}",
 									"description": "Auth token to connect to specific Foundry world"
 								},
 								{
@@ -5044,6 +5035,222 @@
 					],
 					"cookie": [],
 					"body": "{\n    \"activeSessions\": [\n        {\n            \"id\": \"baec8e88-567d-45ec-9ab5-88107dd6ceb4\",\n            \"clientId\": \"foundry-DKL4ZKK80lUZFgSJ\",\n            \"lastActivity\": 1743521258626,\n            \"idleMinutes\": 0\n        }\n    ]\n}"
+				}
+			]
+		},
+		{
+			"name": "/execute-js",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "x-api-key",
+						"value": "{{apiKey}}",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"script\": \"const settingsCopy=game.settings.get(\\\"foundry-rest-api\\\", \\\"wsRelayUrl\\\");return settingsCopy;\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{baseUrl}}/execute-js?clientId={{clientId}}",
+					"host": [
+						"{{baseUrl}}"
+					],
+					"path": [
+						"execute-js"
+					],
+					"query": [
+						{
+							"key": "clientId",
+							"value": "{{clientId}}"
+						}
+					]
+				},
+				"description": "#### Executes Javascript in Foundry\n\nAccepts the script as a file upload, or as a raw string in the body with the key \"script\".\n\nIf included as a raw string in the body excape quotes and backslashes, and remove comments.\n\nReturns the result of the code execution."
+			},
+			"response": [
+				{
+					"name": "Successful Response (raw)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"script\": \"const settingsCopy=game.settings.get(\\\"foundry-rest-api\\\", \\\"wsRelayUrl\\\");return settingsCopy;\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/execute-js?clientId=clientId",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"execute-js"
+							],
+							"query": [
+								{
+									"key": "clientId",
+									"value": "clientId"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "133"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"85-1CQL/UMmLQu/WwO8jFIGz+6MSL8\""
+						},
+						{
+							"key": "Date",
+							"value": "Sun, 06 Apr 2025 12:07:44 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"requestId\": \"execute_js_1743941264472_e64i59d\",\n    \"clientId\": \"foundry-rQLkX9c1U2Tzkyh8\",\n    \"success\": true,\n    \"result\": \"ws://localhost:3010/\"\n}"
+				},
+				{
+					"name": "Successful Response (file)",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-api-key",
+								"value": "apiKey",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "file",
+							"file": {
+								"src": "postman-cloud:///1f012dd9-99d4-4a60-9482-68d1fef65049"
+							},
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://foundryvtt-rest-api-relay.fly.dev/execute-js?clientId=clientId",
+							"protocol": "https",
+							"host": [
+								"foundryvtt-rest-api-relay",
+								"fly",
+								"dev"
+							],
+							"path": [
+								"execute-js"
+							],
+							"query": [
+								{
+									"key": "clientId",
+									"value": "clientId"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "X-Powered-By",
+							"value": "Express"
+						},
+						{
+							"key": "Access-Control-Allow-Origin",
+							"value": "*"
+						},
+						{
+							"key": "Access-Control-Allow-Methods",
+							"value": "GET, HEAD, PUT, PATCH, POST, DELETE"
+						},
+						{
+							"key": "Access-Control-Allow-Headers",
+							"value": "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+						},
+						{
+							"key": "Access-Control-Allow-Credentials",
+							"value": "true"
+						},
+						{
+							"key": "Content-Type",
+							"value": "application/json; charset=utf-8"
+						},
+						{
+							"key": "Content-Length",
+							"value": "124"
+						},
+						{
+							"key": "ETag",
+							"value": "W/\"7c-fKPJXW/DHVxsgvbUidmL+GS4XdY\""
+						},
+						{
+							"key": "Date",
+							"value": "Sun, 06 Apr 2025 12:14:28 GMT"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"requestId\": \"execute_js_1743941668667_09rhg4m\",\n    \"clientId\": \"foundry-rQLkX9c1U2Tzkyh8\",\n    \"success\": true,\n    \"result\": \"hello world\"\n}"
 				}
 			]
 		}
