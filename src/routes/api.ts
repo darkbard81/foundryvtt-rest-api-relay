@@ -16,6 +16,44 @@ import { getRedisClient } from '../config/redis';
 import { returnHtmlTemplate } from "../config/htmlResponseTemplate";
 import { getHeadlessClientId, registerHeadlessSession } from "../workers/headlessSessions";
 import * as puppeteer from 'puppeteer';
+import multer from "multer";
+import fs from "fs/promises";
+
+const upload = multer({ dest: "uploads/" });
+
+// Middleware to handle `application/javascript` content type
+async function handleJavaScriptFile(req: Request, res: Response, next: NextFunction) {
+  if (req.is("application/javascript")) {
+    try {
+      const tempFilePath = path.join("uploads", `script_${Date.now()}.js`);
+      const chunks: Buffer[] = [];
+
+      req.on("data", (chunk) => chunks.push(chunk));
+      req.on("end", async () => {
+        const fileBuffer = Buffer.concat(chunks);
+        await fs.writeFile(tempFilePath, fileBuffer);
+        req.file = { 
+          path: tempFilePath, 
+          fieldname: "file", 
+          originalname: "script.js", 
+          encoding: "7bit", 
+          mimetype: "application/javascript", 
+          size: fileBuffer.length, 
+          destination: "uploads/", 
+          filename: path.basename(tempFilePath),
+          stream: new PassThrough().end(fileBuffer),
+          buffer: fileBuffer
+        }; // Simulate multer's `req.file`
+        next();
+      });
+    } catch (error) {
+      log.error(`Error handling JavaScript file upload: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process JavaScript file" });
+    }
+  } else {
+    next();
+  }
+}
 
 export const browserSessions = new Map<string, puppeteer.Browser>();
 export const apiKeyToSession = new Map<string, { sessionId: string, clientId: string, lastActivity: number }>();
@@ -2786,6 +2824,82 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
+  // Execute JavaScript in Foundry VTT
+  router.post("/execute-js", requestForwarderMiddleware, authMiddleware, trackApiUsage, upload.single("scriptFile"), handleJavaScriptFile, async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+  
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+  
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+  
+    try {
+      let script: string;
+
+      // Handle file upload
+      if (req.file) {
+        const filePath = req.file.path;
+        script = await fs.readFile(filePath, "utf-8");
+        await fs.unlink(filePath); // Clean up the uploaded file
+      } else if (req.body.script) {
+        script = req.body.script;
+      } else {
+        safeResponse(res, 400, {
+          error: "A JavaScript script or scriptFile is required",
+        });
+        return;
+      }
+
+      // Generate a unique requestId
+      const requestId = `execute_js_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(2, 9)}`;
+
+      pendingRequests.set(requestId, {
+        res,
+        type: "execute-js",
+        clientId,
+        timestamp: Date.now(),
+      });
+
+      const sent = client.send({
+        type: "execute-js",
+        script,
+        requestId,
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, {
+          error: "Failed to send execute-js request to Foundry client",
+        });
+        return;
+      }
+
+      // Set timeout for the request
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, {
+            error: "Timeout waiting for execute-js response from Foundry client",
+          });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing execute-js request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process execute-js request" });
+    }
+  });
+
   // API Documentation endpoint - returns all available endpoints with their documentation
   router.get("/api/docs", async (req: Request, res: Response) => {
     // Build comprehensive documentation object with all endpoints
@@ -3301,7 +3415,7 @@ interface PendingRequest {
   type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 
          'rolls' | 'lastroll' | 'roll' | 'actor-sheet' | 'macro-execute' | 'macros' | 
          'encounters' | 'start-encounter' | 'next-turn' | 'next-round' | 'last-turn' | 'last-round' | 
-         'end-encounter' | 'add-to-encounter' | 'remove-from-encounter' | 'kill' | 'decrease' | 'increase' | 'give';
+         'end-encounter' | 'add-to-encounter' | 'remove-from-encounter' | 'kill' | 'decrease' | 'increase' | 'give' | 'execute-js';
   clientId?: string;
   uuid?: string;
   path?: string;
@@ -4069,6 +4183,22 @@ function setupMessageHandlers() {
         
         // Remove pending request
         pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  // Handler for execute-js result
+  ClientManager.onMessageType("execute-js-result", (client: Client, data: any) => {
+    log.info(`Received execute-js result for requestId: ${data.requestId}`);
+  
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const { res } = pendingRequests.get(data.requestId)!;
+      pendingRequests.delete(data.requestId);
+  
+      if (data.success) {
+        safeResponse(res, 200, { result: data.result });
+      } else {
+        safeResponse(res, 500, { error: data.error });
       }
     }
   });
