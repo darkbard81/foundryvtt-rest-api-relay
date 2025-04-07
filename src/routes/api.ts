@@ -1996,7 +1996,7 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
-  // Add this to the router after the other endpoints
+  // Give item
   router.post("/give", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const fromUuid = req.body.fromUuid as string;
@@ -2063,6 +2063,126 @@ export const apiRoutes = (app: express.Application): void => {
     } catch (error) {
       log.error(`Error processing give item request: ${error}`);
       safeResponse(res, 500, { error: "Failed to process give item request" });
+    }
+  });
+
+  // Select token(s)
+  router.post("/select", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const uuids = Array.isArray(req.body.uuids) ? req.body.uuids : [];
+    const name = req.body.name as string || null;
+    const data = req.body.data || null;
+    const overwrite = req.body.overwrite === true || false;
+
+    if (!clientId) {
+      safeResponse(res, 400, {
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+
+    if (!uuids.length && !name && !data) {
+      safeResponse(res, 400, {
+        error: "Either uuids array, name, or data is required",
+        howToUse: "Provide uuids, name, or data parameters"
+      });
+      return;
+    }
+
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+
+    try {
+      // Generate a unique requestId
+      const requestId = `select_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'select',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "select-entities",
+        uuids,
+        name,
+        data,
+        overwrite,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send select request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing select request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process select request" });
+    }
+  });
+
+  // Return selected token(s)
+  router.get("/selected", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json(), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { error: "Invalid client ID" });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `return_selected_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: "selected",
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "get-selected-entities",
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send return selected request to Foundry client" });
+        return;
+      }
+      
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 408, { error: "Request timed out" });
+        }
+      }, 10000);
+    } catch (error) {
+      log.error(`Error processing return selected request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process return selected request" });
     }
   });
   
@@ -3455,6 +3575,37 @@ export const apiRoutes = (app: express.Application): void => {
         },
         {
           method: "POST",
+          path: "/select",
+          description: "Selects entities in Foundry",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "uuids", type: "array", description: "UUID of the entities to select", location: "body" },
+            { name: "name", type: "string", description: "Name of the entities to select", location: "body" },
+            { name: "data", type: "object", description: "Data to select entities by (ex. actor.system.attributes.hp.value)", location: "body" },
+            { name: "overwrite", type: "boolean", description: "Whether to overwrite existing selections", location: "body" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/selected",
+          description: "Returns the currently selected entities in Foundry",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "POST",
           path: "/execute-js",
           description: "Executes JavaScript in Foundry VTT",
           requiredParameters: [
@@ -3552,7 +3703,8 @@ interface PendingRequest {
   type: 'search' | 'entity' | 'structure' | 'contents' | 'create' | 'update' | 'delete' | 
          'rolls' | 'lastroll' | 'roll' | 'actor-sheet' | 'macro-execute' | 'macros' | 
          'encounters' | 'start-encounter' | 'next-turn' | 'next-round' | 'last-turn' | 'last-round' | 
-         'end-encounter' | 'add-to-encounter' | 'remove-from-encounter' | 'kill' | 'decrease' | 'increase' | 'give' | 'execute-js';
+         'end-encounter' | 'add-to-encounter' | 'remove-from-encounter' | 'kill' | 'decrease' | 'increase' | 'give' | 'execute-js' |
+         'select' | 'selected';
   clientId?: string;
   uuid?: string;
   path?: string;
@@ -4348,6 +4500,64 @@ function setupMessageHandlers() {
             clientId: pending.clientId,
             success: data.success,
             result: data.result
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  // Client-side handlers for selection operations
+  ClientManager.onMessageType("select-entities-result", (client: Client, data: any) => {
+    log.info(`Received select entities result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'select') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            clientId: client.getId(),
+            error: data.error,
+            message: "Failed to select entities"
+          });
+        } else {
+          // Send response with metadata
+          safeResponse(pending.res, 200, {
+            clientId: client.getId(),
+            success: data.success,
+            count: data.count,
+            message: data.message
+          });
+        }
+        
+        // Remove pending request
+        pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  ClientManager.onMessageType("selected-entities-result", (client: Client, data: any) => {
+    log.info(`Received selected entities result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const pending = pendingRequests.get(data.requestId)!;
+      
+      if (pending.type === 'selected') {
+        if (data.error) {
+          safeResponse(pending.res, 400, {
+            clientId: client.getId(),
+            error: data.error,
+            message: "Failed to get selected entities"
+          });
+        } else {
+          // Send response with metadata
+          safeResponse(pending.res, 200, {
+            clientId: client.getId(),
+            success: data.success,
+            selected: data.selected
           });
         }
         
