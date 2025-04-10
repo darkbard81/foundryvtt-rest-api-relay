@@ -2073,6 +2073,7 @@ export const apiRoutes = (app: express.Application): void => {
     const name = req.body.name as string || null;
     const data = req.body.data || null;
     const overwrite = req.body.overwrite === true || false;
+    const all = req.body.all === true || false;
 
     if (!clientId) {
       safeResponse(res, 400, {
@@ -2113,6 +2114,7 @@ export const apiRoutes = (app: express.Application): void => {
         name,
         data,
         overwrite,
+        all,
         requestId
       });
 
@@ -3584,6 +3586,7 @@ export const apiRoutes = (app: express.Application): void => {
             { name: "uuids", type: "array", description: "UUID of the entities to select", location: "body" },
             { name: "name", type: "string", description: "Name of the entities to select", location: "body" },
             { name: "data", type: "object", description: "Data to select entities by (ex. actor.system.attributes.hp.value)", location: "body" },
+            { name: "all", type: "boolean", description: "Whether to select all entities on the scene", location: "body" },
             { name: "overwrite", type: "boolean", description: "Whether to overwrite existing selections", location: "body" }
           ],
           requestHeaders: [
