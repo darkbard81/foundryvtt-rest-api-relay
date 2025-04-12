@@ -18,7 +18,26 @@ The server provides WebSocket connectivity and a REST API to access Foundry VTT 
 - [Roadmap](https://github.com/users/ThreeHats/projects/7)
 
 ### Installation
+
+#### Using Docker Compose (Recommended)
+The easiest way to run the relay server is using Docker Compose:
+
+```bash
+# Clone the repository
+git clone https://github.com/ThreeHats/foundryvtt-rest-api-relay.git
+cd foundryvtt-rest-api-relay
+
+# Start the server
+docker-compose up -d
+
+# To stop the server
+docker-compose down
 ```
+
+The server will be available at http://localhost:3010 and will automatically restart unless manually stopped.
+
+#### Manual Installation
+```bash
 ### Install dependencies
 pnpm install
 
