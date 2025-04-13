@@ -83,5 +83,3 @@ After installing the module, go to the module settings to configure:
 - Integrates with Foundry's QuickInsert for powerful search capabilities
 - Provides WebSocket relay functionality for external applications
 
-#### Testing
-- The project includes a simple HTML test client at test-client.html that can be used to test the WebSocket relay functionality.
