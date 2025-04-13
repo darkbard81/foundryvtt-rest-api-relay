@@ -48,7 +48,7 @@ PORT=3010 pnpm dev
 pnpm build
 
 ### Start production server
-pnpm start
+pnpm local
 ```
 
 ## Foundry REST API Module
