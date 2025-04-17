@@ -246,8 +246,8 @@ export const apiRoutes = (app: express.Application): void => {
       
       console.log(`User created: ${user.getDataValue('email')}`);
       
-      // Return the user (exclude password)
-      safeResponse(res, 201, {
+      // Return the user (exclude password but include API key)
+      res.status(201).json({
         id: user.getDataValue('id'),
         email: user.getDataValue('email'),
         apiKey: user.getDataValue('apiKey'),
