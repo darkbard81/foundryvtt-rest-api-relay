@@ -14,7 +14,7 @@ export const corsMiddleware = (options: CorsOptions = {}) => {
   const defaultOptions: CorsOptions = {
     origin: "*",  // Allow all origins
     methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-api-key"],
     exposedHeaders: [],
     credentials: true, // Important for cookies/auth to work
     maxAge: 86400, // 24 hours
@@ -28,7 +28,7 @@ export const corsMiddleware = (options: CorsOptions = {}) => {
     // Handle CORS headers
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Methods", corsOptions.methods!.join(", "));
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key");
     
     if (corsOptions.credentials) {
       res.header("Access-Control-Allow-Credentials", "true");
