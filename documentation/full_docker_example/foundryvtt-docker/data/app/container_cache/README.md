@@ -1,0 +1,1 @@
+HERE YOU MUST PUT THE foundryvtt-XX.YYY.zip
