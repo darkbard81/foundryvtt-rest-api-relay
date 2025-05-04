@@ -4,6 +4,11 @@ import { log } from "../middleware/logger";
 import { ClientManager } from "../core/ClientManager";
 import { validateHeadlessSession } from "../workers/headlessSessions";
 
+// Read ping interval from environment variable, default to 20 seconds
+const WEBSOCKET_PING_INTERVAL_MS = parseInt(process.env.WEBSOCKET_PING_INTERVAL_MS || '20000', 10);
+// Read client cleanup interval from environment variable, default to 15 seconds
+const CLIENT_CLEANUP_INTERVAL_MS = parseInt(process.env.CLIENT_CLEANUP_INTERVAL_MS || '15000', 10);
+
 export const wsRoutes = (wss: WebSocketServer): void => {
   wss.on("connection", async (ws, req) => {
     try {
@@ -36,7 +41,7 @@ export const wsRoutes = (wss: WebSocketServer): void => {
           ws.ping(Buffer.from("keepalive"));
           log.debug(`Sent WebSocket protocol ping to ${id}`);
         }
-      }, 20000); // Every 20 seconds
+      }, WEBSOCKET_PING_INTERVAL_MS); // Use configured interval
 
       // Handle disconnection
       ws.on("close", () => {
@@ -69,7 +74,7 @@ export const wsRoutes = (wss: WebSocketServer): void => {
   // Set up periodic cleanup
   setInterval(() => {
     ClientManager.cleanupInactiveClients();
-  }, 15000);
+  }, CLIENT_CLEANUP_INTERVAL_MS); // Use configured interval
 };
 
 // Export the ClientManager for usage in API routes

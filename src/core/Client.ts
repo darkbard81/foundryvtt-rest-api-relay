@@ -2,6 +2,9 @@ import { log } from "../middleware/logger";
 import { WebSocket } from "ws";
 import { ClientManager } from "./ClientManager";
 
+// Read inactivity timeout from environment variable, default to 60 seconds
+const CLIENT_INACTIVITY_TIMEOUT_MS = parseInt(process.env.CLIENT_INACTIVITY_TIMEOUT_MS || '60000', 10);
+
 export class Client {
   private ws: WebSocket;
   private id: string;
@@ -114,9 +117,10 @@ export class Client {
     const newConnectionGracePeriod = 360000;
     const isNewConnection = Date.now() - this.connectedSince < newConnectionGracePeriod;
     
+    // Use the configured inactivity timeout
     return (this.connected && 
             this.ws.readyState === WebSocket.OPEN && 
-            (isNewConnection || Date.now() - this.lastSeen < 60000));
+            (isNewConnection || Date.now() - this.lastSeen < CLIENT_INACTIVITY_TIMEOUT_MS));
   }
 
   public disconnect(): void {

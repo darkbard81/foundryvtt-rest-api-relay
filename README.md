@@ -51,6 +51,19 @@ pnpm build
 pnpm local
 ```
 
+### Configuration
+
+The server can be configured using environment variables:
+
+- `PORT`: The port the server listens on (default: `3010`).
+- `NODE_ENV`: Set to `production` for production deployments.
+- `CLIENT_INACTIVITY_TIMEOUT_MS`: Time in milliseconds before an idle WebSocket client is considered disconnected (default: `60000`).
+- `WEBSOCKET_PING_INTERVAL_MS`: Interval in milliseconds for sending WebSocket protocol pings to keep connections alive (default: `20000`).
+- `CLIENT_CLEANUP_INTERVAL_MS`: Interval in milliseconds for checking and removing inactive clients (default: `15000`).
+- `REDIS_URL`: Connection URL for Redis (optional, used for multi-instance deployments and session storage).
+
+When using Docker Compose, you can set these in the `environment` section of the `docker-compose.yml` file.
+
 ## Foundry REST API Module
 A Foundry VTT module that connects to the relay server and provides access to Foundry data.
 

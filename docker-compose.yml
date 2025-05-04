@@ -7,6 +7,10 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3010
+      # Optional: Configure connection handling (defaults shown)
+      - CLIENT_INACTIVITY_TIMEOUT_MS=60000 # (60 seconds)
+      - WEBSOCKET_PING_INTERVAL_MS=20000  # (20 seconds)
+      - CLIENT_CLEANUP_INTERVAL_MS=15000  # (15 seconds)
     volumes:
       - ./data:/app/data
     command: pnpm local
