@@ -3131,6 +3131,256 @@ export const apiRoutes = (app: express.Application): void => {
     }
   });
 
+  // Get file system structure
+  router.get("/file-system", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const path = req.query.path as string || "";
+    const source = req.query.source as string || "data";
+    const recursive = req.query.recursive === "true";
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { 
+        error: "Invalid client ID"
+      });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `file_system_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'file-system',
+        clientId,
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "get-file-system",
+        path,
+        source,
+        recursive,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send request to Foundry client" });
+        return;
+      }
+      
+      // Set timeout for request
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 504, { error: "Request timed out" });
+        }
+      }, 15000); // 15 second timeout for file system operations
+    } catch (error) {
+      log.error(`Error processing file system request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process file system request" });
+      return;
+    }
+  });
+
+  // Upload a file (handles both base64 and binary)
+  router.post("/upload", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json({ limit: '50mb' }), async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const path = req.query.path || req.body.path as string;
+    const filename = req.query.filename || req.body.filename as string;
+    const source = req.query.source as string || req.body.source || "data";
+    const mimeType = req.query.mimeType as string || "application/octet-stream";
+    const overwrite = req.query.overwrite === "true" || req.body.overwrite === "true";
+    const fileData = req.body.fileData as string | undefined;
+
+    if (!clientId) {
+      safeResponse(res, 400, {
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+
+    if (!path || !filename) {
+      safeResponse(res, 400, {
+        error: "Required parameters missing",
+        requiredParams: "path, filename",
+        howToUse: "Add ?path=your/path&filename=your-file.png to your request"
+      });
+      return;
+    }
+
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, {
+        error: "Invalid client ID"
+      });
+      return;
+    }
+
+    try {
+      let binaryData: number[] | null = null;
+
+      // Determine if the file data is base64 or binary
+      if (fileData) {
+        // Handle base64 data
+        if (!fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/)) {
+          safeResponse(res, 400, {
+          error: "Invalid file data format",
+          expected: "Base64 encoded data URL (e.g., data:image/png;base64,...)"
+          });
+          return;
+        }
+        } else {
+        // Handle binary data
+        const chunks: Buffer[] = [];
+        await new Promise<void>((resolve, reject) => {
+          req.on("data", chunk => chunks.push(Buffer.from(chunk)));
+          req.on("end", () => resolve());
+          req.on("error", err => reject(err));
+        });
+
+        const buffer = Buffer.concat(chunks);
+        if (buffer.length > 0) {
+          binaryData = Array.from(buffer);
+        } else {
+          safeResponse(res, 400, {
+          error: "No file data received",
+          tip: "Send the binary file data in the request body or base64 data in fileData field."
+          });
+          return;
+        }
+      }
+
+      // Generate a unique requestId
+      const requestId = `upload_file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      pendingRequests.set(requestId, {
+        res,
+        type: 'upload-file',
+        clientId,
+        timestamp: Date.now()
+      });
+
+      const payload: any = {
+        type: "upload-file",
+        path,
+        filename,
+        source: source || "data",
+        overwrite: overwrite || false,
+        requestId
+      };
+
+      if (fileData) {
+        payload.fileData = fileData;
+        payload.mimeType = mimeType || null;
+      } else if (binaryData) {
+        payload.binaryData = binaryData;
+        payload.mimeType = mimeType;
+      }
+
+      const sent = client.send(payload);
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send request to Foundry client" });
+        return;
+      }
+
+      // Set timeout for request - file uploads may take longer
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 504, { error: "File upload request timed out" });
+        }
+      }, 30000); // 30 second timeout for uploads
+    } catch (error) {
+      log.error(`Error processing file upload request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process file upload request" });
+      return;
+    }
+  });
+
+  // Download a file
+  router.get("/download", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+    const clientId = req.query.clientId as string;
+    const path = req.query.path as string;
+    const source = req.query.source as string || "data";
+    const format = req.query.format as string || "binary"; // Default to binary format for downloads
+    
+    if (!clientId) {
+      safeResponse(res, 400, { 
+        error: "Client ID is required",
+        howToUse: "Add ?clientId=yourClientId to your request"
+      });
+      return;
+    }
+    
+    if (!path) {
+      safeResponse(res, 400, { 
+        error: "Path parameter is required",
+        howToUse: "Add &path=yourFilePath to your request" 
+      });
+      return;
+    }
+    
+    const client = await ClientManager.getClient(clientId);
+    if (!client) {
+      safeResponse(res, 404, { 
+        error: "Invalid client ID"
+      });
+      return;
+    }
+    
+    try {
+      // Generate a unique requestId
+      const requestId = `download_file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      
+      pendingRequests.set(requestId, { 
+        res,
+        type: 'download-file',
+        clientId,
+        format, // Store the requested format in the pending request
+        timestamp: Date.now() 
+      });
+      
+      const sent = client.send({
+        type: "download-file",
+        path,
+        source,
+        requestId
+      });
+
+      if (!sent) {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 500, { error: "Failed to send request to Foundry client" });
+        return;
+      }
+      
+      // Set timeout for request
+      setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          safeResponse(res, 504, { error: "File download request timed out" });
+        }
+      }, 20000); // 20 second timeout for downloads
+    } catch (error) {
+      log.error(`Error processing file download request: ${error}`);
+      safeResponse(res, 500, { error: "Failed to process file download request" });
+      return;
+    }
+  });
+
   // API Documentation endpoint - returns all available endpoints with their documentation
   router.get("/api/docs", async (req: Request, res: Response) => {
     // Build comprehensive documentation object with all endpoints
@@ -3623,6 +3873,59 @@ export const apiRoutes = (app: express.Application): void => {
           ]
         },
         {
+          method: "GET",
+          path: "/file-system",
+          description: "Lists the folder and file structure from the Foundry server",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "path", type: "string", description: "Directory path to list (defaults to root)", location: "query" },
+            { name: "source", type: "string", description: "Source to browse (data, public, s3, etc.)", location: "query" },
+            { name: "recursive", type: "boolean", description: "Whether to recursively list subdirectories", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" }
+          ]
+        },
+        {
+          method: "POST",
+          path: "/upload",
+          description: "Uploads a file to the Foundry server",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "path", type: "string", description: "Directory path to upload to", location: "query" },
+            { name: "filename", type: "string", description: "Name of the file to create", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "file", type: "file", description: "File to upload", location: "body" },
+            { name: "fileData", type: "string", description: "Base64-encoded file data", location: "body" },
+            { name: "source", type: "string", description: "Source to upload to (data, s3, etc.)", location: "query" },
+            { name: "overwrite", type: "boolean", description: "Whether to overwrite existing files", location: "query" },
+            { name: "mimeType", type: "string", description: "MIME type of the file", location: "query" }
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
+            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
+          ]
+        },
+        {
+          method: "GET",
+          path: "/download",
+          description: "Downloads a file from the Foundry server",
+          requiredParameters: [
+            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
+            { name: "path", type: "string", description: "Path to the file to download", location: "query" }
+          ],
+          optionalParameters: [
+            { name: "source", type: "string", description: "Source to download from (data, public, s3, etc.)", location: "query" },
+            { name: "format", type: "string", description: "Format to download the file in (e.g. 'json', 'raw'). Defaults to raw.", location: "query" },
+          ],
+          requestHeaders: [
+            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" }
+          ]
+        },
+        {
           method: "POST",
           path: "/session-handshake",
           description: "Creates an ecryption key and returns a handshake token for use in starting a headless session",
@@ -3707,7 +4010,7 @@ interface PendingRequest {
          'rolls' | 'lastroll' | 'roll' | 'actor-sheet' | 'macro-execute' | 'macros' | 
          'encounters' | 'start-encounter' | 'next-turn' | 'next-round' | 'last-turn' | 'last-round' | 
          'end-encounter' | 'add-to-encounter' | 'remove-from-encounter' | 'kill' | 'decrease' | 'increase' | 'give' | 'execute-js' |
-         'select' | 'selected';
+         'select' | 'selected' | 'file-system' | 'upload-file' | 'download-file';
   clientId?: string;
   uuid?: string;
   path?: string;
@@ -4566,6 +4869,113 @@ function setupMessageHandlers() {
         
         // Remove pending request
         pendingRequests.delete(data.requestId);
+      }
+    }
+  });
+
+  // Handler for file system structure result
+  ClientManager.onMessageType("file-system-result", (client: Client, data: any) => {
+    log.info(`Received file system result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const request = pendingRequests.get(data.requestId)!; // Add non-null assertion
+      pendingRequests.delete(data.requestId);
+      
+      if (data.error) {
+        safeResponse(request.res, 500, { 
+          clientId: client.getId(),
+          requestId: data.requestId,
+          error: data.error,
+          source: data.source,
+          path: data.path
+        });
+        return;
+      }
+      
+      safeResponse(request.res, 200, {
+        clientId: client.getId(),
+        requestId: data.requestId,
+        success: true,
+        path: data.path,
+        source: data.source,
+        recursive: data.recursive,
+        files: data.results.filter((item: any) => item.type === 'file'),
+        directories: data.results.filter((item: any) => item.type === 'directory')
+      });
+    }
+  });
+
+  // Handler for file upload result
+  ClientManager.onMessageType("upload-file-result", (client: Client, data: any) => {
+    log.info(`Received file upload result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const request = pendingRequests.get(data.requestId)!; // Add non-null assertion
+      pendingRequests.delete(data.requestId);
+      
+      if (data.error) {
+        safeResponse(request.res, 500, { 
+          clientId: client.getId(),
+          requestId: data.requestId,
+          error: data.error
+        });
+        return;
+      }
+      
+      safeResponse(request.res, 201, {
+        clientId: client.getId(),
+        requestId: data.requestId,
+        success: true,
+        path: data.path,
+        message: "File uploaded successfully"
+      });
+    }
+  });
+
+  // Handler for file download result
+  ClientManager.onMessageType("download-file-result", (client: Client, data: any) => {
+    log.info(`Received file download result for requestId: ${data.requestId}`);
+    
+    if (data.requestId && pendingRequests.has(data.requestId)) {
+      const request = pendingRequests.get(data.requestId)!;
+      pendingRequests.delete(data.requestId);
+      
+      if (data.error) {
+        safeResponse(request.res, 500, { 
+          clientId: client.getId(),
+          requestId: data.requestId,
+          error: data.error
+        });
+        return;
+      }
+      
+      // Check if the client wants raw binary data or JSON response
+      const format = request.format || 'binary'; // Default to binary format
+      
+      if (format === 'binary' || format === 'raw') {
+        // Extract the base64 data and send as binary
+        const base64Data = data.fileData.split(',')[1];
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        // Set the appropriate content type
+        request.res.setHeader('Content-Type', data.mimeType || 'application/octet-stream');
+        request.res.setHeader('Content-Disposition', `attachment; filename="${data.filename}"`);
+        request.res.setHeader('Content-Length', buffer.length);
+        
+        // Send the binary data
+        request.res.status(200).end(buffer);
+      } else {
+        // Send JSON response with the file data
+        safeResponse(request.res, 200, {
+          clientId: client.getId(),
+          requestId: data.requestId,
+          success: true,
+          path: data.path,
+          filename: data.filename,
+          mimeType: data.mimeType,
+          fileData: data.fileData,
+          size: Buffer.from(data.fileData.split(',')[1], 'base64').length
+        });
       }
     }
   });
