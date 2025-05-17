@@ -209,7 +209,7 @@ export const apiRoutes = (app: express.Application): void => {
   router.get("/api/status", (req: Request, res: Response) => {
     res.json({ 
       status: "ok",
-      version: "1.0.0",
+      version: "1.8.1",
       websocket: "/relay"
     });
   });
@@ -3385,7 +3385,7 @@ export const apiRoutes = (app: express.Application): void => {
   router.get("/api/docs", async (req: Request, res: Response) => {
     // Build comprehensive documentation object with all endpoints
     const apiDocs = {
-      version: "1.0.0",
+      version: "1.8.1",
       baseUrl: `${req.protocol}://${req.get('host')}`,
       authentication: {
         required: true,
