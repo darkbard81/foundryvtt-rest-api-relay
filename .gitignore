@@ -29,3 +29,4 @@ lerna-debug.log*
 .DS_Store
 pnpm-lock.yaml
 .VSCodeCounter/
+*.notes

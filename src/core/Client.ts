@@ -2,9 +2,6 @@ import { log } from "../middleware/logger";
 import { WebSocket } from "ws";
 import { ClientManager } from "./ClientManager";
 
-// Read inactivity timeout from environment variable, default to 60 seconds
-const CLIENT_INACTIVITY_TIMEOUT_MS = parseInt(process.env.CLIENT_INACTIVITY_TIMEOUT_MS || '60000', 10);
-
 export class Client {
   private ws: WebSocket;
   private id: string;
@@ -113,14 +110,10 @@ export class Client {
   }
 
   public isAlive(): boolean {
-    // Give new connections at least 6 minutes before cleanup
-    const newConnectionGracePeriod = 360000;
-    const isNewConnection = Date.now() - this.connectedSince < newConnectionGracePeriod;
-    
-    // Use the configured inactivity timeout
-    return (this.connected && 
-            this.ws.readyState === WebSocket.OPEN && 
-            (isNewConnection || Date.now() - this.lastSeen < CLIENT_INACTIVITY_TIMEOUT_MS));
+    // Only check if the WebSocket connection is still open
+    // This relies on the WebSocket protocol-level ping/pong mechanism to verify connection health
+    // As long as the client is responding to protocol pings, we consider it alive
+    return (this.connected && this.ws.readyState === WebSocket.OPEN);
   }
 
   public disconnect(): void {
