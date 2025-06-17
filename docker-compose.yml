@@ -12,5 +12,5 @@ services:
       - CLIENT_CLEANUP_INTERVAL_MS=15000  # (15 seconds)
     volumes:
       - ./data:/app/data
-    command: pnpm local
+    command: pnpm local:sqlite
     restart: unless-stopped
