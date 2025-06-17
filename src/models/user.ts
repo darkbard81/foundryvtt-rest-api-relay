@@ -15,14 +15,13 @@ export class User extends Model {
   public createdAt!: Date;
   public updatedAt!: Date;
   public stripeCustomerId?: string;
-  public subscriptionStatus?: string; // 'free', 'active', 'past_due', 'canceled'
+  public subscriptionStatus?: string;
   public subscriptionId?: string;
   public subscriptionEndsAt?: Date;
 
-  // Add these utility methods that work regardless of storage type
+  // Memory store methods
   static async findOne(options: any): Promise<any> {
     if (isMemoryStore) {
-      // Handle memory store lookups
       if (options.where && options.where.apiKey) {
         return (sequelize as any).getUser(options.where.apiKey);
       }
@@ -32,12 +31,57 @@ export class User extends Model {
       }
       return null;
     }
-    // Use normal Sequelize behavior
     return super.findOne(options);
+  }
+
+  static async create(data: any): Promise<any> {
+    if (isMemoryStore) {
+      const memoryStore = sequelize as any;
+      
+      if (memoryStore.users.has(data.email)) {
+        throw new Error('User already exists');
+      }
+      
+      const user: any = {
+        id: memoryStore.users.size + 1,
+        email: data.email,
+        password: data.password,
+        apiKey: data.apiKey || crypto.randomBytes(16).toString('hex'),
+        requestsThisMonth: data.requestsThisMonth || 0,
+        subscriptionStatus: data.subscriptionStatus || 'free',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        getDataValue: function(key: string): any { 
+          return (this as any)[key]; 
+        },
+        setDataValue: function(key: string, value: any): void { 
+          (this as any)[key] = value; 
+        }
+      };
+      
+      memoryStore.users.set(data.email, user);
+      memoryStore.apiKeys.set(user.apiKey, data.email);
+      
+      return user;
+    }
+    
+    return super.create(data);
+  }
+
+  static async findAll(options: any): Promise<any[]> {
+    if (isMemoryStore) {
+      const memoryStore = sequelize as any;
+      if (options.where && options.where.apiKey) {
+        const user = memoryStore.getUser(options.where.apiKey);
+        return user ? [user] : [];
+      }
+      return Array.from(memoryStore.users.values());
+    }
+    return super.findAll(options);
   }
 }
 
-// Only initialize with Sequelize if we're not using memory store
+// Initialize with Sequelize if not using memory store
 if (!isMemoryStore) {
   User.init({
     id: {
@@ -87,15 +131,13 @@ if (!isMemoryStore) {
   }, {
     sequelize: sequelize as Sequelize,
     modelName: 'User',
-    tableName: 'Users', // Be explicit about the table name
+    tableName: 'Users',
     hooks: {
       beforeCreate: async (user) => {
-        if (user.getDataValue('password')) { // Use getDataValue instead of direct property access
-          console.log('Hashing password for user:', user.getDataValue('email'));
+        if (user.getDataValue('password')) {
           const salt = await bcrypt.genSalt(10);
           const hashedPassword = await bcrypt.hash(user.getDataValue('password'), salt);
           user.setDataValue('password', hashedPassword);
-          console.log('Password hashed successfully');
         }
       },
       beforeUpdate: async (user) => {

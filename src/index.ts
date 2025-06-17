@@ -15,6 +15,7 @@ import { initRedis, closeRedis } from './config/redis';
 import { scheduleHeadlessSessionsCheck } from './workers/headlessSessions';
 import { redisSessionMiddleware } from './middleware/redisSession';
 import { startHealthMonitoring, logSystemHealth, getSystemHealth } from './utils/healthCheck';
+import { setupCronJobs } from './cron';
 
 config();
 
@@ -84,8 +85,7 @@ app.get('/api/health', (req, res) => {
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
 
 // Initialize services sequentially
-async function initializeServices() {
-  try {
+async function initializeServices() {  try {
     // First initialize database
     await sequelize.sync();
     
@@ -96,6 +96,10 @@ async function initializeServices() {
         log.warn('Redis initialization failed - continuing with local storage only');
       }
     }
+    
+    // Set up cron jobs
+    setupCronJobs();
+    log.info('Cron jobs initialized');
     
     // Start health monitoring
     logSystemHealth(); // Log initial health
@@ -115,6 +119,8 @@ async function initializeServices() {
 
 // Schedule the headless sessions worker
 scheduleHeadlessSessionsCheck();
+
+// Note: Cron jobs are already initialized in initServices()
 
 // Handle graceful shutdown
 process.on('SIGTERM', async () => {

@@ -8,8 +8,11 @@
     "start": "node dist/index.js",
     "dev": "cross-env PORT=3010 dotenv -e .env tsx watch src/index.ts",
     "db:migrate": "tsx src/models/init.ts",
-    "local": "cross-env DB_TYPE=memory PORT=3010 tsx watch src/index.ts",
-    "postinstall": "npx puppeteer install"
+    "local": "cross-env DB_TYPE=sqlite PORT=3010 tsx watch src/index.ts",
+    "memory": "cross-env DB_TYPE=memory PORT=3010 tsx watch src/index.ts",
+    "postinstall": "npx puppeteer install",
+    "reset-requests": "dotenv -e .env tsx scripts/reset-requests.ts",
+    "usage-stats": "dotenv -e .env tsx scripts/usage-stats.ts"
   },
   "author": "ThreeHats",
   "license": "MIT",
@@ -17,6 +20,7 @@
   "dependencies": {
     "@clerk/backend": "^1.24.3",
     "@stripe/stripe-js": "^5.10.0",
+    "@types/node-cron": "^3.0.11",
     "axios": "^1.8.1",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -25,6 +29,7 @@
     "ioredis": "^5.6.0",
     "jsdom": "^26.0.0",
     "multer": "1.4.5-lts.2",
+    "node-cron": "^4.1.0",
     "node-fetch": "^3.3.2",
     "pg": "^8.13.3",
     "prettier": "^3.5.2",

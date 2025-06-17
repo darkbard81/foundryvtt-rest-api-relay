@@ -2,6 +2,8 @@
 import { Sequelize } from 'sequelize';
 import { log } from '../middleware/logger';
 import { MemoryStore } from './memoryStore';
+import path from 'path';
+import fs from 'fs';
 
 export class DatabaseAdapter {
   static getSequelize() {
@@ -13,7 +15,26 @@ export class DatabaseAdapter {
       return new MemoryStore();
     }
     
-    // Default to PostgreSQL
+    if (dbType === 'sqlite') {
+      log.info('Using SQLite database');
+      
+      // Ensure data directory exists
+      const dataDir = path.join(process.cwd(), 'data');
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      
+      const dbPath = path.join(dataDir, 'relay.db');
+      log.info(`SQLite database path: ${dbPath}`);
+      
+      return new Sequelize({
+        dialect: 'sqlite',
+        storage: dbPath,
+        logging: false
+      });
+    }
+    
+    // Default to PostgreSQL for production
     if (!dbUrl) {
       log.error('DATABASE_URL environment variable is not set - stopping');
       process.exit(1);

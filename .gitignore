@@ -30,3 +30,4 @@ lerna-debug.log*
 pnpm-lock.yaml
 .VSCodeCounter/
 *.notes
+data/relay.db

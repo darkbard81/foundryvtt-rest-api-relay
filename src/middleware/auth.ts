@@ -31,22 +31,20 @@ declare global {
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   // If using memory store in local dev, bypass authentication
   if (isMemoryStore) {
-    // For local development with memory store, bypass auth
     log.info('Using memory store - bypassing API key authentication');
     
-    // Create a plain object instead of using User.build()
     req.user = { 
       id: 1, 
       email: 'admin@example.com', 
       apiKey: 'local-dev', 
       requestsThisMonth: 0,
-      subscriptionStatus: 'active'  // Always active in dev mode
+      subscriptionStatus: 'active'
     };
     next();
     return;
   }
   
-  // Normal authentication flow for production
+  // Normal authentication flow for SQLite and PostgreSQL
   const apiKey = req.headers['x-api-key'] as string;
   const clientId = req.query.clientId as string;
   

@@ -102,12 +102,9 @@ async function handlePaymentSucceeded(invoice: any) {
         return;
       }
 
-      // Reset usage count at the beginning of a new billing cycle
-      await user.update({
-        requestsThisMonth: 0
-      });
-
-      log.info(`Reset request count for user ${user.id} after payment`);
+      // Log the payment success only - request count management is handled by
+      // the monthly cron job in src/cron/monthlyReset.ts
+      log.info(`Payment success recorded for user ${user.id} (subscription: ${user.subscriptionStatus})`);
     }
   } catch (error) {
     log.error(`Error handling payment success: ${error}`);
