@@ -181,7 +181,6 @@ function sanitizeResponse(response: any): any {
   return response;
 }
 
-// Add this helper function at the top of your file
 function safeResponse(res: Response, statusCode: number, data: any): void {
   // Sanitize the response data to prevent API key leakage
   data = sanitizeResponse(data);
@@ -3192,16 +3191,48 @@ export const apiRoutes = (app: express.Application): void => {
       return;
     }
   });
-
   // Upload a file (handles both base64 and binary)
-  router.post("/upload", requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json({ limit: '50mb' }), async (req: Request, res: Response) => {
+  router.post("/upload", requestForwarderMiddleware, authMiddleware, trackApiUsage, async (req: Request, res: Response) => {
+    // Handle different content types
+    const contentType = req.get('Content-Type') || '';
+    let parsePromise: Promise<void>;
+    
+    if (contentType.includes('application/json')) {
+      // Parse as JSON with size limit
+      parsePromise = new Promise((resolve, reject) => {
+        express.json({ limit: '50mb' })(req, res, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    } else {
+      // Parse as raw binary data
+      parsePromise = new Promise((resolve, reject) => {
+        express.raw({ limit: '50mb', type: '*/*' })(req, res, (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+    }
+    
+    try {
+      await parsePromise;
+    } catch (error) {
+      safeResponse(res, 400, {
+        error: "Failed to parse request body",
+        details: error instanceof Error ? error.message : String(error),
+        suggestion: "Check your request size (max 50MB) and content type"
+      });
+      return;
+    }
+
     const clientId = req.query.clientId as string;
-    const path = req.query.path || req.body.path as string;
-    const filename = req.query.filename || req.body.filename as string;
-    const source = req.query.source as string || req.body.source || "data";
-    const mimeType = req.query.mimeType as string || "application/octet-stream";
-    const overwrite = req.query.overwrite === "true" || req.body.overwrite === "true";
-    const fileData = req.body.fileData as string | undefined;
+    const path = req.query.path || req.body?.path as string;
+    const filename = req.query.filename || req.body?.filename as string;
+    const source = req.query.source as string || req.body?.source || "data";
+    const mimeType = req.query.mimeType as string || req.body?.mimeType || "application/octet-stream";
+    const overwrite = req.query.overwrite === "true" || req.body?.overwrite === "true" || req.body?.overwrite === true;
+    const fileData = req.body?.fileData as string | undefined;
 
     if (!clientId) {
       safeResponse(res, 400, {
@@ -3230,38 +3261,60 @@ export const apiRoutes = (app: express.Application): void => {
 
     try {
       let binaryData: number[] | null = null;
+      let processedFileData: string | null = null;
 
-      // Determine if the file data is base64 or binary
+      // Handle different types of file data
       if (fileData) {
-        // Handle base64 data
-        if (!fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/)) {
+        // Handle base64 data from JSON body
+        const base64Match = fileData.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (!base64Match) {
           safeResponse(res, 400, {
-          error: "Invalid file data format",
-          expected: "Base64 encoded data URL (e.g., data:image/png;base64,...)"
+            error: "Invalid file data format",
+            expected: "Base64 encoded data URL (e.g., data:image/png;base64,...)",
+            received: fileData.substring(0, 50) + "..."
           });
           return;
         }
+        
+        // Validate base64 data
+        try {
+          const base64Data = base64Match[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          if (buffer.length === 0) {
+            throw new Error("Empty file data");
+          }
+          processedFileData = fileData;
+          log.info(`Processing base64 file data: ${buffer.length} bytes`);
+        } catch (error) {
+          safeResponse(res, 400, {
+            error: "Invalid base64 data",
+            details: error instanceof Error ? error.message : String(error)
+          });
+          return;
+        }
+      } else if (contentType.includes('application/octet-stream') || !contentType.includes('application/json')) {
+        // Handle binary data from raw body
+        if (Buffer.isBuffer(req.body) && req.body.length > 0) {
+          binaryData = Array.from(req.body);
+          log.info(`Processing binary file data: ${req.body.length} bytes`);
         } else {
-        // Handle binary data
-        const chunks: Buffer[] = [];
-        await new Promise<void>((resolve, reject) => {
-          req.on("data", chunk => chunks.push(Buffer.from(chunk)));
-          req.on("end", () => resolve());
-          req.on("error", err => reject(err));
+          safeResponse(res, 400, {
+            error: "No file data received",
+            tip: "Send binary file data with Content-Type: application/octet-stream, or JSON with base64 fileData field",
+            contentType: contentType
+          });
+          return;
+        }
+      } else {
+        safeResponse(res, 400, {
+          error: "No file data provided",
+          howToProvide: [
+            "Option 1: Send JSON with fileData field containing base64 data URL",
+            "Option 2: Send binary data with Content-Type: application/octet-stream"
+          ]
         });
-
-        const buffer = Buffer.concat(chunks);
-        if (buffer.length > 0) {
-          binaryData = Array.from(buffer);
-        } else {
-          safeResponse(res, 400, {
-          error: "No file data received",
-          tip: "Send the binary file data in the request body or base64 data in fileData field."
-          });
-          return;
-        }
+        return;
       }
-
       // Generate a unique requestId
       const requestId = `upload_file_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -3281,13 +3334,30 @@ export const apiRoutes = (app: express.Application): void => {
         requestId
       };
 
-      if (fileData) {
-        payload.fileData = fileData;
-        payload.mimeType = mimeType || null;
+      if (processedFileData) {
+        payload.fileData = processedFileData;
+        payload.mimeType = mimeType;
       } else if (binaryData) {
         payload.binaryData = binaryData;
         payload.mimeType = mimeType;
+      } else {
+        pendingRequests.delete(requestId);
+        safeResponse(res, 400, {
+          error: "No valid file data to send",
+          debug: { hasFileData: !!processedFileData, hasBinaryData: !!binaryData }
+        });
+        return;
       }
+
+      log.info(`Sending upload request: ${JSON.stringify({ 
+        requestId, 
+        path, 
+        filename, 
+        source, 
+        hasFileData: !!processedFileData, 
+        hasBinaryData: !!binaryData,
+        payloadSize: processedFileData ? processedFileData.length : (binaryData ? binaryData.length : 0)
+      })}`);
 
       const sent = client.send(payload);
 
@@ -3301,12 +3371,21 @@ export const apiRoutes = (app: express.Application): void => {
       setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          safeResponse(res, 504, { error: "File upload request timed out" });
+          safeResponse(res, 504, { 
+            error: "File upload request timed out",
+            suggestion: "Try uploading a smaller file or check your connection to Foundry"
+          });
         }
       }, 30000); // 30 second timeout for uploads
     } catch (error) {
       log.error(`Error processing file upload request: ${error}`);
-      safeResponse(res, 500, { error: "Failed to process file upload request" });
+      if (error instanceof Error) {
+        log.error(`Upload error stack: ${error.stack}`);
+      }
+      safeResponse(res, 500, { 
+        error: "Failed to process file upload request",
+        details: error instanceof Error ? error.message : String(error)
+      });
       return;
     }
   });
@@ -4904,24 +4983,54 @@ function setupMessageHandlers() {
       });
     }
   });
-
   // Handler for file upload result
   ClientManager.onMessageType("upload-file-result", (client: Client, data: any) => {
-    log.info(`Received file upload result for requestId: ${data.requestId}`);
+    log.info(`Received file upload result for requestId: ${data.requestId}`, { 
+      success: data.success, 
+      error: data.error,
+      path: data.path 
+    });
     
     if (data.requestId && pendingRequests.has(data.requestId)) {
-      const request = pendingRequests.get(data.requestId)!; // Add non-null assertion
+      const request = pendingRequests.get(data.requestId)!;
       pendingRequests.delete(data.requestId);
       
       if (data.error) {
+        log.error(`File upload failed for requestId ${data.requestId}: ${data.error}`);
         safeResponse(request.res, 500, { 
           clientId: client.getId(),
           requestId: data.requestId,
-          error: data.error
+          error: data.error,
+          success: false
         });
         return;
       }
       
+      // Validate that the upload was actually successful
+      if (data.success !== true) {
+        log.warn(`File upload result missing success flag for requestId ${data.requestId}`);
+        safeResponse(request.res, 500, {
+          clientId: client.getId(),
+          requestId: data.requestId,
+          error: "Upload response missing success confirmation",
+          success: false
+        });
+        return;
+      }
+      
+      // Validate that we have a path
+      if (!data.path) {
+        log.warn(`File upload result missing path for requestId ${data.requestId}`);
+        safeResponse(request.res, 500, {
+          clientId: client.getId(),
+          requestId: data.requestId,
+          error: "Upload response missing file path",
+          success: false
+        });
+        return;
+      }
+      
+      log.info(`File upload successful for requestId ${data.requestId}: ${data.path}`);
       safeResponse(request.res, 201, {
         clientId: client.getId(),
         requestId: data.requestId,
@@ -4929,6 +5038,8 @@ function setupMessageHandlers() {
         path: data.path,
         message: "File uploaded successfully"
       });
+    } else {
+      log.warn(`Received upload result for unknown requestId: ${data.requestId}`);
     }
   });
 
