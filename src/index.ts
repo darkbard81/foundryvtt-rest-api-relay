@@ -32,7 +32,24 @@ app.use(corsMiddleware());
 
 app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 
-// Parse JSON bodies
+// Special handling for /upload endpoint to preserve raw body for binary uploads
+app.use('/upload', (req, res, next) => {
+  const contentType = req.headers['content-type'] || '';
+  
+  if (!contentType.includes('application/json')) {
+    express.raw({ 
+      type: '*/*', 
+      limit: '50mb' 
+    })(req, res, next);
+  } else {
+    // For JSON requests to /upload, use the regular JSON parser
+    express.json({ 
+      limit: '50mb' 
+    })(req, res, next);
+  }
+});
+
+// Parse JSON bodies for all other routes
 app.use(express.json());
 
 // Add Redis session middleware
