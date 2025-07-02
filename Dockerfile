@@ -2,12 +2,16 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install required build dependencies for bcrypt, PostgreSQL, and Puppeteer (Chromium)
+# Install required build dependencies for bcrypt, PostgreSQL, SQLite3, and Puppeteer (Chromium)
 RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
+    build-essential \
     postgresql-client \
+    sqlite3 \
+    libsqlite3-dev \
+    pkg-config \
     wget \
     ca-certificates \
     fonts-liberation \
@@ -49,6 +53,10 @@ RUN npm install -g pnpm && \
 
 # Add node-fetch explicitly since it's needed for the forwarder
 RUN pnpm add node-fetch @types/node-fetch
+
+# Force rebuild SQLite3 from source for the current platform
+RUN pnpm rebuild sqlite3
+RUN cd node_modules/.pnpm/sqlite3*/node_modules/sqlite3 && npm run install --build-from-source
 
 # Copy source code
 COPY . .
