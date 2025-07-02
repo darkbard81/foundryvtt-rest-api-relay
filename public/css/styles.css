@@ -177,6 +177,12 @@ textarea {
     color: var(--error-color);
 }
 
+.message.warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
 .user-info {
     background-color: var(--light-bg);
     padding: 1rem;
