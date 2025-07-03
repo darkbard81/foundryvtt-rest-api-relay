@@ -4012,8 +4012,7 @@ export const apiRoutes = (app: express.Application): void => {
           requestHeaders: [
             { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
             { key: "x-foundry-url", value: "https://your-foundry-server.com", description: "URL to the Foundry VTT server" },
-            { key: "x-username", value: "username", description: "Username to log in with" },
-            { key: "x-password", value: "password", description: "Password to log in with" }
+            { key: "x-username", value: "username", description: "Username to log in with" }
           ],
           optionalParameters: [
             { key: "x-world-name", value: "World Name", description: "Name of the world to join (if URL doesn't go directly to login)", location: "header" }

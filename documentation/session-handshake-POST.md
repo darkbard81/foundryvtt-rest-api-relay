@@ -17,7 +17,6 @@ $baseUrl/session-handshake
 | x-api-key | \{\{apiKey\}\} |   |
 | x-foundry-url | http://localhost:30000 | The url to your foundry game |
 | x-username | Gamemaster | The username to log in with (eg. "Gamemaster") |
-| x-password | \{\{password\}\} | The password to log in with |
 | x-world-name | worldName | (Optional) The name of the world as it appears in foundry if the world is not already loaded. |
 
 #### Request Payload
