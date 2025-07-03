@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16
+    container_name: foundryvtt-relay-db
+    environment:
+      - POSTGRES_DB=foundryvtt_relay
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=example
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  relay:
+    image: threehats/foundryvtt-rest-api-relay:latest
+    container_name: foundryvtt-rest-api-relay
+    ports:
+      - "3010:3010"
+    environment:
+      - NODE_ENV=development
+      - PORT=3010
+      - DB_TYPE=postgres
+      - DATABASE_URL=postgres://postgres:example@db:5432/foundryvtt_relay
+      # Optional: Configure connection handling (defaults shown)
+      - WEBSOCKET_PING_INTERVAL_MS=20000  # (20 seconds)
+      - CLIENT_CLEANUP_INTERVAL_MS=15000  # (15 seconds)
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
