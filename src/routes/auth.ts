@@ -2,44 +2,56 @@ import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/user';
 import crypto from 'crypto';
+import { safeResponse } from './shared';
 
 const router = Router();
 
 // Register a new user
 router.post('/register', async (req: Request, res: Response) => {
+  console.log('Registration attempt in auth.ts');
   try {
     const { email, password } = req.body;
     
+    console.log(`Registration attempt for: ${email}`);
+    
     if (!email || !password) {
-      res.status(400).json({ error: 'Email and password are required' });
+      console.log('Missing email or password');
+      safeResponse(res, 400, { error: 'Email and password are required' });
       return;
     }
     
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      res.status(409).json({ error: 'User already exists' });
+      console.log(`User already exists: ${email}`);
+      safeResponse(res, 409, { error: 'User already exists' });
       return;
     }
     
+    console.log('Creating new user...');
     // Create a new user
     const user = await User.create({
       email,
-      password,
-      apiKey: crypto.randomBytes(16).toString('hex'),
+      password, // Will be hashed by the beforeCreate hook
+      apiKey: crypto.randomBytes(16).toString('hex'), // Explicitly generate an API key
       requestsThisMonth: 0
     });
     
-    // Return the user (exclude password)
+    console.log(`User created: ${user.getDataValue('email')}`);
+    
+    // Return the user (exclude password but include API key)
     res.status(201).json({
-      id: user.id,
-      email: user.email,
-      apiKey: user.apiKey,
-      createdAt: user.createdAt
+      id: user.getDataValue('id'),
+      email: user.getDataValue('email'),
+      apiKey: user.getDataValue('apiKey'),
+      createdAt: user.getDataValue('createdAt'),
+      subscriptionStatus: user.getDataValue('subscriptionStatus') || 'free'
     });
+    return;
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Registration failed' });
+    safeResponse(res, 500, { error: 'Registration failed' });
+    return;
   }
 });
 
