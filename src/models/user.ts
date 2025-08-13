@@ -2,22 +2,26 @@ import { Model, DataTypes, Sequelize } from 'sequelize';
 import { sequelize } from '../sequelize';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { log } from '../utils/logger';
 
 // Check if we're using the memory store
 const isMemoryStore = 'getUser' in sequelize;
 
 export class User extends Model {
-  public id!: number;
-  public email!: string;
-  public password!: string;
-  public apiKey!: string;
-  public requestsThisMonth!: number;
-  public createdAt!: Date;
-  public updatedAt!: Date;
-  public stripeCustomerId?: string;
-  public subscriptionStatus?: string;
-  public subscriptionId?: string;
-  public subscriptionEndsAt?: Date;
+  // Declare types for TypeScript without public fields to avoid Sequelize conflicts
+  declare id: number;
+  declare email: string;
+  declare password: string;
+  declare apiKey: string;
+  declare requestsThisMonth: number;
+  declare requestsToday: number;
+  declare lastRequestDate: Date;
+  declare createdAt: Date;
+  declare updatedAt: Date;
+  declare stripeCustomerId?: string;
+  declare subscriptionStatus?: string;
+  declare subscriptionId?: string;
+  declare subscriptionEndsAt?: Date;
 
   // Memory store methods
   static async findOne(options: any): Promise<any> {
@@ -48,6 +52,8 @@ export class User extends Model {
         password: data.password,
         apiKey: data.apiKey || crypto.randomBytes(16).toString('hex'),
         requestsThisMonth: data.requestsThisMonth || 0,
+        requestsToday: data.requestsToday || 0,
+        lastRequestDate: data.lastRequestDate || null,
         subscriptionStatus: data.subscriptionStatus || 'free',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -111,6 +117,14 @@ if (!isMemoryStore) {
       type: DataTypes.INTEGER,
       defaultValue: 0
     },
+    requestsToday: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0
+    },
+    lastRequestDate: {
+      type: DataTypes.DATEONLY,
+      allowNull: true
+    },
     stripeCustomerId: {
       type: DataTypes.STRING,
       allowNull: true
@@ -142,7 +156,7 @@ if (!isMemoryStore) {
       },
       beforeUpdate: async (user) => {
         if (user.changed('password')) {
-          console.log('Updating password for user:', user.getDataValue('email'));
+          log.debug('Updating password for user', { email: user.getDataValue('email') });
           const salt = await bcrypt.genSalt(10);
           const hashedPassword = await bcrypt.hash(user.getDataValue('password'), salt);
           user.setDataValue('password', hashedPassword);

@@ -1,6 +1,6 @@
 // src/routes/websocket.ts
 import { WebSocketServer, WebSocket } from "ws";
-import { log } from "../middleware/logger";
+import { log } from "../utils/logger";
 import { ClientManager } from "../core/ClientManager";
 import { validateHeadlessSession } from "../workers/headlessSessions";
 
@@ -16,6 +16,13 @@ export const wsRoutes = (wss: WebSocketServer): void => {
       const url = new URL(req.url || "", `http://${req.headers.host}`);
       const id = url.searchParams.get("id");
       const token = url.searchParams.get("token");
+      const worldId = url.searchParams.get("worldId");
+      const worldTitle = url.searchParams.get("worldTitle");
+      const foundryVersion = url.searchParams.get("foundryVersion");
+      const systemId = url.searchParams.get("systemId");
+      const systemTitle = url.searchParams.get("systemTitle");
+      const systemVersion = url.searchParams.get("systemVersion");
+      const customName = url.searchParams.get("customName");
 
       if (!id || !token) {
         log.warn("Rejecting WebSocket connection: missing id or token");
@@ -32,7 +39,7 @@ export const wsRoutes = (wss: WebSocketServer): void => {
       }
 
       // Register client
-      const client = await ClientManager.addClient(ws, id, token);
+      const client = await ClientManager.addClient(ws, id, token, worldId, worldTitle, foundryVersion, systemId, systemTitle, systemVersion, customName);
       if (!client) return; // Connection already rejected
 
       // Add protocol-level ping/pong to keep the TCP connection active

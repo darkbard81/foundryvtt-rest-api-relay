@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ClientManager } from '../core/ClientManager';
-import { pendingRequests, safeResponse, PendingRequest, PendingRequestType, log } from './shared';
+import { pendingRequests, safeResponse, PendingRequest, PendingRequestType } from './shared';
+import { log } from '../utils/logger';
 
 /**
  * Defines a parameter to be extracted from the request.
@@ -93,7 +94,6 @@ export function createApiRoute(config: ApiRouteConfig) {
               }
               break;
             case 'array':
-                log.info(`value: ${value}`);
               if (!Array.isArray(value)) {
                 // Try to parse as array if it's a string from query params
                 try {
@@ -190,7 +190,7 @@ export function createApiRoute(config: ApiRouteConfig) {
         }
       }, timeoutDuration);
     } catch (error) {
-      log.error(`Error processing ${config.type} request:`, error);
+      log.error(`Error processing ${config.type} request:`, { error });
       safeResponse(res, 500, { error: `Internal server error during ${config.type} request` });
     }
   };

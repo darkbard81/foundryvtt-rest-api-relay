@@ -1,4 +1,4 @@
-import { log } from "../middleware/logger";
+import { log } from "../utils/logger";
 import { WebSocket } from "ws";
 import { ClientManager } from "./ClientManager";
 
@@ -9,14 +9,39 @@ export class Client {
   private lastSeen: number;
   private connectedSince: number; // Add this
   private connected: boolean;
+  private worldId: string | null;
+  private worldTitle: string | null;
+  private foundryVersion: string | null;
+  private systemId: string | null;
+  private systemTitle: string | null;
+  private systemVersion: string | null;
+  private customName: string | null;
 
-  constructor(ws: WebSocket, id: string, apiKey: string) {
+  constructor(
+    ws: WebSocket, 
+    id: string, 
+    apiKey: string, 
+    worldId: string | null, 
+    worldTitle: string | null,
+    foundryVersion: string | null = null,
+    systemId: string | null = null,
+    systemTitle: string | null = null,
+    systemVersion: string | null = null,
+    customName: string | null = null
+  ) {
     this.ws = ws;
     this.id = id;
     this.apiKey = apiKey;
     this.lastSeen = Date.now();
     this.connectedSince = Date.now(); // Add this
     this.connected = true;
+    this.worldId = worldId;
+    this.worldTitle = worldTitle;
+    this.foundryVersion = foundryVersion;
+    this.systemId = systemId;
+    this.systemTitle = systemTitle;
+    this.systemVersion = systemVersion;
+    this.customName = customName;
     this.setupHandlers();
   }
 
@@ -59,13 +84,9 @@ export class Client {
         return;
       }
       
-      // For all other messages
+      // For all other messages 
       ClientManager.handleIncomingMessage(this.id, message);
       
-      // Only broadcast non-ping/pong messages
-      if (message.type !== "pong") {
-        this.broadcast(message);
-      }
     } catch (error) {
       log.error("Error handling message", { error, clientId: this.id });
     }
@@ -99,6 +120,34 @@ export class Client {
 
   public getApiKey(): string {
     return this.apiKey;
+  }
+
+  public getWorldId(): string | null {
+    return this.worldId;
+  }
+
+  public getWorldTitle(): string | null {
+    return this.worldTitle;
+  }
+
+  public getFoundryVersion(): string | null {
+    return this.foundryVersion;
+  }
+
+  public getSystemId(): string | null {
+    return this.systemId;
+  }
+
+  public getSystemTitle(): string | null {
+    return this.systemTitle;
+  }
+
+  public getSystemVersion(): string | null {
+    return this.systemVersion;
+  }
+
+  public getCustomName(): string | null {
+    return this.customName;
   }
 
   public updateLastSeen(): void {

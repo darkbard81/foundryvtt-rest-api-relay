@@ -1,9 +1,11 @@
 import * as cron from 'node-cron';
 import { resetMonthlyRequests } from './monthlyReset';
-import { log } from '../middleware/logger';
+import { resetDailyRequests } from './dailyReset';
+import { log } from '../utils/logger';
 
 // Track scheduled jobs - use the correct type
 let monthlyResetJob: cron.ScheduledTask | null = null;
+let dailyResetJob: cron.ScheduledTask | null = null;
 
 /**
  * Set up all cron jobs for the application
@@ -28,19 +30,16 @@ export function setupCronJobs(): void {
           } catch (retryError) {
             log.error(`Monthly reset retry also failed: ${retryError}`);
           }
-        }, 5 * 60 * 1000); // 5 minutes
+        }, 5 * 60 * 1000); // Retry after 5 minutes
       }
     }, {
-      timezone: 'UTC'  // Remove the 'scheduled' property - it doesn't exist
+      timezone: 'UTC'
     });
     
-    // Start the job manually since we removed 'scheduled: true'
     monthlyResetJob.start();
-    
-    log.info('Monthly request reset cron job scheduled successfully for 00:00 UTC on 1st of each month');
+    log.info('Monthly reset cron job scheduled');
     
     // Also run immediately when starting the server if it's the 1st day of month
-    // This ensures we don't miss a reset if the server was down at midnight
     const now = new Date();
     if (now.getDate() === 1) {
       log.info('Today is the 1st day of the month - running request reset immediately');
@@ -49,7 +48,38 @@ export function setupCronJobs(): void {
       });
     }
   } else {
-    log.warn('Monthly reset job already scheduled - skipping duplicate scheduling');
+    log.info('Monthly reset cron job already scheduled');
+  }
+  
+  if (!dailyResetJob) {
+    // Reset daily request counts at midnight every day
+    // Cron format: minute hour day month day-of-week
+    dailyResetJob = cron.schedule('0 0 * * *', async () => {
+      log.info('Running scheduled daily request count reset');
+      try {
+        await resetDailyRequests();
+        log.info('Daily request count reset completed successfully via cron job');
+      } catch (error) {
+        log.error(`Error in daily reset cron job: ${error}`);
+        // Add retry logic
+        setTimeout(async () => {
+          log.info('Retrying daily request count reset after failure');
+          try {
+            await resetDailyRequests();
+            log.info('Daily request count reset retry successful');
+          } catch (retryError) {
+            log.error(`Daily reset retry also failed: ${retryError}`);
+          }
+        }, 5 * 60 * 1000); // Retry after 5 minutes
+      }
+    }, {
+      timezone: 'UTC'
+    });
+    
+    dailyResetJob.start();
+    log.info('Daily reset cron job scheduled');
+  } else {
+    log.info('Daily reset cron job already scheduled');
   }
 
   log.info('Cron jobs setup completed');
@@ -64,16 +94,29 @@ export function stopCronJobs(): void {
     monthlyResetJob = null;
     log.info('Monthly reset cron job stopped');
   }
+  
+  if (dailyResetJob) {
+    dailyResetJob.stop();
+    dailyResetJob = null;
+    log.info('Daily reset cron job stopped');
+  }
 }
 
 /**
  * Get status of cron jobs
  */
-export function getCronJobStatus(): { monthlyReset: { scheduled: boolean; active: boolean } } {
+export function getCronJobStatus(): { 
+  monthlyReset: { scheduled: boolean; active: boolean };
+  dailyReset: { scheduled: boolean; active: boolean };
+} {
   return {
     monthlyReset: {
       scheduled: monthlyResetJob !== null,
-      active: monthlyResetJob !== null // If the job exists, it's active
+      active: monthlyResetJob !== null
+    },
+    dailyReset: {
+      scheduled: dailyResetJob !== null,
+      active: dailyResetJob !== null
     }
   };
 }
@@ -84,4 +127,12 @@ export function getCronJobStatus(): { monthlyReset: { scheduled: boolean; active
 export async function triggerMonthlyReset(): Promise<void> {
   log.info('Manually triggering monthly request count reset');
   await resetMonthlyRequests();
+}
+
+/**
+ * Manually trigger the daily reset (for testing or emergency use)
+ */
+export async function triggerDailyReset(): Promise<void> {
+  log.info('Manually triggering daily request count reset');
+  await resetDailyRequests();
 }

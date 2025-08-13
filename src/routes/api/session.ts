@@ -3,11 +3,12 @@ import express from 'express';
 import { requestForwarderMiddleware } from '../../middleware/requestForwarder';
 import { authMiddleware, trackApiUsage } from '../../middleware/auth';
 import { ClientManager } from '../../core/ClientManager';
-import { log, pendingRequests, safeResponse } from '../shared';
+import { safeResponse } from '../shared';
+import { log } from '../../utils/logger';
 import crypto from 'crypto';
 import * as puppeteer from 'puppeteer';
 import { getRedisClient } from '../../config/redis';
-import { getHeadlessClientId, registerHeadlessSession } from "../../workers/headlessSessions";
+import { registerHeadlessSession } from "../../workers/headlessSessions";
 
 // Temporary handshake tokens
 interface PendingHandshake {
@@ -31,7 +32,16 @@ export const sessionRouter = Router();
 
 const commonMiddleware = [requestForwarderMiddleware, authMiddleware, trackApiUsage];
 
-// Create a handshake token for the client to use
+/**
+ * Create a handshake token for the client to use for secure authentication
+ * 
+ * @route POST /session-handshake
+ * @param {string} x-api-key - [header] API key header
+ * @param {string} x-foundry-url - [header] Foundry URL header
+ * @param {string} x-world-name - [header,?] World name header
+ * @param {string} x-username - [header] Username header
+ * @returns {object} Handshake token and encryption details
+ */
 sessionRouter.post('/session-handshake', authMiddleware, async (req: Request, res: Response) => {
 try {
     const apiKey = req.header('x-api-key') as string;
@@ -121,7 +131,15 @@ try {
 }
 });
 
-// Start headless Foundry session
+/**
+ * Start a headless Foundry session using puppeteer
+ * 
+ * @route POST /start-session
+ * @param {string} handshakeToken - [body] The token received from session-handshake
+ * @param {string} encryptedPassword - [body] Password encrypted with the public key
+ * @param {string} x-api-key - [header] API key header
+ * @returns {object} Session information including sessionId and clientId
+ */
 sessionRouter.post("/start-session", requestForwarderMiddleware, authMiddleware, express.json(), async (req: Request, res: Response) => {
 try {
     const { handshakeToken, encryptedPassword } = req.body;
@@ -382,26 +400,19 @@ try {
         
         // Strategy 1: Try to find the play button directly associated with the world name
         const worldLaunched = await page.evaluate((worldName) => {
-        console.log(`Looking for world: ${worldName}`);
         // Find all world titles
         const titles = Array.from(document.querySelectorAll('h3.package-title'));
-        console.log(`Found ${titles.length} world titles`);
         
         for (const title of titles) {
             if (title.textContent && title.textContent.trim() === worldName) {
-            console.log(`Found matching world: ${worldName}`);
             // Find the parent li element
             const worldLi = title.closest('li.package.world');
             if (worldLi) {
-                console.log('Found parent li element');
                 // Find and click the play button
                 const playButton = worldLi.querySelector('a.control.play');
                 if (playButton) {
-                console.log('Found play button, clicking');
                 (playButton as HTMLElement).click();
                 return true;
-                } else {
-                console.log('Play button not found');
                 }
             }
             }
@@ -668,7 +679,14 @@ try {
 }
 });
 
-// Stop headless Foundry session
+/**
+ * Stop a headless Foundry session
+ * 
+ * @route DELETE /end-session
+ * @param {string} sessionId - [query] The ID of the session to end
+ * @param {string} x-api-key - [header] API key header
+ * @returns {object} Status of the operation
+ */
 sessionRouter.delete("/end-session", requestForwarderMiddleware, authMiddleware, async (req: Request, res: Response) => {
 try {
     const sessionId = req.query.sessionId as string;
@@ -734,7 +752,13 @@ try {
 }
 });
 
-// Get all active headless Foundry sessions
+/**
+ * Get all active headless Foundry sessions
+ * 
+ * @route GET /session
+ * @param {string} x-api-key - [header] API key header
+ * @returns {object} List of active sessions for the current API key
+ */
 sessionRouter.get("/session", requestForwarderMiddleware, authMiddleware, async (req: Request, res: Response) => {
     try {
         const apiKey = req.header('x-api-key') as string;

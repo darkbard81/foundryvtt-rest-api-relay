@@ -9,7 +9,16 @@ export const fileSystemRouter = Router();
 
 const commonMiddleware = [requestForwarderMiddleware, authMiddleware, trackApiUsage];
 
-// Get file system structure
+/**
+ * Get file system structure
+ * 
+ * @route GET /file-system
+ * @param {string} clientId - [query] The ID of the Foundry client to connect to
+ * @param {string} path - [query,?] The path to retrieve (relative to source)
+ * @param {string} source - [query,?] The source directory to use (data, systems, modules, etc.)
+ * @param {boolean} recursive - [query,?] Whether to recursively list all subdirectories
+ * @returns {object} File system structure with files and directories
+ */
 fileSystemRouter.get("/file-system", ...commonMiddleware, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const path = req.query.path as string || "";
@@ -69,7 +78,19 @@ fileSystemRouter.get("/file-system", ...commonMiddleware, async (req: Request, r
     }
 });
 
-// Upload a file (handles both base64 and binary)
+/**
+ * Upload a file to Foundry's file system (handles both base64 and binary data)
+ * 
+ * @route POST /upload
+ * @param {string} clientId - [query] The ID of the Foundry client to connect to
+ * @param {string} path - [query/body] The directory path to upload to
+ * @param {string} filename - [query/body] The filename to save as
+ * @param {string} source - [query/body,?] The source directory to use (data, systems, modules, etc.)
+ * @param {string} mimeType - [query/body,?] The MIME type of the file
+ * @param {boolean} overwrite - [query/body,?] Whether to overwrite an existing file
+ * @param {string} fileData - [body,?] Base64 encoded file data (if sending as JSON) 250MB limit
+ * @returns {object} Result of the file upload operation
+ */
 fileSystemRouter.post("/upload", ...commonMiddleware, async (req: express.Request, res: express.Response) => {
     // Handle different content types
     const contentType = req.get('Content-Type') || '';
@@ -78,7 +99,7 @@ fileSystemRouter.post("/upload", ...commonMiddleware, async (req: express.Reques
     if (contentType.includes('application/json')) {
       // Parse as JSON with size limit
       parsePromise = new Promise((resolve, reject) => {
-        express.json({ limit: '50mb' })(req, res, (err) => {
+        express.json({ limit: '250mb' })(req, res, (err) => {
           if (err) reject(err);
           else resolve();
         });
@@ -86,7 +107,7 @@ fileSystemRouter.post("/upload", ...commonMiddleware, async (req: express.Reques
     } else {
       // Parse as raw binary data
       parsePromise = new Promise((resolve, reject) => {
-        express.raw({ limit: '50mb', type: '*/*' })(req, res, (err) => {
+        express.raw({ limit: '250mb', type: '*/*' })(req, res, (err) => {
           if (err) reject(err);
           else resolve();
         });
@@ -99,7 +120,7 @@ fileSystemRouter.post("/upload", ...commonMiddleware, async (req: express.Reques
       safeResponse(res, 400, {
         error: "Failed to parse request body",
         details: error instanceof Error ? error.message : String(error),
-        suggestion: "Check your request size (max 50MB) and content type"
+        suggestion: "Check your request size (max 250MB) and content type"
       });
       return;
     }
@@ -268,7 +289,16 @@ fileSystemRouter.post("/upload", ...commonMiddleware, async (req: express.Reques
     }
 });
 
-// Download a file
+/**
+ * Download a file from Foundry's file system
+ * 
+ * @route GET /download
+ * @param {string} clientId - [query] The ID of the Foundry client to connect to
+ * @param {string} path - [query] The full path to the file to download
+ * @param {string} source - [query,?] The source directory to use (data, systems, modules, etc.)
+ * @param {string} format - [query,?] The format to return the file in (binary, base64)
+ * @returns {binary|object} File contents in the requested format
+ */
 fileSystemRouter.get("/download", ...commonMiddleware, async (req: Request, res: Response) => {
     const clientId = req.query.clientId as string;
     const path = req.query.path as string;

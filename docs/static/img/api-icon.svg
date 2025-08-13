@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150" fill="none">
+  <rect x="20" y="30" width="160" height="90" rx="8" fill="#4a5568" stroke="#2d3748" stroke-width="2"/>
+  <rect x="30" y="40" width="140" height="70" rx="4" fill="#1a202c"/>
+  <circle cx="60" cy="60" r="8" fill="#4299e1"/>
+  <circle cx="100" cy="80" r="6" fill="#38b2ac"/>
+  <circle cx="130" cy="65" r="7" fill="#ed8936"/>
+  <path d="M50 90 Q80 70 120 90 Q140 80 160 90" stroke="#4299e1" stroke-width="2" fill="none"/>
+  <rect x="140" y="45" width="20" height="25" rx="2" fill="#68d391"/>
+  <text x="100" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#4a5568">REST API</text>
+</svg>

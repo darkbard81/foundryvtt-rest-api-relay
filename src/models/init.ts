@@ -1,24 +1,24 @@
 import { sequelize } from '../sequelize';
 import { User } from './user'; 
-import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { log } from '../utils/logger';
 
 async function initializeDatabase() {
   try {
-    console.log('Starting database initialization...');
-    console.log('Using database:', process.env.DATABASE_URL);
+    log.info('Starting database initialization...');
+    log.info('Using database', { databaseUrl: process.env.DATABASE_URL });
     
     // Test the connection first
     await sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
+    log.info('Database connection has been established successfully.');
     
     // Sync all models - this creates the tables
-    console.log('Syncing database models...');
+    log.info('Syncing database models...');
     await sequelize.sync({ force: true });
-    console.log('Database models synchronized.');
+    log.info('Database models synchronized.');
     
     // Create a default admin user with a plain password - it will be hashed by the hook
-    console.log('Creating admin user...');
+    log.info('Creating admin user...');
     
     const user = await User.create({
       email: 'admin@example.com',
@@ -29,15 +29,15 @@ async function initializeDatabase() {
     
     // Check if user was created successfully
     if (!user) {
-      console.error('Failed to create admin user!');
+      log.error('Failed to create admin user!');
       return false;
     }
     
-    console.log('Admin user created with API key:', user.getDataValue('apiKey'));
-    console.log('Database initialization complete!');
+    log.info('Admin user created', { apiKey: user.getDataValue('apiKey') });
+    log.info('Database initialization complete!');
     return true;
   } catch (error) {
-    console.error('Database initialization failed:', error);
+    log.error('Database initialization failed', { error });
     return false;
   }
 }
@@ -46,11 +46,11 @@ async function initializeDatabase() {
 if (require.main === module) {
   initializeDatabase()
     .then((result) => {
-      console.log(`Initialization ${result ? 'succeeded' : 'failed'}`);
+      log.info(`Initialization ${result ? 'succeeded' : 'failed'}`);
       process.exit(result ? 0 : 1);
     })
     .catch(error => {
-      console.error('Failed to initialize database:', error);
+      log.error('Failed to initialize database', { error });
       process.exit(1);
     });
 }

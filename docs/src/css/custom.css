@@ -1,0 +1,232 @@
+/**
+ * Docusaurus custom CSS for FoundryVTT REST API Relay
+ */
+
+/* Import modern font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* You can override the default Docusaurus CSS variables here. */
+/* See https://docusaurus.io/docs/styling-layout for details. */
+
+:root {
+  /* Primary brand colors */
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+  
+  /* Success colors */
+  --ifm-color-success: #10b981;
+  --ifm-color-success-dark: #059669;
+  
+  /* Warning colors */
+  --ifm-color-warning: #f59e0b;
+  --ifm-color-warning-dark: #d97706;
+  
+  /* Danger colors */
+  --ifm-color-danger: #ef4444;
+  --ifm-color-danger-dark: #dc2626;
+  
+  /* Font family */
+  --ifm-font-family-base: 'Inter', system-ui, -apple-system, sans-serif;
+  --ifm-font-family-monospace: 'Fira Code', 'Monaco', 'Consolas', monospace;
+  
+  /* Code font size */
+  --ifm-code-font-size: 95%;
+  
+  /* Hero gradient */
+  --ifm-hero-background-color: linear-gradient(135deg, var(--ifm-color-primary) 0%, var(--ifm-color-primary-dark) 100%);
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  /* Primary colors for dark theme */
+  --ifm-color-primary: #3b82f6;
+  --ifm-color-primary-dark: #2563eb;
+  --ifm-color-primary-darker: #1d4ed8;
+  --ifm-color-primary-darkest: #1e40af;
+  --ifm-color-primary-light: #60a5fa;
+  --ifm-color-primary-lighter: #93c5fd;
+  --ifm-color-primary-lightest: #bfdbfe;
+  
+  /* Dark theme background colors */
+  --ifm-background-color: #0f1419;
+  --ifm-background-surface-color: #1a1f2e;
+  
+  /* Dark theme text colors */
+  --ifm-color-emphasis-100: #f8fafc;
+  --ifm-color-emphasis-200: #f1f5f9;
+  --ifm-color-emphasis-300: #e2e8f0;
+  --ifm-color-emphasis-400: #cbd5e1;
+  --ifm-color-emphasis-500: #94a3b8;
+  --ifm-color-emphasis-600: #64748b;
+  --ifm-color-emphasis-700: #475569;
+  --ifm-color-emphasis-800: #334155;
+  --ifm-color-emphasis-900: #1e293b;
+  
+  /* Code background */
+  --ifm-code-background: #1e293b;
+  
+  /* Navbar */
+  --ifm-navbar-background-color: #0f1419;
+  --ifm-navbar-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  
+  /* Footer */
+  --ifm-footer-background-color: #0f1419;
+  
+  /* Cards and content blocks */
+  --ifm-card-background-color: var(--ifm-background-surface-color);
+}
+
+/* Global improvements */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Improved code blocks */
+.prism-code {
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+/* Better buttons */
+.button {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Custom navbar styling */
+.navbar {
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+[data-theme='dark'] .navbar {
+  border-bottom: 1px solid var(--ifm-color-emphasis-800);
+}
+
+/* Improved table of contents */
+.table-of-contents {
+  border-left: 2px solid var(--ifm-color-primary-lighter);
+  padding-left: 1rem;
+}
+
+/* Better admonitions */
+.admonition {
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Improved pagination */
+.pagination-nav {
+  border-radius: 8px;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ifm-color-emphasis-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ifm-color-emphasis-400);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ifm-color-emphasis-500);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: var(--ifm-color-emphasis-900);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: var(--ifm-color-emphasis-600);
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: var(--ifm-color-emphasis-500);
+}
+
+/* Algolia Search Dark Theme Styling */
+[data-theme='dark'] .DocSearch {
+  --docsearch-primary-color: var(--ifm-color-primary);
+  --docsearch-text-color: var(--ifm-color-emphasis-100);
+  --docsearch-spacing: 12px;
+  --docsearch-icon-stroke-width: 1.4;
+  --docsearch-highlight-color: var(--docsearch-primary-color);
+  --docsearch-muted-color: var(--ifm-color-emphasis-500);
+  --docsearch-container-background: rgba(15, 20, 25, 0.9);
+  --docsearch-logo-color: var(--ifm-color-emphasis-600);
+  --docsearch-modal-width: 560px;
+  --docsearch-modal-height: 600px;
+  --docsearch-modal-background: var(--ifm-background-surface-color);
+  --docsearch-modal-shadow: 0 10px 25px 0 rgba(0, 0, 0, 0.5);
+  --docsearch-searchbox-height: 56px;
+  --docsearch-searchbox-background: var(--ifm-background-color);
+  --docsearch-searchbox-focus-background: var(--ifm-background-color);
+  --docsearch-searchbox-shadow: inset 0 0 0 1px var(--ifm-color-emphasis-300);
+  --docsearch-hit-height: 56px;
+  --docsearch-hit-color: var(--ifm-color-emphasis-400);
+  --docsearch-hit-active-color: var(--ifm-color-emphasis-100);
+  --docsearch-hit-background: var(--ifm-background-color);
+  --docsearch-hit-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+  --docsearch-key-gradient: linear-gradient(
+    -225deg,
+    var(--ifm-color-emphasis-800) 0%,
+    var(--ifm-color-emphasis-700) 100%
+  );
+  --docsearch-key-shadow: inset 0 -2px 0 0 var(--ifm-color-emphasis-700), 
+                          inset 0 0 1px 1px var(--ifm-color-emphasis-600), 
+                          0 1px 2px 1px rgba(0, 0, 0, 0.4);
+  --docsearch-footer-background: var(--ifm-background-color);
+  --docsearch-footer-shadow: 0 -1px 0 0 var(--ifm-color-emphasis-800), 
+                             0 -3px 6px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Search button styling */
+[data-theme='dark'] .DocSearch-Button {
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  color: var(--ifm-color-emphasis-300);
+  transition: all 0.2s ease;
+}
+
+[data-theme='dark'] .DocSearch-Button:hover {
+  background: var(--ifm-background-color);
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-emphasis-100);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+/* Search modal additional styling */
+[data-theme='dark'] .DocSearch-Modal .DocSearch-Hit[aria-selected='true'] a {
+  background: var(--ifm-color-primary-darker);
+}
+
+[data-theme='dark'] .DocSearch-Modal .DocSearch-Hit-source {
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-primary);
+  border-bottom: 1px solid var(--ifm-color-emphasis-700);
+}
+
+[data-theme='dark'] .DocSearch-Modal .DocSearch-Commands-Key {
+  background: var(--docsearch-key-gradient);
+  box-shadow: var(--docsearch-key-shadow);
+  color: var(--ifm-color-emphasis-200);
+}

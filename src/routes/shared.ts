@@ -1,8 +1,5 @@
 import express, { Response } from 'express';
-import pino from "pino";
-
-// Shared logger
-export const log = pino();
+import { log } from '../utils/logger';
 
 // Extracted from api.ts
 function sanitizeResponse(response: any): any {
@@ -47,11 +44,12 @@ export function safeResponse(res: Response, statusCode: number, data: any): void
 
 export const PENDING_REQUEST_TYPES = [
     'search', 'entity', 'structure', 'contents', 'create', 'update', 'delete',
-    'rolls', 'last-roll', 'roll', 'actor-sheet', 'macro-execute', 'macros',
+    'rolls', 'last-roll', 'roll', 'get-sheet', 'macro-execute', 'macros',
     'encounters', 'start-encounter', 'next-turn', 'next-round', 'last-turn', 'last-round',
     'end-encounter', 'add-to-encounter', 'remove-from-encounter', 'kill', 'decrease', 'increase', 'give', 'remove', 'execute-js',
     'select', 'selected', 'file-system', 'upload-file', 'download-file',
-    'get-actor-details', 'modify-item-charges', 'use-ability', 'use-feature', 'use-spell', 'use-item', 'modify-resource', 'add-item', 'remove-item'
+    'get-actor-details', 'modify-item-charges', 'use-ability', 'use-feature', 'use-spell', 'use-item', 'modify-experience', 'add-item', 'remove-item',
+    'get-folder', 'create-folder', 'delete-folder'
 ] as const;
   
 export type PendingRequestType = typeof PENDING_REQUEST_TYPES[number];

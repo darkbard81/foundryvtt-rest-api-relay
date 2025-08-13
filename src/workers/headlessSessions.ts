@@ -1,6 +1,5 @@
-import { log } from '../middleware/logger';
+import { log } from '../utils/logger';
 import { getRedisClient } from '../config/redis';
-import * as crypto from 'crypto';
 
 // Store active browser sessions locally
 export const browserSessions = new Map<string, any>(); // Using 'any' for puppeteer.Browser

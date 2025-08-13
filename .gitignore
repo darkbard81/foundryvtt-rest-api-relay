@@ -7,6 +7,7 @@
 .idea/workspace.xml
 .idea/usage.statistics.xml
 .idea/shelf
+build/
 
 # deps
 node_modules/
@@ -31,3 +32,4 @@ pnpm-lock.yaml
 .VSCodeCounter/
 *.notes
 data/relay.db
+docs/.docusaurus/

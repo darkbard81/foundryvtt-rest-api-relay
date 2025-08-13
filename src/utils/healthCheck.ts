@@ -1,4 +1,4 @@
-import { log } from '../middleware/logger';
+import { log } from '../utils/logger';
 import { checkRedisHealth } from '../config/redis';
 import os from 'os';
 

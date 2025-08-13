@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { stripe } from '../config/stripe';
 import { User } from '../models/user';
-import { log } from '../middleware/logger';
+import { log } from '../utils/logger';
 
 const router = express.Router();
 

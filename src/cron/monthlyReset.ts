@@ -1,5 +1,5 @@
 import { User } from '../models/user';
-import { log } from '../middleware/logger';
+import { log } from '../utils/logger';
 import { getRedisClient } from '../config/redis';
 
 /**
@@ -38,7 +38,11 @@ export async function resetMonthlyRequests(): Promise<void> {
     
     // For SQL databases, we can do a bulk update
     const [updatedCount] = await User.update(
-      { requestsThisMonth: 0 },
+      { 
+        requestsThisMonth: 0,
+        requestsToday: 0,
+        lastRequestDate: null
+      },
       { where: {} }  // Empty where clause updates all records
     );
     
@@ -83,10 +87,14 @@ export async function resetMonthlyRequests(): Promise<void> {
       for (const user of users) {
         if ('setDataValue' in user && typeof user.setDataValue === 'function') {
           user.setDataValue('requestsThisMonth', 0);
+          user.setDataValue('requestsToday', 0);
+          user.setDataValue('lastRequestDate', null);
           await user.save();
           successCount++;
         } else if ('requestsThisMonth' in user) {
           user.requestsThisMonth = 0;
+          user.requestsToday = 0;
+          user.lastRequestDate = null;
           if ('save' in user && typeof user.save === 'function') {
             await user.save();
             successCount++;

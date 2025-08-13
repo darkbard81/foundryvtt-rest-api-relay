@@ -3,19 +3,20 @@ import bcrypt from 'bcryptjs';
 import { User } from '../models/user';
 import crypto from 'crypto';
 import { safeResponse } from './shared';
+import { log } from '../utils/logger';
 
 const router = Router();
 
 // Register a new user
 router.post('/register', async (req: Request, res: Response) => {
-  console.log('Registration attempt in auth.ts');
+  log.info('Registration attempt in auth.ts');
   try {
     const { email, password } = req.body;
     
-    console.log(`Registration attempt for: ${email}`);
+    log.info(`Registration attempt for: ${email}`);
     
     if (!email || !password) {
-      console.log('Missing email or password');
+      log.warn('Missing email or password');
       safeResponse(res, 400, { error: 'Email and password are required' });
       return;
     }
@@ -23,12 +24,12 @@ router.post('/register', async (req: Request, res: Response) => {
     // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      console.log(`User already exists: ${email}`);
+      log.warn(`User already exists: ${email}`);
       safeResponse(res, 409, { error: 'User already exists' });
       return;
     }
     
-    console.log('Creating new user...');
+    log.info('Creating new user...');
     // Create a new user
     const user = await User.create({
       email,
@@ -37,7 +38,7 @@ router.post('/register', async (req: Request, res: Response) => {
       requestsThisMonth: 0
     });
     
-    console.log(`User created: ${user.getDataValue('email')}`);
+    log.info(`User created: ${user.getDataValue('email')}`);
     
     // Return the user (exclude password but include API key)
     res.status(201).json({
@@ -49,7 +50,7 @@ router.post('/register', async (req: Request, res: Response) => {
     });
     return;
   } catch (error) {
-    console.error('Registration error:', error);
+    log.error('Registration error', { error });
     safeResponse(res, 500, { error: 'Registration failed' });
     return;
   }
@@ -60,10 +61,10 @@ router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
     
-    console.log(`Login attempt for: ${email}`);
+    log.info(`Login attempt for: ${email}`);
     
     if (!email || !password) {
-      console.log('Missing email or password');
+      log.warn('Missing email or password');
       res.status(400).json({ error: 'Email and password are required' });
       return;
     }
@@ -71,23 +72,23 @@ router.post('/login', async (req: Request, res: Response) => {
     // Find the user
     const user = await User.findOne({ where: { email } });
     if (!user) {
-      console.log(`User not found: ${email}`);
+      log.warn(`User not found: ${email}`);
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
     
-    console.log(`User found: ${email}, comparing passwords...`);
+    log.info(`User found: ${email}, comparing passwords...`);
     
     try {
       // Get the stored hash directly from the data value
       const storedHash = user.getDataValue('password');
-      console.log('Stored hash:', storedHash ? 'exists' : 'missing');
+      log.debug('Stored hash status', { exists: !!storedHash });
       
       const isPasswordValid = await bcrypt.compare(password, storedHash);
-      console.log(`Password valid: ${isPasswordValid}`);
+      log.debug('Password comparison result', { isValid: isPasswordValid });
       
       if (!isPasswordValid) {
-        console.log('Invalid password');
+        log.warn('Invalid password');
         res.status(401).json({ error: 'Invalid credentials' });
         return;
       }
@@ -102,12 +103,12 @@ router.post('/login', async (req: Request, res: Response) => {
       });
       return;
     } catch (bcryptError) {
-      console.error('bcrypt comparison error:', bcryptError);
+      log.error('bcrypt comparison error', { error: bcryptError });
       res.status(500).json({ error: 'Authentication error' });
       return;
     }
   } catch (error) {
-    console.error('Login error:', error);
+    log.error('Login error', { error });
     res.status(500).json({ error: 'Login failed' });
     return;
   }
@@ -146,7 +147,7 @@ router.post('/regenerate-key', async (req: Request, res: Response) => {
       apiKey: newApiKey
     });
   } catch (error) {
-    console.error('API key regeneration error:', error);
+    log.error('API key regeneration error', { error });
     res.status(500).json({ error: 'Failed to regenerate API key' });
   }
 });
@@ -175,12 +176,17 @@ router.get('/user-data', async (req: Request, res: Response) => {
       email: user.getDataValue('email'),
       apiKey: user.getDataValue('apiKey'),
       requestsThisMonth: user.getDataValue('requestsThisMonth'),
-      freeApiRequestsLimit: process.env.FREE_API_REQUESTS_LIMIT || 100,
+      requestsToday: user.getDataValue('requestsToday') || 0,
       subscriptionStatus: user.getDataValue('subscriptionStatus') || 'free',
+      limits: {
+        dailyLimit: parseInt(process.env.DAILY_REQUEST_LIMIT || '1000'),
+        monthlyLimit: parseInt(process.env.FREE_API_REQUESTS_LIMIT || '100'),
+        unlimitedMonthly: (user.getDataValue('subscriptionStatus') === 'active')
+      }
     });
     return;
   } catch (error) {
-    console.error('Error fetching user data:', error);
+    log.error('Error fetching user data', { error });
     res.status(500).json({ error: 'Failed to fetch user data' });
     return;
   }

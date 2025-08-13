@@ -1,7 +1,7 @@
 // Script to check current API usage statistics
 // This can be used for monitoring and debugging request tracking
 import { User } from '../src/models/user';
-import { log } from '../src/middleware/logger';
+import { log } from '../src/utils/logger';
 import { sequelize } from '../src/sequelize';
 import { config } from 'dotenv';
 

@@ -1,5 +1,5 @@
 import Stripe from 'stripe';
-import { log } from '../middleware/logger';
+import { log } from '../utils/logger';
 
 // Check if we're using memory store or SQLite (local development)
 const isMemoryStore = process.env.DB_TYPE === 'memory';

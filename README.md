@@ -63,6 +63,47 @@ The server can be configured using environment variables:
 
 When using Docker Compose, you can set these in the `environment` section of the `docker-compose.yml` file.
 
+### Documentation
+
+This project uses TypeDoc and Docusaurus for comprehensive API documentation. The documentation is automatically generated from TypeScript source code and includes both manual documentation and auto-generated API references.
+
+#### Development
+
+To work with the documentation:
+
+```bash
+# Install documentation dependencies
+pnpm docs:install
+
+# Generate API documentation from TypeScript source
+pnpm docs:generate
+
+# Start the documentation development server
+pnpm docs:dev
+```
+
+The documentation will be available at [http://localhost:3000](http://localhost:3000) and includes:
+
+- **Manual Documentation**: Getting started guides, installation instructions, and usage examples
+- **API Reference**: Auto-generated from TypeScript source code using TypeDoc
+- **Interactive Navigation**: Browse the codebase structure and find specific functions, classes, and types
+
+#### Building for Production
+
+```bash
+# Build static documentation files
+pnpm docs:build
+
+# Serve the built documentation
+pnpm docs:serve
+```
+
+The documentation system automatically:
+- Generates markdown files from TypeScript comments and type definitions
+- Creates sidebar navigation based on code structure
+- Links to source code on GitHub
+- Updates when source code changes
+
 ## Foundry REST API Module
 A Foundry VTT module that connects to the relay server and provides access to Foundry data.
 

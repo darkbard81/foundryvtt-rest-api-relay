@@ -69,24 +69,73 @@ document.addEventListener("DOMContentLoaded", function () {
       if (response.ok) {
         const freshData = await response.json();
 
+        // Fetch subscription status separately
+        try {
+          const subResponse = await fetch("/api/subscriptions/status", {
+            method: "GET",
+            headers: {
+              "x-api-key": apiKey,
+            },
+          });
+          
+          if (subResponse.ok) {
+            const subData = await subResponse.json();
+            freshData.subscriptionStatus = subData.subscriptionStatus;
+            freshData.subscriptionEndsAt = subData.subscriptionEndsAt;
+          }
+        } catch (subError) {
+          console.error("Failed to fetch subscription status:", subError);
+        }
+
         // Update localStorage with fresh data
         localStorage.setItem("foundryApiUser", JSON.stringify(freshData));
 
         // Update dashboard with fresh data
-        document.getElementById("user-email").textContent = freshData.email;
-        document.getElementById("user-api-key").textContent = freshData.apiKey;
-        let status = freshData.subscriptionStatus || 'free';
-        // Uncomment for payments integration
-        // updateSubscriptionUI(status);
-        // if (status != 'active') {
-        //   document.getElementById("user-requests").textContent =
-        //   `${freshData.requestsThisMonth || 0} / ${freshData.freeApiRequestsLimit}`;
-        // } else {
-          document.getElementById("user-requests").textContent = freshData.requestsThisMonth || 0;
-        // }
+        updateDashboardData(freshData);
       }
     } catch (error) {
       console.error("Failed to fetch fresh user data:", error);
+    }
+  }
+
+  // Function to update dashboard data
+  function updateDashboardData(userData) {
+    document.getElementById("user-email").textContent = userData.email;
+    document.getElementById("user-api-key").textContent = userData.apiKey;
+    
+    // Update rate limits display
+    if (userData.limits) {
+      const rateLimitsEl = document.querySelector(".message.warning");
+      if (rateLimitsEl) {
+        const isUnlimited = userData.limits.unlimitedMonthly;
+        const dailyLimit = userData.limits.dailyLimit;
+        const monthlyLimit = userData.limits.monthlyLimit;
+        
+        rateLimitsEl.innerHTML = `
+          <strong>⚠️ Rate Limits:</strong> All users are limited to ${dailyLimit.toLocaleString()} requests per day. 
+          ${isUnlimited ? 
+            'You have unlimited monthly access with your subscription.' : 
+            `Free accounts are limited to ${monthlyLimit} requests per month. Subscribe for unlimited monthly access.`
+          }
+        `;
+      }
+    }
+    
+    let status = userData.subscriptionStatus || 'free';
+    // Update subscription UI
+    updateSubscriptionUI(status);
+    
+    // Update request counts display
+    const requestsToday = userData.requestsToday || 0;
+    const requestsThisMonth = userData.requestsThisMonth || 0;
+    const limits = userData.limits || {};
+    
+    if (status !== 'active') {
+      document.getElementById("user-requests").textContent =
+        `Monthly: ${requestsThisMonth} / ${limits.monthlyLimit || 100}, Daily: ${requestsToday} / ${limits.dailyLimit || 1000}`;
+    } else {
+      document.getElementById("user-requests").textContent = 
+        `Monthly: ${requestsThisMonth} (unlimited), Daily: ${requestsToday} / ${limits.dailyLimit || 1000}`;
     }
   }
 
@@ -216,11 +265,8 @@ document.addEventListener("DOMContentLoaded", function () {
       dashboardTab.classList.add("active");
     }
 
-    // Populate user data
-    document.getElementById("user-email").textContent = userData.email;
-    document.getElementById("user-api-key").textContent = userData.apiKey;
-    document.getElementById("user-requests").textContent =
-      userData.requestsThisMonth || 0;
+    // Populate user data using the shared function
+    updateDashboardData(userData);
   }
   
   // Event handler for subscription button

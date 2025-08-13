@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { getRedisClient, safeRedisOperation } from '../config/redis';
-import { log } from './logger';
-import * as crypto from 'crypto';
+import { log } from '../utils/logger';
 
 // Store headless session data in Redis
 export async function storeHeadlessSession(

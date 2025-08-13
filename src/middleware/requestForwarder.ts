@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { log } from './logger';
+import { log } from '../utils/logger';
 import { getRedisClient } from '../config/redis';
 import fetch from 'node-fetch';
-import { Readable } from 'stream';
 
 // Constants
 const INSTANCE_ID = process.env.FLY_ALLOC_ID || 'local';

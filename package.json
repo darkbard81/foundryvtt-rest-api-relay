@@ -12,13 +12,17 @@
     "local": "cross-env DB_TYPE=memory PORT=3010 tsx watch src/index.ts",
     "postinstall": "npx puppeteer install",
     "reset-requests": "dotenv -e .env tsx scripts/reset-requests.ts",
-    "usage-stats": "dotenv -e .env tsx scripts/usage-stats.ts"
+    "usage-stats": "dotenv -e .env tsx scripts/usage-stats.ts",
+    "docs:dev": "cd docs && pnpm start",
+    "docs:build": "cd docs && pnpm build",
+    "docs:install": "cd docs && pnpm install"
   },
   "author": "ThreeHats",
   "license": "MIT",
   "private": true,
   "dependencies": {
     "@clerk/backend": "^1.34.0",
+    "@docusaurus/theme-search-algolia": "^3.8.1",
     "@stripe/stripe-js": "^5.10.0",
     "@types/node-cron": "^3.0.11",
     "axios": "^1.11.0",
@@ -33,6 +37,7 @@
     "node-fetch": "^3.3.2",
     "pg": "^8.16.3",
     "pino": "^9.7.0",
+    "pino-pretty": "^13.1.1",
     "prettier": "^3.6.2",
     "prom-client": "^15.1.3",
     "puppeteer": "^24.15.0",
@@ -40,10 +45,14 @@
     "sequelize": "^6.37.7",
     "sqlite3": "^5.1.7",
     "stripe": "^17.7.0",
-    "winston": "^3.17.0",
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@docusaurus/core": "^3.8.1",
+    "@docusaurus/module-type-aliases": "^3.8.1",
+    "@docusaurus/preset-classic": "^3.8.1",
+    "@docusaurus/tsconfig": "^3.8.1",
+    "@docusaurus/types": "^3.8.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "5.0.0",
@@ -54,11 +63,14 @@
     "@types/pg": "^8.15.5",
     "@types/ws": "^8.18.1",
     "cross-env": "^7.0.3",
+    "docusaurus-plugin-typedoc": "^1.4.2",
     "dotenv": "^16.6.1",
     "dotenv-cli": "^8.0.0",
     "fvtt-types": "npm:@league-of-foundry-developers/foundry-vtt-types@latest",
     "sequelize-cli": "^6.6.3",
     "tsx": "^4.20.3",
+    "typedoc": "^0.28.9",
+    "typedoc-plugin-markdown": "^4.8.0",
     "typescript": "~5.7.3"
   }
 }

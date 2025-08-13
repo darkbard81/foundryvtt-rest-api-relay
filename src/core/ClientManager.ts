@@ -1,6 +1,6 @@
 // src/core/ClientManager.ts
 import { WebSocket } from "ws";
-import { log } from "../middleware/logger";
+import { log } from "../utils/logger";
 import { Client } from "./Client";
 import { WSCloseCodes } from "../lib/constants";
 import { getRedisClient } from "../config/redis";
@@ -19,7 +19,18 @@ export class ClientManager {
   /**
    * Add a new client to the manager
    */
-  static async addClient(ws: WebSocket, id: string, token: string): Promise<Client | null> {
+  static async addClient(
+    ws: WebSocket, 
+    id: string, 
+    token: string, 
+    worldId: string | null, 
+    worldTitle: string | null,
+    foundryVersion: string | null = null,
+    systemId: string | null = null,
+    systemTitle: string | null = null,
+    systemVersion: string | null = null,
+    customName: string | null = null
+  ): Promise<Client | null> {
     // Check if client already exists
     if (this.clients.has(id)) {
       log.warn(`Client ${id} already exists, rejecting connection`);
@@ -28,7 +39,7 @@ export class ClientManager {
     }
 
     // Create new client
-    const client = new Client(ws, id, token);
+    const client = new Client(ws, id, token, worldId, worldTitle, foundryVersion, systemId, systemTitle, systemVersion, customName);
     this.clients.set(id, client);
 
     // Add client to token group
@@ -50,6 +61,28 @@ export class ClientManager {
         
         // Store client ID -> API key mapping for lookup
         await redis.set(`client:${id}:apikey`, token, { EX: CLIENT_EXPIRY });
+
+        if (worldId) {
+            await redis.set(`client:${id}:worldId`, worldId, { EX: CLIENT_EXPIRY });
+        }
+        if (worldTitle) {
+            await redis.set(`client:${id}:worldTitle`, worldTitle, { EX: CLIENT_EXPIRY });
+        }
+        if (foundryVersion) {
+            await redis.set(`client:${id}:foundryVersion`, foundryVersion, { EX: CLIENT_EXPIRY });
+        }
+        if (systemId) {
+            await redis.set(`client:${id}:systemId`, systemId, { EX: CLIENT_EXPIRY });
+        }
+        if (systemTitle) {
+            await redis.set(`client:${id}:systemTitle`, systemTitle, { EX: CLIENT_EXPIRY });
+        }
+        if (systemVersion) {
+            await redis.set(`client:${id}:systemVersion`, systemVersion, { EX: CLIENT_EXPIRY });
+        }
+        if (customName) {
+            await redis.set(`client:${id}:customName`, customName, { EX: CLIENT_EXPIRY });
+        }
         
         // Add client ID to the list of clients for this token/API key
         await redis.sAdd(`apikey:${token}:clients`, id);
@@ -269,28 +302,54 @@ export class ClientManager {
    * Process an incoming message
    */
   static handleIncomingMessage(clientId: string, message: any): void {
-    const client = this.clients.get(clientId);
-    if (!client) return;
+    try {
+      const client = this.clients.get(clientId);
+      if (!client) return;
 
-    // Update last seen timestamp
-    client.updateLastSeen();
+      // Update last seen timestamp
+      client.updateLastSeen();
 
-    // Handle ping messages specially
-    if (message.type === "ping") {
-      client.send({ type: "pong" });
-      return;
-    }
-    
-    // Handle other message types with registered handlers
-    if (message.type && this.messageHandlers.has(message.type)) {
-      for (const handler of this.messageHandlers.get(message.type)!) {
-        handler(client, message);
+      // Handle ping messages specially
+      if (message.type === "ping") {
+        client.send({ type: "pong" });
+        return;
       }
-      return;
-    }
+      
+      // Handle other message types with registered handlers
+      if (message.type && this.messageHandlers.has(message.type)) {
+        for (const handler of this.messageHandlers.get(message.type)!) {
+          try {
+            handler(client, message);
+          } catch (handlerError) {
+            log.error('Error in message handler', {
+              clientId,
+              messageType: message.type,
+              requestId: message.requestId,
+              error: handlerError instanceof Error ? {
+                name: handlerError.name,
+                message: handlerError.message,
+                stack: handlerError.stack
+              } : String(handlerError)
+            });
+          }
+        }
+        return;
+      }
 
-    // Broadcast other messages
-    this.broadcastToGroup(clientId, message);
+      // Broadcast other messages
+      this.broadcastToGroup(clientId, message);
+    } catch (error) {
+      log.error('Error handling message', {
+        clientId,
+        messageType: message?.type,
+        requestId: message?.requestId,
+        error: error instanceof Error ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        } : String(error)
+      });
+    }
   }
 
   /**
@@ -332,7 +391,7 @@ export class WebSocketManager {
         this.messageHandlers.get(data.type)!(data);
       }
     } catch (error) {
-      console.error(`Error processing message:`, error);
+      log.error('Error processing message', { error });
     }
   }
 }

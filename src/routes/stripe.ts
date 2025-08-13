@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import { stripe, SUBSCRIPTION_PRICES, isStripeDisabled } from '../config/stripe';
 import { User } from '../models/user';
 import { authMiddleware } from '../middleware/auth';
-import { log } from '../middleware/logger';
+import { log } from '../utils/logger';
 import path from 'path';
 
 const router = express.Router();

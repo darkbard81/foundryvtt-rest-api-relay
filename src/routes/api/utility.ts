@@ -95,18 +95,25 @@ async function handleJavaScriptFile(req: Request, res: Response, next: NextFunct
   }
 }
 
-// Select token(s)
+/**
+ * Select token(s)
+ * 
+ * Selects one or more tokens in the Foundry VTT client.
+ *
+ * @route POST /select
+ * @returns {object} The selected token(s)
+ */
 utilityRouter.post("/select", ...commonMiddleware, createApiRoute({
   type: 'select',
   requiredParams: [
-    { name: 'clientId', from: 'query', type: 'string' }
+    { name: 'clientId', from: 'query', type: 'string' } // Client ID for the Foundry world
   ],
   optionalParams: [
-    { name: 'uuids', from: 'body', type: 'array' },
-    { name: 'name', from: 'body', type: 'string' },
-    { name: 'data', from: 'body', type: 'object' },
-    { name: 'overwrite', from: 'body', type: 'boolean' },
-    { name: 'all', from: 'body', type: 'boolean' }
+    { name: 'uuids', from: 'body', type: 'array' }, // Array of UUIDs to select
+    { name: 'name', from: 'body', type: 'string' }, // Name of the token(s) to select
+    { name: 'data', from: 'body', type: 'object' }, // Data to match for selection (e.g., "data.attributes.hp.value": 20)
+    { name: 'overwrite', from: 'body', type: 'boolean' }, // Whether to overwrite existing selection
+    { name: 'all', from: 'body', type: 'boolean' } // Whether to select all tokens on the canvas
   ],
   validateParams: (params) => {
     if (!params.uuids?.length && !params.name && !params.data) {
@@ -119,22 +126,36 @@ utilityRouter.post("/select", ...commonMiddleware, createApiRoute({
   }
 }));
 
-// Return selected token(s)
+/**
+ * Get selected token(s)
+ * 
+ * Retrieves the currently selected token(s) in the Foundry VTT client.
+ * 
+ * @route GET /selected
+ * @returns {object} The selected token(s)
+ */
 utilityRouter.get("/selected", ...commonMiddleware, createApiRoute({
   type: 'selected',
   requiredParams: [
-    { name: 'clientId', from: 'query', type: 'string' }
+    { name: 'clientId', from: 'query', type: 'string' } // Client ID for the Foundry world
   ]
 }));
 
-// Execute JavaScript in Foundry VTT
+/**
+ * Execute JavaScript
+ * 
+ * Executes a JavaScript script in the Foundry VTT client.
+ * 
+ * @route POST /execute-js
+ * @returns {object} The result of the executed script
+ */
 utilityRouter.post("/execute-js", ...commonMiddleware, upload.single("scriptFile"), handleJavaScriptFile, createApiRoute({
   type: 'execute-js',
   requiredParams: [
-    { name: 'clientId', from: 'query', type: 'string' }
+    { name: 'clientId', from: 'query', type: 'string' } // Client ID for the Foundry world
   ],
   optionalParams: [
-    { name: 'script', from: 'body', type: 'string' }
+    { name: 'script', from: 'body', type: 'string' } // JavaScript script to execute
   ],
   validateParams: (params, req) => {
     if (!params.script && !req.file) {

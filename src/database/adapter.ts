@@ -1,6 +1,6 @@
 // src/database/adapter.ts
 import { Sequelize } from 'sequelize';
-import { log } from '../middleware/logger';
+import { log } from '../utils/logger';
 import { MemoryStore } from './memoryStore';
 import path from 'path';
 import fs from 'fs';

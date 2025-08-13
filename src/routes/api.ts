@@ -6,18 +6,13 @@ import { Client } from "../core/Client"; // Import Client type
 import axios from 'axios';
 import { PassThrough } from 'stream';
 import { JSDOM } from 'jsdom';
-import { User } from '../models/user';
 import { authMiddleware, trackApiUsage } from '../middleware/auth';
 import { requestForwarderMiddleware } from '../middleware/requestForwarder';
-import { log, pendingRequests, PENDING_REQUEST_TYPES, safeResponse } from './shared';
+import { pendingRequests, PENDING_REQUEST_TYPES, safeResponse } from './shared';
 import { dnd5eRouter } from './api/dnd5e';
-import { createApiRoute } from './route-helpers';
-import * as bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 import { healthCheck } from '../routes/health';
 import { getRedisClient } from '../config/redis';
 import { returnHtmlTemplate } from "../config/htmlResponseTemplate";
-import { getHeadlessClientId, registerHeadlessSession } from "../workers/headlessSessions";
 import * as puppeteer from 'puppeteer';
 import multer from "multer";
 import fs from "fs/promises";
@@ -31,86 +26,7 @@ import { encounterRouter } from './api/encounter';
 import { sheetRouter } from './api/sheet';
 import { macroRouter } from './api/macro';
 import { structureRouter } from './api/structure';
-
-const upload = multer({ dest: "uploads/" });
-
-// Define a safe directory for uploads
-const SAFE_UPLOAD_DIR = path.resolve("uploads");
-
-// Middleware to handle `application/javascript` content type
-async function handleJavaScriptFile(req: Request, res: Response, next: NextFunction) {
-  if (req.is("application/javascript")) {
-    try {
-      // Generate a safe file path
-      const tempFileName = `script_${Date.now()}.js`;
-      const tempFilePath = path.join(SAFE_UPLOAD_DIR, tempFileName);
-
-      // Ensure the resolved path is within the safe directory
-      if (!tempFilePath.startsWith(SAFE_UPLOAD_DIR)) {
-        throw new Error("Invalid file path");
-      }
-
-      function validateFileExtension(filePath: string): boolean {
-        const allowedExtensions = [".js"];
-        const ext = path.extname(filePath).toLowerCase();
-        return allowedExtensions.includes(ext);
-      }
-
-      if (!validateFileExtension(tempFilePath)) {
-        throw new Error("Invalid file extension");
-      }
-
-      const chunks: Buffer[] = [];
-      req.on("data", (chunk) => chunks.push(chunk));
-      req.on("end", async () => {
-        const fileBuffer = Buffer.concat(chunks);
-        await fs.writeFile(tempFilePath, fileBuffer);
-        req.file = { 
-          path: tempFilePath, 
-          fieldname: "file", 
-          originalname: "script.js", 
-          encoding: "7bit", 
-          mimetype: "application/javascript", 
-          size: fileBuffer.length, 
-          destination: "uploads/", 
-          filename: path.basename(tempFilePath),
-          stream: new PassThrough().end(fileBuffer),
-          buffer: fileBuffer
-        }; // Simulate multer's `req.file`
-        next();
-      });
-    } catch (error) {
-      log.error(`Error handling JavaScript file upload: ${error}`);
-      safeResponse(res, 500, { error: "Failed to process JavaScript file" });
-    }
-  } else {
-    next();
-  }
-}
-
-function validateScript(script: string): boolean {
-  // Disallow dangerous patterns
-  const forbiddenPatterns = [
-    /localStorage/,
-    /sessionStorage/,
-    /document\.cookie/,
-    /eval\(/,
-    /new Worker\(/,
-    /new SharedWorker\(/,
-    /__proto__/,
-    /atob\(/,
-    /btoa\(/,
-    /crypto\./,
-    /Intl\./,
-    /postMessage\(/,
-    /XMLHttpRequest/,
-    /importScripts\(/,
-    /apiKey/,
-    /privateKey/,
-    /password/,
-  ];
-  return !forbiddenPatterns.some((pattern) => pattern.test(script));
-}
+import { log } from '../utils/logger';
 
 export const browserSessions = new Map<string, puppeteer.Browser>();
 export const apiKeyToSession = new Map<string, { sessionId: string, clientId: string, lastActivity: number }>();
@@ -199,7 +115,14 @@ export const apiRoutes = (app: express.Application): void => {
                 id: clientId,
                 instanceId,
                 lastSeen: parseInt(lastSeen.toString()),
-                connectedSince: parseInt(connectedSince.toString())
+                connectedSince: parseInt(connectedSince.toString()),
+                worldId: await redis.get(`client:${clientId}:worldId`) || '',
+                worldTitle: await redis.get(`client:${clientId}:worldTitle`) || '',
+                foundryVersion: await redis.get(`client:${clientId}:foundryVersion`) || '',
+                systemId: await redis.get(`client:${clientId}:systemId`) || '',
+                systemTitle: await redis.get(`client:${clientId}:systemTitle`) || '',
+                systemVersion: await redis.get(`client:${clientId}:systemVersion`) || '',
+                customName: await redis.get(`client:${clientId}:customName`) || ''
               };
             } catch (err) {
               log.error(`Error getting details for client ${clientId}: ${err}`);
@@ -222,7 +145,14 @@ export const apiRoutes = (app: express.Application): void => {
             id,
             instanceId: INSTANCE_ID,
             lastSeen: client?.getLastSeen() || Date.now(),
-            connectedSince: client?.getLastSeen() || Date.now()
+            connectedSince: client?.getLastSeen() || Date.now(),
+            worldId: client?.getWorldId() || '',
+            worldTitle: client?.getWorldTitle() || '',
+            foundryVersion: client?.getFoundryVersion() || '',
+            systemId: client?.getSystemId() || '',
+            systemTitle: client?.getSystemTitle() || '',
+            systemVersion: client?.getSystemVersion() || '',
+            customName: client?.getCustomName() || ''
           };
         }));
       }
@@ -341,726 +271,19 @@ export const apiRoutes = (app: express.Application): void => {
 
   // API Documentation endpoint - returns all available endpoints with their documentation
   router.get("/api/docs", async (req: Request, res: Response) => {
-    // Build comprehensive documentation object with all endpoints
-    const apiDocs = {
-      version: "1.8.1",
-      baseUrl: `${req.protocol}://${req.get('host')}`,
-      authentication: {
-        required: true,
-        headerName: "x-api-key",
-        description: "API key must be included in the x-api-key header for all endpoints except /api/status"
-      },
-      endpoints: [
-        {
-          method: "GET",
-          path: "/clients",
-          description: "Returns connected client Foundry Worlds",
-          requiredParameters: [],
-          optionalParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ],
-          responseExample: {
-            total: 2,
-            clients: [
-              {
-                id: "foundry-id-1",
-                lastSeen: 1741132430381,
-                connectedSince: 1741132430381
-              },
-              {
-                id: "foundry-id-2",
-                lastSeen: 1741132381381,
-                connectedSince: 1741132381381
-              }
-            ]
-          }
-        },
-        {
-          method: "GET",
-          path: "/search",
-          description: "Searches Foundry VTT entities using QuickInsert",
-          requiredParameters: [
-            { name: "query", type: "string", description: "Search term", location: "query" },
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "filter", type: "string", description: "Filter results by type", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/get",
-          description: "Returns JSON data for the specified entity",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "uuid", type: "string", description: "The UUID of the entity to retrieve", location: "query" },
-            { name: "selected", type: "string", description: "If 'true', returns all selected entities", location: "query" },
-            { name: "actor", type: "string", description: "If 'true' and selected is 'true', returns the currently selected actors", location: "query" },
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/structure",
-          description: "Returns the folder structure and compendiums in Foundry",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/contents/:path",
-          description: "Returns the contents of a folder or compendium",
-          requiredParameters: [
-            { name: "path", type: "string", description: "Path to the folder or compendium", location: "path" },
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/create",
-          description: "Creates a new entity in Foundry with the given JSON",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "type", type: "string", description: "Entity type (Actor, Item, etc.)", location: "body" },
-            { name: "data", type: "object", description: "Entity data", location: "body" }
-          ],
-          optionalParameters: [
-            { name: "folder", type: "string", description: "Folder ID to place the entity in", location: "body" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "PUT",
-          path: "/update",
-          description: "Updates an entity with the given JSON props",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "data", type: "object", description: "Entity data", location: "body" }
-          ],
-          optionalParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity to update", location: "query" },
-            { name: "selected", type: "string", description: "If 'true', updates all selected entities", location: "query" },
-            { name: "actor", type: "string", description: "If 'true' and selected is 'true', updates the currently selected actors", location: "query" }
-          ],
-          requestPayload: "JSON object containing the properties to update",
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "DELETE",
-          path: "/delete",
-          description: "Deletes the specified entity",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity to delete", location: "query" },
-            { name: "selected", type: "string", description: "If 'true', deletes all selected entities", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/rolls",
-          description: "Returns up to the last 20 dice rolls",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "limit", type: "number", description: "Maximum number of rolls to return", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/lastroll",
-          description: "Returns the last roll made",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/roll",
-          description: "Makes a new roll in Foundry",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "formula", type: "string", description: "Dice roll formula (e.g. '2d6+3') - required if itemUuid is not provided", location: "body" },
-            { name: "itemUuid", type: "string", description: "UUID of item to roll - required if formula is not provided", location: "body" },
-            { name: "flavor", type: "string", description: "Text to display with the roll", location: "body" },
-            { name: "createChatMessage", type: "boolean", description: "Whether to create a chat message", location: "body" },
-            { name: "speaker", type: "string", description: "Speaker token/actor UUID for the chat message", location: "body" },
-            { name: "target", type: "string", description: "Target token/actor UUID for the roll", location: "body" },
-            { name: "whisper", type: "array", description: "Array of user IDs to whisper the roll to", location: "body" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/sheet",
-          description: "Returns raw HTML (or a string in a JSON response) for an entity",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity to get the sheet for", location: "query" },
-            { name: "selected", type: "string", description: "If 'true', returns the sheet for all selected entity", location: "query" },
-            { name: "actor", type: "string", description: "If 'true' and selected is 'true', returns the sheet for the currently selected actor", location: "query" },
-            { name: "format", type: "string", description: "Response format, 'html' or 'json'", location: "query" },
-            { name: "scale", type: "number", description: "Scale factor for the sheet", location: "query" },
-            { name: "tab", type: "number", description: "Index of the tab to activate", location: "query" },
-            { name: "darkMode", type: "boolean", description: "Whether to use dark mode", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/macros",
-          description: "Returns all macros available in Foundry",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/macro/:uuid/execute",
-          description: "Executes a macro by UUID",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "uuid", type: "string", description: "UUID of the macro to execute", location: "path" }
-          ],
-          optionalParameters: [
-            { name: "args", type: "object", description: "Arguments to pass to the macro", location: "body" }
-          ],
-          requestPayload: "JSON object containing the arguments to pass to the macro",
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/encounters",
-          description: "Returns all active encounters in the world",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/start-encounter",
-          description: "Starts a new encounter with optional tokens",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "tokens", type: "array", description: "Array of token UUIDs to add to the encounter", location: "body" },
-            { name: "startWithSelected", type: "boolean", description: "Whether to start with selected tokens", location: "body" },
-            { name: "startWithPlayers", type: "boolean", description: "Whether to start with player tokens", location: "body" },
-            { name: "rollNPC", type: "boolean", description: "Whether to roll initiative for NPC tokens", location: "body" },
-            { name: "rollAll", type: "boolean", description: "Whether to roll initiative for all tokens", location: "body" },
-            { name: "name", type: "string", description: "Name for the encounter", location: "body" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/next-turn",
-          description: "Advances to the next turn in an encounter",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "encounter", type: "string", description: "ID of the encounter to advance (uses active encounter if not specified)", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/next-round",
-          description: "Advances to the next round in an encounter",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "encounter", type: "string", description: "ID of the encounter to advance (uses active encounter if not specified)", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/last-turn",
-          description: "Goes back to the previous turn in an encounter",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "encounter", type: "string", description: "ID of the encounter to rewind (uses active encounter if not specified)", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/last-round",
-          description: "Goes back to the previous round in an encounter",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "encounter", type: "string", description: "ID of the encounter to rewind (uses active encounter if not specified)", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/end-encounter",
-          description: "Ends a specific encounter",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-          ],
-          optionalParameters: [
-            { name: "encounter", type: "string", description: "ID of the encounter to end", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/add-to-encounter",
-          description: "Add entities to an encounter",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "encounter", type: "string", description: "ID of the encounter to add to", location: "query" },
-            { name: "uuids", type: "array", description: "Array of entity UUIDs to add", location: "body" },
-            { name: "selected", type: "boolean", description: "Whether to add selected tokens", location: "body" },
-            { name: "rollInitiative", type: "boolean", description: "Whether to roll initiative for all entities", location: "body" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/remove-from-encounter",
-          description: "Remove entities from an encounter",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "encounter", type: "string", description: "ID of the encounter to remove from", location: "query" },
-            { name: "uuids", type: "array", description: "Array of entity UUIDs to remove", location: "body" },
-            { name: "selected", type: "boolean", description: "Whether to remove selected tokens", location: "body" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/kill",
-          description: "Mark an entity as defeated",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity to mark as defeated", location: "query" },
-            { name: "selected", type: "string", description: "If 'true' mark all selected tokens as defeated", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/decrease",
-          description: "Decrease an attribute value on an entity",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "attribute", type: "string", description: "Attribute path (e.g. 'system.attributes.hp.value')", location: "body" },
-            { name: "amount", type: "number", description: "Amount to decrease", location: "body" }
-          ],
-          optionalParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity", location: "query" },
-            { name: "selected", type: "string", description: "If 'true' decrease all selected tokens", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/increase",
-          description: "Increase an attribute value on an entity",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "attribute", type: "string", description: "Attribute path (e.g. 'system.attributes.hp.value')", location: "body" },
-            { name: "amount", type: "number", description: "Amount to increase", location: "body" }
-          ],
-          optionalParameters: [
-            { name: "uuid", type: "string", description: "UUID of the entity", location: "query" },
-            { name: "selected", type: "string", description: "If 'true' increase all selected tokens", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/give",
-          description: "Give an item to an actor",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "itemUuid", type: "string", description: "UUID of the item to transfer", location: "body" },
-            { name: "itemName", type: "string", description: "Name of the item to transfer (if itemUuid is not provided)", location: "body" },
-            { name: "fromUuid", type: "string", description: "UUID of the source actor", location: "body" },
-            { name: "toUuid", type: "string", description: "UUID of the target actor", location: "body" },
-            { name: "selected", type: "boolean", description: "If true, transfer to selected actor", location: "body" },
-            { name: "quantity", type: "number", description: "Amount of the item to transfer", location: "body" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/remove",
-          description: "Remove an item from an actor",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "itemUuid", type: "string", description: "UUID of the item to remove", location: "body" },
-            { name: "itemName", type: "string", description: "Name of the item to remove (if itemUuid is not provided)", location: "body" },
-            { name: "actorUuid", type: "string", description: "UUID of the actor to remove the item from", location: "body" },
-            { name: "selected", type: "boolean", description: "If true, remove from selected actor", location: "body" },
-            { name: "quantity", type: "number", description: "Amount of the item to remove", location: "body" }
-          ],
-        },
-        {
-          method: "POST",
-          path: "/select",
-          description: "Selects entities in Foundry",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "uuids", type: "array", description: "UUID of the entities to select", location: "body" },
-            { name: "name", type: "string", description: "Name of the entities to select", location: "body" },
-            { name: "data", type: "object", description: "Data to select entities by (ex. actor.system.attributes.hp.value)", location: "body" },
-            { name: "all", type: "boolean", description: "Whether to select all entities on the scene", location: "body" },
-            { name: "overwrite", type: "boolean", description: "Whether to overwrite existing selections", location: "body" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/selected",
-          description: "Returns the currently selected entities in Foundry",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/execute-js",
-          description: "Executes JavaScript in Foundry VTT",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "script", type: "string", description: "JavaScript code to execute. Excape quotes and backslashes. No comments.", location: "body" },
-            { name: "scriptFile", type: "file", description: "JavaScript file to execute", location: "body" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
-          ]
-        },
-        {
-          method: "GET",
-          path: "/file-system",
-          description: "Lists the folder and file structure from the Foundry server",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "path", type: "string", description: "Directory path to list (defaults to root)", location: "query" },
-            { name: "source", type: "string", description: "Source to browse (data, public, s3, etc.)", location: "query" },
-            { name: "recursive", type: "boolean", description: "Whether to recursively list subdirectories", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/upload",
-          description: "Uploads a file to the Foundry server",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "path", type: "string", description: "Directory path to upload to", location: "query" },
-            { name: "filename", type: "string", description: "Name of the file to create", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "file", type: "file", description: "File to upload", location: "body" },
-            { name: "fileData", type: "string", description: "Base64-encoded file data", location: "body" },
-            { name: "source", type: "string", description: "Source to upload to (data, s3, etc.)", location: "query" },
-            { name: "overwrite", type: "boolean", description: "Whether to overwrite existing files", location: "query" },
-            { name: "mimeType", type: "string", description: "MIME type of the file", location: "query" }
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" },
-            { key: "Content-Type", value: "application/json", description: "Must be JSON" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/download",
-          description: "Downloads a file from the Foundry server",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "path", type: "string", description: "Path to the file to download", location: "query" }
-          ],
-          optionalParameters: [
-            { name: "source", type: "string", description: "Source to download from (data, public, s3, etc.)", location: "query" },
-            { name: "format", type: "string", description: "Format to download the file in (e.g. 'json', 'raw'). Defaults to raw.", location: "query" },
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API Key" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/session-handshake",
-          description: "Creates an ecryption key and returns a handshake token for use in starting a headless session",
-          requiredParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" },
-            { key: "x-foundry-url", value: "https://your-foundry-server.com", description: "URL to the Foundry VTT server" },
-            { key: "x-username", value: "username", description: "Username to log in with" }
-          ],
-          optionalParameters: [
-            { key: "x-world-name", value: "World Name", description: "Name of the world to join (if URL doesn't go directly to login)", location: "header" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/start-session",
-          description: "Starts a headless Foundry VTT session and logs in",
-          requiredParameters: [
-            { name: "handshakeToken", type: "string", description: "Token received from the session-handshake endpoint", location: "body" },
-            { name: "encryptedPassword", type: "string", description: "Encrypted data for the Foundry login", location: "body" },
-          ],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ],
-          optionalParameters: []
-        },
-        {
-          method: "GET",
-          path: "/session",
-          description: "Lists all active headless Foundry sessions",
-          requiredParameters: [],
-          optionalParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "DELETE",
-          path: "/end-session",
-          description: "Terminates a headless Foundry session",
-          requiredParameters: [
-            { name: "sessionId", type: "string", description: "ID of the session to terminate", location: "query" }
-          ],
-          optionalParameters: [],
-          requestHeaders: [
-            { key: "x-api-key", value: "{{apiKey}}", description: "Your API key" }
-          ]
-        },
-        {
-          method: "GET",
-          path: "/dnd5e/get-actor-details",
-          description: "Returns detailed information about a D&D 5e actor",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "actorUuid", type: "string", description: "UUID of the actor to get details for", location: "query" },
-            { name: "details", type: "array", description: "List of details to retrieve", location: "query" }
-          ],
-        },
-        {
-          method: "POST",
-          path: "/dnd5e/modify-experience",
-          description: "Modifies the experience points of a D&D 5e actor",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "actorUuid", type: "string", description: "UUID of the actor to modify experience for", location: "body" },
-            { name: "amount", type: "number", description: "Amount of experience to add (positive) or subtract (negative)", location: "body" }
-          ],
-        },
-        {
-          method: "POST",
-          path: "/dnd5e/use-ability",
-          description: "Uses an ability for a D&D 5e actor",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "actorUuid", type: "string", description: "UUID of the actor to use the ability for", location: "body" }
-          ],
-          optionalParameters: [
-            { name: "abilityName", type: "string", description: "Ability to use", location: "body" },
-            { name: "abilityUuid", type: "string", description: "UUID of the ability to use", location: "body" },
-            { name: "targetName", type: "string", description: "Name of the target actor or token (optional)", location: "body" },
-            { name: "targetUuid", type: "string", description: "UUID of the target actor or token (optional)", location: "body" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/dnd5e/use-feature",
-          description: "Uses an feature for a D&D 5e actor",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "actorUuid", type: "string", description: "UUID of the actor to use the ability for", location: "body" }
-          ],
-          optionalParameters: [
-            { name: "abilityName", type: "string", description: "Ability to use", location: "body" },
-            { name: "abilityUuid", type: "string", description: "UUID of the ability to use", location: "body" },
-            { name: "targetName", type: "string", description: "Name of the target actor or token (optional)", location: "body" },
-            { name: "targetUuid", type: "string", description: "UUID of the target actor or token (optional)", location: "body" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/dnd5e/use-item",
-          description: "Uses an item for a D&D 5e actor",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "actorUuid", type: "string", description: "UUID of the actor to use the ability for", location: "body" }
-          ],
-          optionalParameters: [
-            { name: "abilityName", type: "string", description: "Ability to use", location: "body" },
-            { name: "abilityUuid", type: "string", description: "UUID of the ability to use", location: "body" },
-            { name: "targetName", type: "string", description: "Name of the target actor or token (optional)", location: "body" },
-            { name: "targetUuid", type: "string", description: "UUID of the target actor or token (optional)", location: "body" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/dnd5e/use-spell",
-          description: "Uses an spell for a D&D 5e actor",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "actorUuid", type: "string", description: "UUID of the actor to use the ability for", location: "body" }
-          ],
-          optionalParameters: [
-            { name: "abilityName", type: "string", description: "Ability to use", location: "body" },
-            { name: "abilityUuid", type: "string", description: "UUID of the ability to use", location: "body" },
-            { name: "targetName", type: "string", description: "Name of the target actor or token (optional)", location: "body" },
-            { name: "targetUuid", type: "string", description: "UUID of the target actor or token (optional)", location: "body" }
-          ]
-        },
-        {
-          method: "POST",
-          path: "/dnd5e/modify-item-charges",
-          description: "Modifies the charges of a D&D 5e item",
-          requiredParameters: [
-            { name: "clientId", type: "string", description: "Auth token to connect to specific Foundry world", location: "query" },
-            { name: "actorUuid", type: "string", description: "UUID of the actor to modify item charges for", location: "body" },
-            { name: "itemUuid", type: "string", description: "UUID of the item to modify", location: "body" },
-            { name: "amount", type: "number", description: "Amount of charges to add (positive) or subtract (negative)", location: "body" }
-          ],
-        },
-        {
-          method: "GET",
-          path: "/api/status",
-          description: "Returns the API status and version",
-          requiredParameters: [],
-          optionalParameters: [],
-          requestHeaders: [],
-          authentication: false
-        },
-        {
-          method: "GET",
-          path: "/api/docs",
-          description: "Returns this API documentation",
-          requiredParameters: [],
-          optionalParameters: [],
-          requestHeaders: [],
-          authentication: false
-        }
-      ]
-    };
+    try {
+        const docsPath = path.join(__dirname, '../../../public/api-docs.json');
+        const docsContent = await fs.readFile(docsPath, 'utf8');
+        const apiDocs = JSON.parse(docsContent);
 
-    safeResponse(res, 200, apiDocs);
+        // Dynamically set the baseUrl
+        apiDocs.baseUrl = `${req.protocol}://${req.get('host')}`;
+
+        res.json(apiDocs);
+    } catch (error) {
+        log.error('Failed to load API documentation:', { error });
+        res.status(500).json({ error: 'API documentation is currently unavailable.' });
+    }
   });
 
   // Mount the router
@@ -1094,8 +317,16 @@ function setupMessageHandlers() {
       log.info(`Received ${type} response for requestId: ${data.requestId}`);
 
       if (data.requestId && pendingRequests.has(data.requestId)) {
-        const pending = pendingRequests.get(data.requestId)!;
-        const response: Record<string, any> = { requestId: data.requestId, clientId: pending.clientId };
+        const pending = pendingRequests.get(data.requestId);
+        if (!pending) {
+          log.warn(`Pending request ${data.requestId} was deleted before processing`);
+          return;
+        }
+        
+        const response: Record<string, any> = { 
+          requestId: data.requestId, 
+          clientId: pending.clientId || client.getId() 
+        };
         for (const [key, value] of Object.entries(data)) {
           if (key !== 'requestId') {
             response[key] = value;
@@ -1113,7 +344,7 @@ function setupMessageHandlers() {
   }
 
   // Handler for actor sheet HTML response
-  ClientManager.onMessageType("actor-sheet-result", (client: Client, data: any) => {
+  ClientManager.onMessageType("get-sheet-response", (client: Client, data: any) => {
     log.info(`Received actor sheet HTML response for requestId: ${data.requestId}`);
     
     try {
@@ -1133,7 +364,7 @@ function setupMessageHandlers() {
         const pending = pendingRequests.get(data.requestId)!;
         
         // Compare with either location
-        if (pending.type === 'actor-sheet' && (!pending.uuid || pending.uuid === responseUuid)) {
+        if (pending.type === 'get-sheet' && pending.uuid === responseUuid) {
           if (data.error || (data.data && data.data.error)) {
             const errorMsg = data.error || (data.data && data.data.error) || "Unknown error";
             safeResponse(pending.res, 404, {
@@ -1230,7 +461,7 @@ function setupMessageHandlers() {
               const includeInteractiveJS = initialScale === null && activeTabIndex === null;
 
               // Generate the full HTML document
-              const fullHtml = returnHtmlTemplate(responseUuid, html, css, gameSystemId, darkModeEnabled, includeInteractiveJS, activeTabIndex ?? 0, initialScale ?? 0, pending);
+              const fullHtml = returnHtmlTemplate(responseUuid, html, css, gameSystemId, darkModeEnabled, includeInteractiveJS, activeTabIndex || 0, initialScale || 0, pending);
               
               pending.res.send(fullHtml);
             }

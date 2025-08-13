@@ -19,7 +19,7 @@
         <li><button class="tab-button active" data-tab="signup">Sign Up</button></li>
         <li><button class="tab-button" data-tab="login">Sign In</button></li>
         <li><a href="https://github.com/JustAnotherIdea/foundryvtt-rest-api" target="_blank" class="external-link">Read Me</a></li>
-        <li><a href="https://github.com/JustAnotherIdea/foundryvtt-rest-api/wiki" target="_blank" class="external-link">Documentation</a></li>
+        <li><a href="/docs" target="_blank" class="external-link">Documentation</a></li>
         <li><a href="https://github.com/JustAnotherIdea/foundryvtt-rest-api/issues/new" target="_blank" class="external-link">Report a Bug</a></li>
         <li><a href="https://discord.gg/U634xNGRAC" target="_blank" class="external-link">Join the Discord</a></li>
       </ul>
@@ -29,7 +29,7 @@
         <li><button class="tab-button active" data-tab="dashboard">Dashboard</button></li>
         <li><button id="logout-btn" class="tab-button">Sign Out</button></li>
         <li><a href="https://github.com/JustAnotherIdea/foundryvtt-rest-api" target="_blank" class="external-link">Read Me</a></li>
-        <li><a href="https://github.com/JustAnotherIdea/foundryvtt-rest-api-relay/wiki" target="_blank" class="external-link">Documentation</a></li>
+        <li><a href="/docs" target="_blank" class="external-link">Documentation</a></li>
         <li><a href="https://github.com/JustAnotherIdea/foundryvtt-rest-api/issues/new" target="_blank" class="external-link">Report a Bug</a></li>
         <li><a href="https://discord.gg/U634xNGRAC" target="_blank" class="external-link">Join the Discord</a></li>
       </ul>
@@ -71,22 +71,19 @@
       <div class="tab-content" id="dashboard">
         <h2>Your Account</h2>
         <div class="message warning">
-          <strong>⚠️ Important Notice:</strong> Starting August 1st, 2025, this API will transition to a paid model at $5/month for unlimited requests. A limited number of free requests will remain available for testing and development purposes.
+          <strong>⚠️ Rate Limits:</strong> Loading rate limit information...
         </div>
         <div class="user-info">
           <p><strong>Email:</strong> <span id="user-email"></span></p>
           <p class="api-key-container"><strong>API Key:</strong> <span id="user-api-key">Loading...</span> <button id="copy-api-key" class="btn-small">Copy</button></p>
-          <p><strong>Requests This Month:</strong> <span id="user-requests">Loading...</span></p>
-          <!-- Free while in beta -->
-          <p><strong>Subscription Status:</strong> <span id="user-subscription-status">Free Beta</span></p>
-          <!-- Uncomment for payment integration -->
-          <!-- <p><strong>Subscription Status:</strong> <span id="user-subscription-status">Loading...</span></p> -->
+          <p><strong>API Usage:</strong> <span id="user-requests">Loading...</span></p>
+          <p><strong>Subscription Status:</strong> <span id="user-subscription-status">Loading...</span></p>
           
           <!-- Subscription management buttons -->
-          <!-- <div class="subscription-actions">
-            <button id="subscribe-btn" class="btn">$9/m Subscribe for Unlimited Access</button>
+          <div class="subscription-actions">
+            <button id="subscribe-btn" class="btn">$5/month Subscribe for Unlimited Access</button>
             <button id="manage-subscription-btn" class="btn" style="display: none;">Manage Subscription</button>
-          </div> -->
+          </div>
         </div>
         <div class="api-docs">
           <h3>Using Your API Key</h3>

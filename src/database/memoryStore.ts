@@ -1,5 +1,5 @@
 // src/database/memoryStore.ts
-import { log } from '../middleware/logger';
+import { log } from '../utils/logger';
 import crypto from 'crypto';
 
 export class MemoryStore {

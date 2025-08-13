@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150" viewBox="0 0 200 150" fill="none">
+  <rect x="40" y="40" width="120" height="80" rx="8" fill="#2d3748" stroke="#4a5568" stroke-width="2"/>
+  <circle cx="70" cy="65" r="4" fill="#38b2ac"/>
+  <circle cx="130" cy="65" r="4" fill="#38b2ac"/>
+  <circle cx="70" cy="95" r="4" fill="#38b2ac"/>
+  <circle cx="130" cy="95" r="4" fill="#38b2ac"/>
+  <path d="M70 65 Q100 45 130 65" stroke="#4299e1" stroke-width="2" fill="none"/>
+  <path d="M70 95 Q100 75 130 95" stroke="#4299e1" stroke-width="2" fill="none"/>
+  <path d="M70 65 L70 95" stroke="#ed8936" stroke-width="2"/>
+  <path d="M130 65 L130 95" stroke="#ed8936" stroke-width="2"/>
+  <rect x="95" y="50" width="10" height="10" rx="2" fill="#68d391"/>
+  <rect x="95" y="80" width="10" height="10" rx="2" fill="#68d391"/>
+  <text x="100" y="135" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#4a5568">WebSocket</text>
+</svg>

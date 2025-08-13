@@ -1,5 +1,5 @@
 import { createClient, RedisClientType } from 'redis';
-import { log } from '../middleware/logger';
+import { log } from '../utils/logger';
 
 // Global Redis client
 let redisClient: RedisClientType | null = null;

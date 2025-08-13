@@ -1,6 +1,6 @@
 // src/sequelize.ts
 import { DatabaseAdapter } from './database/adapter';
-import { log } from './middleware/logger';
+import { log } from './utils/logger';
 
 export const sequelize = DatabaseAdapter.getSequelize();
 

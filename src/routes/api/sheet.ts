@@ -10,7 +10,22 @@ export const sheetRouter = Router();
 
 const commonMiddleware = [requestForwarderMiddleware, authMiddleware, trackApiUsage, express.json()];
 
-// Get actor sheet HTML
+/**
+ * Get actor sheet HTML
+ * 
+ * This endpoint retrieves the HTML for an actor sheet based on the provided UUID or selected actor. Only works on Foundry version 12.
+ * 
+ * @route GET /sheet
+ * @param {string} uuid - [query,?] The UUID of the actor to get the sheet for
+ * @param {boolean} selected - [query,?] Whether to get the sheet for the selected actor
+ * @param {boolean} actor - [query,?] Whether this is an actor sheet (true) or item sheet (false)
+ * @param {string} clientId - [query] The ID of the Foundry client to connect to
+ * @param {string} format - [query,?] The format to return the sheet in (html, json)
+ * @param {number} scale - [query,?] The initial scale of the sheet
+ * @param {number} tab - [query,?] The active tab index to open
+ * @param {boolean} darkMode - [query,?] Whether to use dark mode for the sheet
+ * @returns {object} The sheet HTML or data depending on format requested
+ */
 sheetRouter.get("/sheet", ...commonMiddleware, async (req: express.Request, res: express.Response) => {
     const uuid = req.query.uuid as string;
     const selected = req.query.selected === 'true';
@@ -49,7 +64,7 @@ sheetRouter.get("/sheet", ...commonMiddleware, async (req: express.Request, res:
       // Store the response object in a request map
       pendingRequests.set(requestId, { 
         res,
-        type: 'actor-sheet',
+        type: 'get-sheet',
         uuid,
         clientId,
         format,
@@ -61,7 +76,7 @@ sheetRouter.get("/sheet", ...commonMiddleware, async (req: express.Request, res:
       
       // Send request to Foundry for actor sheet HTML
       const sent = client.send({
-        type: "actor-sheet",
+        type: "get-sheet",
         uuid,
         selected,
         actor,

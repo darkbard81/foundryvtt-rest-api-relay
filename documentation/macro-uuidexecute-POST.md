@@ -50,3 +50,28 @@ $baseUrl/macro/:uuid/execute?clientId=$clientId
 ```
 
 
+### Example macro
+
+```javascript
+// Example macro that uses parameters
+function myMacro(args) {
+  const targetName = args.targetName || "Target";
+  const damage = args.damage || 0;
+  const effect = args.effect || "none";
+  
+  // Use the parameters
+  console.log(`Attacking ${targetName} for ${damage} ${effect} damage`);
+  
+  // Return a value (can be any data type)
+  return {
+    success: true,
+    damageDealt: damage,
+    target: targetName
+  };
+}
+
+// Don't forget to return the result of your function
+return myMacro(args);
+```
+
+
