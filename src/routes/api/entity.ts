@@ -3,8 +3,7 @@ import express from 'express';
 import { requestForwarderMiddleware } from '../../middleware/requestForwarder';
 import { authMiddleware, trackApiUsage } from '../../middleware/auth';
 import { createApiRoute } from '../route-helpers';
-import router from '../auth';
-import { log } from '../shared';
+import { log } from '../../utils/logger';
 import { validateScript } from './utility';
 
 export const entityRouter = Router();

@@ -3,8 +3,8 @@ import { Router } from 'express';
 import express from 'express';
 import { requestForwarderMiddleware } from '../../middleware/requestForwarder';
 import { authMiddleware, trackApiUsage } from '../../middleware/auth';
-import { createApiRoute } from '../route-helpers';
-import { log, pendingRequests, safeResponse } from '../shared';
+import { pendingRequests, safeResponse } from '../shared';
+import { log } from '../../utils/logger';
 
 export const sheetRouter = Router();
 

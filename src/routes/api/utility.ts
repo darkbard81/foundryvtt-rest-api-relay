@@ -8,7 +8,8 @@ import { PassThrough } from 'stream';
 import { requestForwarderMiddleware } from '../../middleware/requestForwarder';
 import { authMiddleware, trackApiUsage } from '../../middleware/auth';
 import { createApiRoute } from '../route-helpers';
-import { log, pendingRequests, safeResponse } from '../shared';
+import { safeResponse } from '../shared';
+import { log } from '../../utils/logger';
 
 const upload = multer({ dest: "uploads/" });
 

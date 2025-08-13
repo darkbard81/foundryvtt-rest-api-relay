@@ -3,7 +3,8 @@ import express from 'express';
 import { requestForwarderMiddleware } from '../../middleware/requestForwarder';
 import { authMiddleware, trackApiUsage } from '../../middleware/auth';
 import { ClientManager } from '../../core/ClientManager';
-import { log, pendingRequests, safeResponse } from '../shared';
+import { pendingRequests, safeResponse } from '../shared';
+import { log } from '../../utils/logger';
 
 export const fileSystemRouter = Router();
 
