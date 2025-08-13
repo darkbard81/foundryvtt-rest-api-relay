@@ -8,41 +8,7 @@ type FeatureItem = {
   description: React.ReactElement;
 };
 
-const FeatureList: FeatureItem[] = [
-  {
-    title: 'REST API Bridge',
-    Svg: require('@site/static/img/api-icon.svg').default,
-    description: (
-      <>
-        Provides a comprehensive REST API interface for FoundryVTT, enabling external applications
-        to interact with your game sessions through HTTP requests. Search entities, manage actors, 
-        and control game state remotely.
-      </>
-    ),
-  },
-  {
-    title: 'Real-time WebSocket',
-    Svg: require('@site/static/img/websocket-icon.svg').default,
-    description: (
-      <>
-        Real-time bidirectional communication with FoundryVTT through WebSocket connections.
-        Perfect for live integrations, responsive external tools, and instant synchronization
-        with your game world.
-      </>
-    ),
-  },
-  {
-    title: 'Secure & Scalable',
-    Svg: require('@site/static/img/security-icon.svg').default,
-    description: (
-      <>
-        Built with enterprise-grade security featuring API key authentication, rate limiting,
-        request monitoring, and comprehensive logging to ensure your FoundryVTT instance 
-        remains secure and performant.
-      </>
-    ),
-  },
-];
+const FeatureList: FeatureItem[] = [];
 
 function Feature({title, Svg, description}: FeatureItem) {
   return (
@@ -59,6 +25,10 @@ function Feature({title, Svg, description}: FeatureItem) {
 }
 
 export default function HomepageFeatures(): React.ReactElement {
+  if (FeatureList.length === 0) {
+    return <></>;
+  }
+  
   return (
     <section className={styles.features}>
       <div className="container">

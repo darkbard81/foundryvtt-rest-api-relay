@@ -29,20 +29,6 @@ function HomepageHeader() {
             API Reference 📚
           </Link>
         </div>
-        <div className={styles.heroStats}>
-          <div className={styles.stat}>
-            <strong>REST API</strong>
-            <span>HTTP Endpoints</span>
-          </div>
-          <div className={styles.stat}>
-            <strong>WebSocket</strong>
-            <span>Real-time Communication</span>
-          </div>
-          <div className={styles.stat}>
-            <strong>Secure</strong>
-            <span>API Key Authentication</span>
-          </div>
-        </div>
       </div>
     </header>
   );
@@ -51,9 +37,11 @@ function HomepageHeader() {
 export default function Home(): React.ReactElement {
   const {siteConfig} = useDocusaurusContext();
   return (
-    <Layout
-      title={`${siteConfig.title}`}
-      description="Message relay server for the foundryvtt-rest-api Foundry Module. Connect your FoundryVTT game with external applications using REST API and WebSocket connections.">
+    <Layout>
+      <head>
+        <title>{siteConfig.title}</title>
+        <meta name="description" content="Message relay server for the foundryvtt-rest-api Foundry Module. Connect your FoundryVTT game with external applications using REST API and WebSocket connections." />
+      </head>
       <HomepageHeader />
       <main>
         <HomepageFeatures />
@@ -81,35 +69,6 @@ docker-compose up -d
   -H "x-client-id: your-client-id" \\
   -G -d "query=goblin" -d "type=Actor"`}</code>
                 </pre>
-              </div>
-            </div>
-          </div>
-        </section>
-        
-        <section className={styles.featuresSection}>
-          <div className="container">
-            <div className="text--center">
-              <h2>Why Choose FoundryVTT REST API Relay?</h2>
-              <p>Built specifically for the FoundryVTT ecosystem with modern web technologies</p>
-            </div>
-            <div className="row" style={{marginTop: '3rem'}}>
-              <div className="col col--4">
-                <div className={styles.featureCard}>
-                  <h3>🚀 High Performance</h3>
-                  <p>Optimized for low latency and high throughput with efficient WebSocket connections and caching.</p>
-                </div>
-              </div>
-              <div className="col col--4">
-                <div className={styles.featureCard}>
-                  <h3>🔧 Easy Integration</h3>
-                  <p>Simple REST API and WebSocket interface that works with any programming language or platform.</p>
-                </div>
-              </div>
-              <div className="col col--4">
-                <div className={styles.featureCard}>
-                  <h3>📊 Monitoring & Analytics</h3>
-                  <p>Built-in request tracking, rate limiting, and comprehensive logging for production deployments.</p>
-                </div>
               </div>
             </div>
           </div>
