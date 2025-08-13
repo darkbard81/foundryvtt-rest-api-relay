@@ -251,6 +251,72 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
+  // Regenerate API key
+  const regenApiKeyBtn = document.getElementById("regen-api-key");
+  regenApiKeyBtn.addEventListener("click", async () => {
+    if (!confirm("Are you sure you want to regenerate your API key? This will invalidate your current key and you'll need to update any applications using it.")) {
+      return;
+    }
+
+    // Get user data from localStorage for email
+    const userData = JSON.parse(localStorage.getItem("foundryApiUser"));
+    if (!userData || !userData.email) {
+      alert("Please log in again to regenerate your API key.");
+      return;
+    }
+
+    // Prompt for password
+    const password = prompt("Please enter your password to confirm:");
+    if (!password) {
+      return;
+    }
+
+    try {
+      regenApiKeyBtn.disabled = true;
+      regenApiKeyBtn.textContent = "Regenerating...";
+
+      const response = await fetch("/regenerate-key", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          password: password
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Update the displayed API key
+        document.getElementById("user-api-key").textContent = data.apiKey;
+        
+        // Update localStorage with new API key
+        userData.apiKey = data.apiKey;
+        localStorage.setItem("foundryApiUser", JSON.stringify(userData));
+        
+        // Show success message
+        regenApiKeyBtn.textContent = "Generated!";
+        setTimeout(() => {
+          regenApiKeyBtn.textContent = "Regenerate";
+        }, 2000);
+        
+        alert("API key regenerated successfully! Please update any applications using the old key.");
+      } else {
+        alert(data.error || "Failed to regenerate API key");
+      }
+    } catch (error) {
+      console.error("Error regenerating API key:", error);
+      alert("An error occurred while regenerating the API key. Please try again.");
+    } finally {
+      regenApiKeyBtn.disabled = false;
+      if (regenApiKeyBtn.textContent === "Regenerating...") {
+        regenApiKeyBtn.textContent = "Regenerate";
+      }
+    }
+  });
+
   // Function to show dashboard
   function showDashboard(userData) {
     // Hide all tabs and show dashboard
