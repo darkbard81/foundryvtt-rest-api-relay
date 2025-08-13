@@ -29,6 +29,7 @@ RUN apt-get update && apt-get install -y \
     libxdamage1 \
     libxrandr2 \
     xdg-utils \
+    git \
     # Add chromium-browser package
     chromium \
     --no-install-recommends && \
