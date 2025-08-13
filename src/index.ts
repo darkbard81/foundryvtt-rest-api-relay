@@ -19,6 +19,7 @@ import { apiRoutes, browserSessions } from "./routes/api";
 import authRoutes from "./routes/auth";
 import { config } from "dotenv";
 import * as path from "path";
+import * as fs from "fs";
 import { sequelize } from "./sequelize";
 import stripeRouter from './routes/stripe';
 import webhookRouter from './routes/webhook';
@@ -90,7 +91,31 @@ app.use("/static/css", express.static(path.join(__dirname, "../public/css")));
 app.use("/static/js", express.static(path.join(__dirname, "../public/js")));
 
 // Serve Docusaurus documentation from /docs route
-app.use("/docs", express.static(path.join(__dirname, "../docs/build")));
+const docsPath = path.resolve(__dirname, "../docs/build");
+try {
+  // Check if docs build directory exists
+  if (fs.existsSync(docsPath)) {
+    app.use("/docs", express.static(docsPath, { 
+      index: 'index.html',
+      fallthrough: false 
+    }));
+
+    // Handle SPA routing for docs - serve index.html for any unmatched doc routes
+    app.get('/docs/*', (req, res) => {
+      res.sendFile(path.join(docsPath, 'index.html'));
+    });
+  } else {
+    log.warn('Documentation build directory not found, docs will not be available');
+    app.get('/docs*', (req, res) => {
+      res.status(404).json({ error: 'Documentation not available' });
+    });
+  }
+} catch (error) {
+  log.error('Error setting up documentation routes:', { error: error instanceof Error ? error.message : String(error) });
+  app.get('/docs*', (req, res) => {
+    res.status(500).json({ error: 'Documentation setup failed' });
+  });
+}
 
 // Serve the main HTML page at the root URL
 app.get("/", (req: Request, res: Response) => {

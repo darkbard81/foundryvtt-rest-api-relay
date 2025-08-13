@@ -272,7 +272,8 @@ export const apiRoutes = (app: express.Application): void => {
   // API Documentation endpoint - returns all available endpoints with their documentation
   router.get("/api/docs", async (req: Request, res: Response) => {
     try {
-        const docsPath = path.join(__dirname, '../../../public/api-docs.json');
+        // Use path.resolve to ensure we get the correct path in both dev and production
+        const docsPath = path.resolve(__dirname, '../../../public/api-docs.json');
         const docsContent = await fs.readFile(docsPath, 'utf8');
         const apiDocs = JSON.parse(docsContent);
 
@@ -281,8 +282,17 @@ export const apiRoutes = (app: express.Application): void => {
 
         res.json(apiDocs);
     } catch (error) {
-        log.error('Failed to load API documentation:', { error });
-        res.status(500).json({ error: 'API documentation is currently unavailable.' });
+        log.error('Failed to load API documentation:', { 
+          error: error instanceof Error ? error.message : String(error),
+          path: path.resolve(__dirname, '../../../public/api-docs.json') 
+        });
+        
+        // Provide a basic fallback response
+        res.status(500).json({ 
+          error: 'API documentation is currently unavailable.',
+          message: 'The documentation file could not be loaded. Please check if the server was built correctly.',
+          baseUrl: `${req.protocol}://${req.get('host')}`
+        });
     }
   });
 

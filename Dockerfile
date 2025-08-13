@@ -62,6 +62,9 @@ RUN cd node_modules/.pnpm/sqlite3*/node_modules/sqlite3 && npm run install --bui
 # Copy source code
 COPY . .
 
+# Install documentation dependencies and build docs (non-critical, continue if it fails)
+RUN (pnpm docs:install && pnpm docs:build) || echo "Documentation build failed, server will run without docs"
+
 # Build the application
 RUN pnpm build
 
