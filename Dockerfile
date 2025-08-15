@@ -60,18 +60,30 @@ RUN pnpm rebuild sqlite3
 RUN cd node_modules/.pnpm/sqlite3*/node_modules/sqlite3 && npm run install --build-from-source
 
 # Copy source code
-COPY . .
+COPY src/ ./src/
+COPY public/ ./public/
+COPY tsconfig.json ./
 
-# Install documentation dependencies and build docs (non-critical, continue if it fails)
-RUN (pnpm docs:install && pnpm docs:build) || echo "Documentation build failed, server will run without docs"
-
-# Build the application
+# Build the application first
 RUN pnpm build
+
+# Try to build docs if possible, but don't fail the build if it doesn't work
+COPY docs/ ./docs/
+RUN if [ -d "docs" ] && [ -f "docs/package.json" ]; then \
+      echo "Attempting to build documentation..." && \
+      (cd docs && npm install && npm run build) || echo "Documentation build failed, continuing without docs"; \
+    else \
+      echo "Skipping documentation build"; \
+    fi
 
 # Set environment variables
 ENV NODE_ENV=production \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+    DB_TYPE=sqlite
+
+# Create data directory for SQLite
+RUN mkdir -p /app/data && chmod 755 /app/data
 
 # Expose port
 EXPOSE 3010

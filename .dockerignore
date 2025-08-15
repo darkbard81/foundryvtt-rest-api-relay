@@ -5,11 +5,16 @@
 
 # Dependencies
 node_modules
+docs/node_modules
 dist
+docs/build
+docs/.docusaurus
 
 # Environment
 .env
 .env.production
+.env.local
+.env.development
 
 # Logs
 logs
@@ -20,11 +25,78 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Test coverage
+coverage
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Cache directories
+.npm
+.cache
+.pnpm-store
+.yarn/cache
+.parcel-cache
+
+# Build artifacts
+dist/
+build/
+out/
+
+# Documentation build artifacts
+docs/build/
+docs/.docusaurus/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+fly.toml
+Dockerfile*
+docker-compose*.yml
+
+# Database
+data/
+*.db
+*.sqlite
+*.sqlite3
+
 # Misc
 .DS_Store
-fly.toml
-Dockerfile
-docker-compose.yml
-.git
-.gitignore
+.nyc_output
+*.tgz
+*.tar.gz
+coverage/
+.coverage
+.sass-cache
+lib-cov
+*.lcov
+.instrument
+.eslintcache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Documentation
 README.md
+*.md
+docs/build/
+docs/.docusaurus/
+docs/node_modules/
+
+.VSCodeCounter/
