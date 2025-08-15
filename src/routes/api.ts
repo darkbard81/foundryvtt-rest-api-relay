@@ -79,7 +79,7 @@ export const apiRoutes = (app: express.Application): void => {
   router.get("/api/status", (req: Request, res: Response) => {
     res.json({ 
       status: "ok",
-      version: "1.8.1",
+      version: "2.0.6",
       websocket: "/relay"
     });
   });
@@ -272,9 +272,34 @@ export const apiRoutes = (app: express.Application): void => {
   // API Documentation endpoint - returns all available endpoints with their documentation
   router.get("/api/docs", async (req: Request, res: Response) => {
     try {
-        // Use path.resolve to ensure we get the correct path in both dev and production
-        const docsPath = path.resolve(__dirname, '../../../public/api-docs.json');
-        const docsContent = await fs.readFile(docsPath, 'utf8');
+        // Try multiple possible paths for the API docs file
+        const possiblePaths = [
+          path.resolve(__dirname, '../../../public/api-docs.json'),  // Development path
+          path.resolve(__dirname, '../../public/api-docs.json'),     // Alternative path
+          path.resolve(process.cwd(), 'public/api-docs.json'),       // Production path from app root
+          path.resolve(process.cwd(), 'dist/public/api-docs.json'),  // If public is copied to dist
+        ];
+        
+        let docsContent: string | null = null;
+        let usedPath: string | null = null;
+        
+        // Try each path until we find the file
+        for (const docsPath of possiblePaths) {
+          try {
+            docsContent = await fs.readFile(docsPath, 'utf8');
+            usedPath = docsPath;
+            break;
+          } catch (err) {
+            // File not found at this path, try next one
+            log.debug(`API docs not found at: ${docsPath}`);
+          }
+        }
+        
+        if (!docsContent) {
+          throw new Error(`API docs file not found at any of the expected paths: ${possiblePaths.join(', ')}`);
+        }
+        
+        log.debug(`Successfully loaded API docs from: ${usedPath}`);
         const apiDocs = JSON.parse(docsContent);
 
         // Dynamically set the baseUrl
@@ -284,7 +309,8 @@ export const apiRoutes = (app: express.Application): void => {
     } catch (error) {
         log.error('Failed to load API documentation:', { 
           error: error instanceof Error ? error.message : String(error),
-          path: path.resolve(__dirname, '../../../public/api-docs.json') 
+          cwd: process.cwd(),
+          __dirname: __dirname
         });
         
         // Provide a basic fallback response

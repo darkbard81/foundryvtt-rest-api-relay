@@ -1,6 +1,6 @@
 {
   "name": "foundryvtt-rest-api-relay",
-  "version": "1.8.1",
+  "version": "2.0.6",
   "description": "Message relay server for the foundryvtt-rest-api Foundry Module",
   "main": "index.js",
   "scripts": {
