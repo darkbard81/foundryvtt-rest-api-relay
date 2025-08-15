@@ -79,7 +79,7 @@ export const apiRoutes = (app: express.Application): void => {
   router.get("/api/status", (req: Request, res: Response) => {
     res.json({ 
       status: "ok",
-      version: "2.0.6",
+      version: "2.0.7",
       websocket: "/relay"
     });
   });
