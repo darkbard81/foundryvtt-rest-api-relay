@@ -37,6 +37,12 @@ Here are the primary environment variables you can use:
 -   `REDIS_URL`: Connection URL for a Redis instance.
     -   **Optional.** Used for session storage and can help in multi-instance deployments.
 
+-   `FREE_API_REQUESTS_LIMIT`: Number of free requests per month
+    -   **Default:** 100
+
+-   `DAILY_REQUEST_LIMIT`: Number of requests per day allowed per API key
+    -   **Default** 1000
+
 ## Docker Configuration
 
 When using Docker, you can set these variables in the `environment` section of your `docker-compose.yml` file.

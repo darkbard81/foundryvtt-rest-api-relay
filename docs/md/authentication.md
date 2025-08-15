@@ -35,7 +35,7 @@ When making a request to the API, include the `x-api-key` header with your copie
 
 **Example using `curl`:**
 ```bash
-curl -X GET http://localhost:3010/api/v1/worlds \
+curl -X GET http://localhost:3010/structure \
   -H "x-api-key: YOUR_API_KEY_HERE"
 ```
 
