@@ -24,7 +24,7 @@ entityRouter.get("/get", ...commonMiddleware, createApiRoute({
         { name: 'clientId', from: 'query', type: 'string' } // Client ID for the Foundry world
     ],
     optionalParams: [
-        { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to retrieve (optional if selected is true)
+        { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to retrieve (optional if selected=true)
         { name: 'selected', from: 'query', type: 'boolean' }, // Whether to get the selected entity
         { name: 'actor', from: 'query', type: 'boolean' } // Return the actor of specified entity
     ]
@@ -42,7 +42,7 @@ entityRouter.post("/create", ...commonMiddleware, express.json(), createApiRoute
     type: 'create',
     requiredParams: [
         { name: 'clientId', from: 'query', type: 'string' }, // Client ID for the Foundry world
-        { name: 'entityType', from: 'body', type: 'string' }, // Document type of entity to create (e.g., Actor, Item, Macro)
+        { name: 'entityType', from: 'body', type: 'string' }, // Document type of entity to create (Scene, Actor, Item, JournalEntry, RollTable, Cards, Macro, Playlist, ext.)
         { name: 'data', from: 'body', type: 'object' } // Data for the new entity
     ],
     optionalParams: [
@@ -77,9 +77,9 @@ entityRouter.put("/update", ...commonMiddleware, express.json(), createApiRoute(
         { name: 'data', from: 'body', type: 'object' } // Data to update the entity with
     ],
     optionalParams: [
-        { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to update (optional if selected is true)
+        { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to update (optional if selected=true)
         { name: 'selected', from: 'query', type: 'boolean' }, // Whether to update the selected entity
-        { name: 'actor', from: 'query', type: 'boolean' } // Update the actor of specified entity
+        { name: 'actor', from: 'query', type: 'boolean' } // Update the actor of selected entity when selected=true
     ]
 }));
 
@@ -97,7 +97,7 @@ entityRouter.delete("/delete", ...commonMiddleware, createApiRoute({
         { name: 'clientId', from: 'query', type: 'string' } // Client ID for the Foundry world
     ],
     optionalParams: [
-        { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to delete (optional if selected is true)
+        { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to delete (optional if selected=true)
         { name: 'selected', from: 'query', type: 'boolean' } // Whether to delete the selected entity
     ]
 }));
@@ -137,7 +137,7 @@ requiredParams: [
     { name: 'clientId', from: ['body', 'query'], type: 'string' } // Client ID for the Foundry world
 ],
 optionalParams: [
-    { name: 'actorUuid', from: 'body', type: 'string' }, // UUID of the actor to remove the item from (optional if selected is true)
+    { name: 'actorUuid', from: 'body', type: 'string' }, // UUID of the actor to remove the item from (optional if selected=true)
     { name: 'selected', from: 'body', type: 'boolean' }, // Whether to remove from the selected token's actor
     { name: 'itemUuid', from: 'body', type: 'string' }, // UUID of the item to remove
     { name: 'itemName', from: 'body', type: 'string' }, // Name of the item to remove (search with Quick Insert if UUID not provided)
@@ -161,7 +161,7 @@ entityRouter.post("/decrease", ...commonMiddleware, express.json(), createApiRou
     { name: 'amount', from: 'body', type: 'number' } // The amount to decrease the attribute by
   ],
   optionalParams: [
-    { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to decrease the attribute for (optional if selected is true)
+    { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to decrease the attribute for (optional if selected=true)
     { name: 'selected', from: 'query', type: 'boolean' } // Whether to decrease the attribute for the selected entity
   ]
 }));
@@ -182,7 +182,7 @@ entityRouter.post("/increase", ...commonMiddleware, express.json(), createApiRou
     { name: 'amount', from: 'body', type: 'number' } // The amount to increase the attribute by
   ],
   optionalParams: [
-    { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to increase the attribute for (optional if selected is true)
+    { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to increase the attribute for (optional if selected=true)
     { name: 'selected', from: 'query', type: 'boolean' } // Whether to increase the attribute for the selected entity
   ]
 }));
@@ -203,7 +203,7 @@ entityRouter.post("/kill", ...commonMiddleware, express.json(), createApiRoute({
     { name: 'clientId', from: 'query', type: 'string' } // Client ID for the Foundry world
   ],
   optionalParams: [
-    { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to kill (optional if selected is true)
+    { name: 'uuid', from: 'query', type: 'string' }, // UUID of the entity to kill (optional if selected=true)
     { name: 'selected', from: 'query', type: 'boolean' } // Whether to kill the selected entity
   ]
 }));
