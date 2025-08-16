@@ -11,12 +11,6 @@ const commonMiddleware = [requestForwarderMiddleware, authMiddleware, trackApiUs
  * Retrieves the folder and compendium structure for the specified Foundry world.
  * 
  * @route GET /structure
- * @query {string} clientId - Client ID for the Foundry world
- * @query {boolean} [includeEntityData=false] - Whether to include full entity data or just UUIDs and names
- * @query {string} [path] - Read structure from a specific folder or compendium (null = root)
- * @query {boolean} [recursive=false] - Read down the folder tree, building complete structure
- * @query {number} [recursiveDepth=5] - How far to read down the folder tree
- * @query {string|string[]} [types] - Types to return (Scene/Actor/Item/JournalEntry/RollTable/Cards/Macro/Playlist), can be comma-separated or JSON array
  * @returns {object} The folder and compendium structure
  */
 structureRouter.get("/structure", ...commonMiddleware, createApiRoute({
@@ -25,11 +19,11 @@ structureRouter.get("/structure", ...commonMiddleware, createApiRoute({
         { name: 'clientId', from: 'query', type: 'string' } // Client ID for the Foundry world
     ],
     optionalParams: [
-        { name: 'includeEntityData', from: 'query', type: 'boolean' },
-        { name: 'path', from: 'query', type: 'string' },
-        { name: 'recursive', from: 'query', type: 'boolean' },
-        { name: 'recursiveDepth', from: 'query', type: 'number' },
-        { name: 'types', from: 'query', type: 'string' } // Handle as string, parse as needed
+        { name: 'includeEntityData', from: 'query', type: 'boolean' }, // Whether to include full entity data or just UUIDs and names
+        { name: 'path', from: 'query', type: 'string' }, // Path to read structure from (null = root)
+        { name: 'recursive', from: 'query', type: 'boolean' }, // Whether to read down the folder tree
+        { name: 'recursiveDepth', from: 'query', type: 'number' }, // Depth to recurse into folders (default 5)
+        { name: 'types', from: 'query', type: 'string' } // Types to return (Scene/Actor/Item/JournalEntry/RollTable/Cards/Macro/Playlist), can be comma-separated or JSON array
     ],
     buildPayload: (params) => {
         // Handle types parameter - can be comma-separated string or JSON array
