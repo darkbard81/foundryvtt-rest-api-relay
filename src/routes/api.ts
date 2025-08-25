@@ -31,6 +31,8 @@ import { log } from '../utils/logger';
 export const browserSessions = new Map<string, puppeteer.Browser>();
 export const apiKeyToSession = new Map<string, { sessionId: string, clientId: string, lastActivity: number }>();
 
+export const VERSION = '2.0.8';
+
 const INSTANCE_ID = process.env.INSTANCE_ID || 'default';
 
 const HEADLESS_SESSION_TIMEOUT = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -79,7 +81,7 @@ export const apiRoutes = (app: express.Application): void => {
   router.get("/api/status", (req: Request, res: Response) => {
     res.json({ 
       status: "ok",
-      version: "2.0.8",
+      version: VERSION,
       websocket: "/relay"
     });
   });
