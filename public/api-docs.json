@@ -1,5 +1,5 @@
 {
-  "version": "2.0.6",
+  "version": "2.0.8",
   "baseUrl": "https://your-relay-server.com",
   "authentication": {
     "required": true,
@@ -810,7 +810,7 @@
         {
           "name": "uuid",
           "type": "string",
-          "description": "UUID of the entity to retrieve (optional if selected is true)",
+          "description": "UUID of the entity to retrieve (optional if selected=true)",
           "location": "query"
         },
         {
@@ -841,7 +841,7 @@
         {
           "name": "entityType",
           "type": "string",
-          "description": "Document type of entity to create (e.g., Actor, Item, Macro)",
+          "description": "Document type of entity to create (Scene, Actor, Item, JournalEntry, RollTable, Cards, Macro, Playlist, ext.)",
           "location": "body"
         },
         {
@@ -882,7 +882,7 @@
         {
           "name": "uuid",
           "type": "string",
-          "description": "UUID of the entity to update (optional if selected is true)",
+          "description": "UUID of the entity to update (optional if selected=true)",
           "location": "query"
         },
         {
@@ -894,7 +894,7 @@
         {
           "name": "actor",
           "type": "boolean",
-          "description": "Update the actor of specified entity",
+          "description": "Update the actor of selected entity when selected=true",
           "location": "query"
         }
       ]
@@ -915,7 +915,7 @@
         {
           "name": "uuid",
           "type": "string",
-          "description": "UUID of the entity to delete (optional if selected is true)",
+          "description": "UUID of the entity to delete (optional if selected=true)",
           "location": "query"
         },
         {
@@ -993,7 +993,7 @@
         {
           "name": "actorUuid",
           "type": "string",
-          "description": "UUID of the actor to remove the item from (optional if selected is true)",
+          "description": "UUID of the actor to remove the item from (optional if selected=true)",
           "location": "body"
         },
         {
@@ -1050,7 +1050,7 @@
         {
           "name": "uuid",
           "type": "string",
-          "description": "UUID of the entity to decrease the attribute for (optional if selected is true)",
+          "description": "UUID of the entity to decrease the attribute for (optional if selected=true)",
           "location": "query"
         },
         {
@@ -1089,7 +1089,7 @@
         {
           "name": "uuid",
           "type": "string",
-          "description": "UUID of the entity to increase the attribute for (optional if selected is true)",
+          "description": "UUID of the entity to increase the attribute for (optional if selected=true)",
           "location": "query"
         },
         {
@@ -1116,7 +1116,7 @@
         {
           "name": "uuid",
           "type": "string",
-          "description": "UUID of the entity to kill (optional if selected is true)",
+          "description": "UUID of the entity to kill (optional if selected=true)",
           "location": "query"
         },
         {
@@ -1291,31 +1291,31 @@
         {
           "name": "includeEntityData",
           "type": "boolean",
-          "description": "",
+          "description": "Whether to include full entity data or just UUIDs and names",
           "location": "query"
         },
         {
           "name": "path",
           "type": "string",
-          "description": "",
+          "description": "Path to read structure from (null = root)",
           "location": "query"
         },
         {
           "name": "recursive",
           "type": "boolean",
-          "description": "",
+          "description": "Whether to read down the folder tree",
           "location": "query"
         },
         {
           "name": "recursiveDepth",
           "type": "number",
-          "description": "",
+          "description": "Depth to recurse into folders (default 5)",
           "location": "query"
         },
         {
           "name": "types",
           "type": "string",
-          "description": "Handle as string, parse as needed",
+          "description": "Types to return (Scene/Actor/Item/JournalEntry/RollTable/Cards/Macro/Playlist), can be comma-separated or JSON array",
           "location": "query"
         }
       ]

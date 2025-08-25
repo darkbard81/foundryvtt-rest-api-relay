@@ -13,11 +13,11 @@ Get the structure of the Foundry world Retrieves the folder and compendium struc
 | Name | Type | Required | Source | Description |
 |------|------|----------|--------|--------------|
 | clientId | string | ✓ | query | Client ID for the Foundry world |
-| includeEntityData | boolean |  | query |  |
-| path | string |  | query |  |
-| recursive | boolean |  | query |  |
-| recursiveDepth | number |  | query |  |
-| types | string |  | query | Handle as string, parse as needed |
+| includeEntityData | boolean |  | query | Whether to include full entity data or just UUIDs and names |
+| path | string |  | query | Path to read structure from (null = root) |
+| recursive | boolean |  | query | Whether to read down the folder tree |
+| recursiveDepth | number |  | query | Depth to recurse into folders (default 5) |
+| types | string |  | query | Types to return (Scene/Actor/Item/JournalEntry/RollTable/Cards/Macro/Playlist), can be comma-separated or JSON array |
 
 #### Returns
 

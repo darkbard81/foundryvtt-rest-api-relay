@@ -129,7 +129,6 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} FoundryVTT REST API Relay. Built with Docusaurus.`,
       },
       prism: {
         theme: lightCodeTheme,

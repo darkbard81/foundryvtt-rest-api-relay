@@ -13,7 +13,7 @@ Get entity details This endpoint retrieves the details of a specific entity.
 | Name | Type | Required | Source | Description |
 |------|------|----------|--------|--------------|
 | clientId | string | ✓ | query | Client ID for the Foundry world |
-| uuid | string |  | query | UUID of the entity to retrieve (optional if selected is true) |
+| uuid | string |  | query | UUID of the entity to retrieve (optional if selected=true) |
 | selected | boolean |  | query | Whether to get the selected entity |
 | actor | boolean |  | query | Return the actor of specified entity |
 
@@ -39,7 +39,7 @@ Create a new entity This endpoint creates a new entity in the Foundry world.
 | Name | Type | Required | Source | Description |
 |------|------|----------|--------|--------------|
 | clientId | string | ✓ | query | Client ID for the Foundry world |
-| entityType | string | ✓ | body | Document type of entity to create (e.g., Actor, Item, Macro) |
+| entityType | string | ✓ | body | Document type of entity to create (Scene, Actor, Item, JournalEntry, RollTable, Cards, Macro, Playlist, ext.) |
 | data | object | ✓ | body | Data for the new entity |
 | folder | string |  | body | Optional folder UUID to place the new entity in |
 
@@ -74,9 +74,9 @@ Update an existing entity This endpoint updates an existing entity in the Foundr
 |------|------|----------|--------|--------------|
 | clientId | string | ✓ | query | Client ID for the Foundry world |
 | data | object | ✓ | body | Data to update the entity with |
-| uuid | string |  | query | UUID of the entity to update (optional if selected is true) |
+| uuid | string |  | query | UUID of the entity to update (optional if selected=true) |
 | selected | boolean |  | query | Whether to update the selected entity |
-| actor | boolean |  | query | Update the actor of specified entity |
+| actor | boolean |  | query | Update the actor of selected entity when selected=true |
 
 #### Returns
 
@@ -106,7 +106,7 @@ Delete an entity This endpoint deletes an entity from the Foundry world.
 | Name | Type | Required | Source | Description |
 |------|------|----------|--------|--------------|
 | clientId | string | ✓ | query | Client ID for the Foundry world |
-| uuid | string |  | query | UUID of the entity to delete (optional if selected is true) |
+| uuid | string |  | query | UUID of the entity to delete (optional if selected=true) |
 | selected | boolean |  | query | Whether to delete the selected entity |
 
 #### Returns
@@ -168,7 +168,7 @@ Remove an item from an entity This endpoint removes an item from a specified ent
 | Name | Type | Required | Source | Description |
 |------|------|----------|--------|--------------|
 | clientId | string | ✓ | body, query | Client ID for the Foundry world |
-| actorUuid | string |  | body | UUID of the actor to remove the item from (optional if selected is true) |
+| actorUuid | string |  | body | UUID of the actor to remove the item from (optional if selected=true) |
 | selected | boolean |  | body | Whether to remove from the selected token's actor |
 | itemUuid | string |  | body | UUID of the item to remove |
 | itemName | string |  | body | Name of the item to remove (search with Quick Insert if UUID not provided) |
@@ -200,7 +200,7 @@ Decrease an attribute This endpoint decreases an attribute of a specified entity
 | clientId | string | ✓ | query | Client ID for the Foundry world |
 | attribute | string | ✓ | body | The attribute data path to decrease (e.g., "system.attributes.hp.value") |
 | amount | number | ✓ | body | The amount to decrease the attribute by |
-| uuid | string |  | query | UUID of the entity to decrease the attribute for (optional if selected is true) |
+| uuid | string |  | query | UUID of the entity to decrease the attribute for (optional if selected=true) |
 | selected | boolean |  | query | Whether to decrease the attribute for the selected entity |
 
 #### Returns
@@ -232,7 +232,7 @@ Increase an attribute This endpoint increases an attribute of a specified entity
 | clientId | string | ✓ | query | Client ID for the Foundry world |
 | attribute | string | ✓ | body | The attribute data path to increase (e.g., "system.attributes.hp.value") |
 | amount | number | ✓ | body | The amount to increase the attribute by |
-| uuid | string |  | query | UUID of the entity to increase the attribute for (optional if selected is true) |
+| uuid | string |  | query | UUID of the entity to increase the attribute for (optional if selected=true) |
 | selected | boolean |  | query | Whether to increase the attribute for the selected entity |
 
 #### Returns
@@ -262,7 +262,7 @@ Kill an entity Marks an entity as killed in the combat tracker, gives it the "de
 | Name | Type | Required | Source | Description |
 |------|------|----------|--------|--------------|
 | clientId | string | ✓ | query | Client ID for the Foundry world |
-| uuid | string |  | query | UUID of the entity to kill (optional if selected is true) |
+| uuid | string |  | query | UUID of the entity to kill (optional if selected=true) |
 | selected | boolean |  | query | Whether to kill the selected entity |
 
 #### Returns
