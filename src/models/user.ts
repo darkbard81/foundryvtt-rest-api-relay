@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { log } from '../utils/logger';
 
 // Check if we're using the memory store
-const isMemoryStore = 'getUser' in sequelize;
+const isMemoryStore = process.env.DB_TYPE === 'memory';
 
 export class User extends Model {
   // Declare types for TypeScript without public fields to avoid Sequelize conflicts

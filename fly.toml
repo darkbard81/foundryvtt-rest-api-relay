@@ -48,5 +48,5 @@ primary_region = 'ord'
   
 [env]
   ENABLE_REDIS = "true"
-  # Set a longer Redis expiry
   REDIS_CLIENT_EXPIRY = "14400"  # 4 hours in seconds
+  DB_TYPE = "postgres"
