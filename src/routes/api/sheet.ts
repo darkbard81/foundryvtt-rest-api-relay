@@ -104,8 +104,8 @@ sheetRouter.get("/sheet", ...commonMiddleware, async (req: express.Request, res:
             tip: "The Foundry client might be busy or the actor UUID might not exist."
           });
         }
-      }, 10000); // 10 seconds timeout
-      
+      }, 20000); // 20 seconds timeout
+
     } catch (error) {
       log.error(`Error processing actor sheet request: ${error}`);
       safeResponse(res, 500, { error: "Failed to process actor sheet request" });

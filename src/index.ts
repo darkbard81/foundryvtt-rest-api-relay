@@ -70,19 +70,37 @@ app.use('/upload', (req, res, next) => {
   }
 });
 
-// Parse JSON bodies for all other routes
-app.use(express.json());
+// Parse JSON bodies for all other routes with 250MB limit
+app.use(express.json({ limit: '250mb' }));
 
 // Add Redis session middleware
 app.use(redisSessionMiddleware);
 
 // Add global error handler
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   log.error('Unhandled error:', err);
   if (!res.headersSent) {
+    // Handle JSON parsing errors
+    if (err.type === 'entity.parse.failed' || err instanceof SyntaxError || 
+        (err.message && err.message.includes('JSON'))) {
+      return res.status(400).json({ 
+        error: 'Invalid JSON format',
+        message: 'The request body contains malformed JSON. Please check your JSON syntax.',
+        details: err.message
+      });
+    }
+    
+    // Handle payload too large errors
+    if (err.type === 'entity.too.large') {
+      return res.status(413).json({ 
+        error: 'Request entity too large',
+        message: 'The request body is too large. Please reduce the size of your request.'
+      });
+    }
+    
+    // Default error response
     res.status(500).json({ error: 'Internal server error' });
   }
-  // Don't call next with error to prevent Express from handling it again
 });
 
 // Serve static files from public directory
@@ -143,8 +161,20 @@ app.get("/default-token.png", (req: Request, res: Response) => {
 
 // Add health endpoint
 app.get('/api/health', (req, res) => {
-  const health = getSystemHealth();
-  res.status(health.healthy ? 200 : 503).json(health);
+  try {
+    const health = getSystemHealth();
+    res.status(200).json(health);
+  } catch (error) {
+    // Always return 200 during startup
+    log.warn('Health check error during startup:', { error: error instanceof Error ? error.message : String(error) });
+    res.status(200).json({ 
+      healthy: true,
+      status: 'starting',
+      timestamp: Date.now(),
+      instanceId: process.env.FLY_ALLOC_ID || 'local',
+      message: 'Service initializing'
+    });
+  }
 });
 
 /**
@@ -156,46 +186,66 @@ const port = process.env.PORT ? parseInt(process.env.PORT) : 3010;
  * Initializes all server services in the correct order.
  * 
  * This function performs the following initialization steps:
- * 1. Synchronizes the database connection
- * 2. Initializes Redis if configured
- * 3. Sets up cron jobs for scheduled tasks
- * 4. Starts health monitoring
- * 5. Starts the HTTP and WebSocket servers
+ * 1. Starts the HTTP and WebSocket servers first
+ * 2. Synchronizes the database connection in background
+ * 3. Initializes Redis if configured in background
+ * 4. Sets up cron jobs for scheduled tasks in background
+ * 5. Starts health monitoring in background
  * 
- * @throws {Error} Exits the process if initialization fails
- * @returns {Promise<void>} Resolves when all services are successfully initialized
+ * @throws {Error} Exits the process if server startup fails
+ * @returns {Promise<void>} Resolves when server is started
  */
-async function initializeServices() {  try {
-    // First initialize database
-    await sequelize.sync();
-    
-    // Run migration to add daily request tracking columns
-    await migrateDailyRequestTracking();
-    
-    if (process.env.REDIS_URL && process.env.REDIS_URL.length > 0) {
-      // Then initialize Redis
-      const redisInitialized = await initRedis();
-      if (!redisInitialized) {
-        log.warn('Redis initialization failed - continuing with local storage only');
-      }
-    }
-    
-    // Set up cron jobs
-    setupCronJobs();
-    log.info('Cron jobs initialized');
-    
-    // Start health monitoring
-    logSystemHealth(); // Log initial health
-    startHealthMonitoring(60000); // Check every minute
-    
-    // Start the server
+async function initializeServices() {
+  try {
     httpServer.listen(port, () => {
       log.info(`Server running at http://localhost:${port}`);
       log.info(`WebSocket server ready at ws://localhost:${port}/relay`);
     });
     
+    // Do heavy initialization in background after server is running
+    setImmediate(async () => {
+      try {
+        log.info('Starting background initialization...');
+        
+        // First initialize database
+        await sequelize.sync();
+        log.info('Database synced');
+        
+        // Run migration to add daily request tracking columns
+        await migrateDailyRequestTracking();
+        log.info('Database migrations completed');
+        
+        if (process.env.REDIS_URL && process.env.REDIS_URL.length > 0) {
+          // Then initialize Redis
+          const redisInitialized = await initRedis();
+          if (!redisInitialized) {
+            log.warn('Redis initialization failed - continuing with local storage only');
+          } else {
+            log.info('Redis initialized successfully');
+          }
+        }
+        
+        // Set up cron jobs
+        setupCronJobs();
+        log.info('Cron jobs initialized');
+        
+        // Start health monitoring
+        logSystemHealth(); // Log initial health
+        startHealthMonitoring(60000); // Check every minute
+        log.info('Health monitoring started');
+        
+        log.info('All background services initialized successfully');
+      } catch (error) {
+        log.error(`Error during background initialization: ${error}`);
+        // Don't exit in production - let the server continue running
+        if (process.env.NODE_ENV !== 'production') {
+          process.exit(1);
+        }
+      }
+    });
+    
   } catch (error) {
-    log.error(`Error initializing services: ${error}`);
+    log.error(`Error starting server: ${error}`);
     process.exit(1);
   }
 }

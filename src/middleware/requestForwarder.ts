@@ -79,7 +79,7 @@ export async function requestForwarderMiddleware(req: Request, res: Response, ne
     const controller = new AbortController();
     // Use longer timeout for download/upload requests
     const isFileOperation = req.path === '/upload' || req.path === '/download';
-    const timeout = isFileOperation ? 30000 : 10000; // 30s for file operations, 10s for others
+    const timeout = isFileOperation ? 45000 : 20000; // 45s for file operations, 20s for others
     const timeoutId = setTimeout(() => controller.abort(), timeout);
       // Prepare the body based on content type
     let requestBody: any = undefined;

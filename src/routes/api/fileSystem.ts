@@ -361,7 +361,7 @@ fileSystemRouter.get("/download", ...commonMiddleware, async (req: Request, res:
           pendingRequests.delete(requestId);
           safeResponse(res, 504, { error: "File download request timed out" });
         }
-      }, 20000); // 20 second timeout for downloads
+      }, 45000); // 45 second timeout for downloads
     } catch (error) {
       log.error(`Error processing file download request: ${error}`);
       safeResponse(res, 500, { error: "Failed to process file download request" });
