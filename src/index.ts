@@ -108,6 +108,16 @@ app.use("/static", express.static(path.join(__dirname, "../public")));
 app.use("/static/css", express.static(path.join(__dirname, "../public/css")));
 app.use("/static/js", express.static(path.join(__dirname, "../public/js")));
 
+// Redirect trailing slashes in docs routes to clean URLs
+app.use('/docs', (req, res, next) => {
+  if (req.path !== '/' && req.path.endsWith('/')) {
+    const cleanPath = req.path.slice(0, -1);
+    const queryString = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+    return res.redirect(301, `/docs${cleanPath}${queryString}`);
+  }
+  next();
+});
+
 // Serve Docusaurus documentation from /docs route
 const docsPath = path.resolve(__dirname, "../docs/build");
 try {
@@ -115,7 +125,7 @@ try {
   if (fs.existsSync(docsPath)) {
     app.use("/docs", express.static(docsPath, { 
       index: 'index.html',
-      fallthrough: false 
+      fallthrough: true
     }));
 
     // Handle SPA routing for docs - serve index.html for any unmatched doc routes
