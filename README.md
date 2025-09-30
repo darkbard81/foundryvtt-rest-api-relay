@@ -2,6 +2,11 @@
 
 This project is built upon [Foundry REST API Relay](https://github.com/ThreeHats/foundryvtt-rest-api-relay) by [ThreeHats](https://github.com/ThreeHats). The original project provides a WebSocket relay server and REST API for Foundry VTT, enabling external applications to interact with Foundry data.
 
+The original project is licensed under the MIT License.
+
+## Key Modifications
+- TBD
+
 # Foundry REST API
 Join the [discord](https://discord.gg/U634xNGRAC) server for updates, questions, and discussions
 
