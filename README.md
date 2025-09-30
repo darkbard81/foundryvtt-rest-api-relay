@@ -1,3 +1,7 @@
+```bash
+Base on https://github.com/ThreeHats/foundryvtt-rest-api-relay
+```
+
 # Foundry REST API
 Join the [discord](https://discord.gg/U634xNGRAC) server for updates, questions, and discussions
 
@@ -135,7 +139,3 @@ After installing the module, go to the module settings to configure:
 - Built with TypeScript for Foundry VTT
 - Integrates with Foundry's QuickInsert for powerful search capabilities
 - Provides WebSocket relay functionality for external applications
-
-```bash
-Base on https://github.com/ThreeHats/foundryvtt-rest-api-relay
-```
