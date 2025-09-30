@@ -1,15 +1,19 @@
 ## Acknowledgments
 
-This project is built upon [Foundry REST API Relay](https://github.com/ThreeHats/foundryvtt-rest-api-relay) by [ThreeHats](https://github.com/ThreeHats). The original project provides a WebSocket relay server and REST API for Foundry VTT, enabling external applications to interact with Foundry data.
+This project is built upon two core components from ThreeHats:
 
-The original project is licensed under the MIT License.
+- [Foundry REST API Relay](https://github.com/ThreeHats/foundryvtt-rest-api-relay) - A WebSocket relay server that facilitates communication between Foundry VTT and external applications.
+- [Foundry REST API](https://github.com/ThreeHats/foundryvtt-rest-api) - A Foundry VTT module that connects to the relay server and provides access to Foundry data through a REST API.
+
+Both projects are developed and maintained by [ThreeHats](https://github.com/ThreeHats) and are licensed under the MIT License[web:18][web:27].
 
 ## Key Modifications
-- TBD
+
+TBD
 
 ## Original README
 
-The following is the original README from the upstream project:
+The following is the original README from the upstream projects:
 
 ---
 
