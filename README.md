@@ -136,3 +136,6 @@ After installing the module, go to the module settings to configure:
 - Integrates with Foundry's QuickInsert for powerful search capabilities
 - Provides WebSocket relay functionality for external applications
 
+```bash
+Base on https://github.com/ThreeHats/foundryvtt-rest-api-relay
+```
