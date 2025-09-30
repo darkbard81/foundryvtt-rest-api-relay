@@ -28,6 +28,8 @@ import { macroRouter } from './api/macro';
 import { structureRouter } from './api/structure';
 import { log } from '../utils/logger';
 
+import { pf2eRouter } from './api/pf2e';
+
 export const browserSessions = new Map<string, puppeteer.Browser>();
 export const apiKeyToSession = new Map<string, { sessionId: string, clientId: string, lastActivity: number }>();
 
@@ -337,6 +339,7 @@ export const apiRoutes = (app: express.Application): void => {
   app.use('/', macroRouter);
   app.use('/', structureRouter);
   app.use('/dnd5e', dnd5eRouter);
+  app.use('/pf2e', pf2eRouter);
 };
 
 const REQUEST_TYPES_WITH_SPECIAL_RESPONSE_HANDLERS = [
